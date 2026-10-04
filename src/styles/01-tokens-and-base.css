@@ -1,0 +1,51 @@
+
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: light;
+    --bg: 243 246 252; --panel: 255 255 255; --panel2: 248 250 254; --card: 255 255 255;
+    --line: 224 230 241; --line2: 199 208 224; --ink: 0 10 25; --ink2: 41 54 78;
+    --ink3: 88 102 126; --ink4: 104 115 134; --sunk: 238 242 250; --hov: 229 235 246; --code: 238 242 250;
+    --brand: 77 255 166; --brand-ink: 0 150 90;
+    --rose-fg: 190 18 60; --amber-fg: 180 83 9; --indigo-fg: 67 56 202; --cx-fg: 0 128 90;
+    --cyan-fg: 14 116 144; --blue-fg: 29 78 216; --purple-fg: 126 34 206; --slate-fg: 71 85 105;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: 7 11 20; --panel: 16 22 36; --panel2: 19 26 42; --card: 22 30 48;
+      --line: 36 46 66; --line2: 50 62 86; --ink: 238 242 248; --ink2: 200 207 220;
+      --ink3: 143 152 170; --ink4: 125 135 155; --sunk: 11 16 28; --hov: 28 37 56; --code: 8 12 22;
+      --brand: 77 255 166; --brand-ink: 77 255 166;
+      --rose-fg: 253 164 175; --amber-fg: 252 211 77; --indigo-fg: 165 180 252; --cx-fg: 52 222 170;
+      --cyan-fg: 103 232 249; --blue-fg: 147 197 253; --purple-fg: 216 180 254; --slate-fg: 203 213 225;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: 7 11 20; --panel: 16 22 36; --panel2: 19 26 42; --card: 22 30 48;
+    --line: 36 46 66; --line2: 50 62 86; --ink: 238 242 248; --ink2: 200 207 220;
+    --ink3: 143 152 170; --ink4: 125 135 155; --sunk: 11 16 28; --hov: 28 37 56; --code: 8 12 22;
+    --brand: 77 255 166; --brand-ink: 77 255 166;
+    --rose-fg: 253 164 175; --amber-fg: 252 211 77; --indigo-fg: 165 180 252; --cx-fg: 52 222 170;
+    --cyan-fg: 103 232 249; --blue-fg: 147 197 253; --purple-fg: 216 180 254; --slate-fg: 203 213 225;
+  }
+  html, body { height: 100%; margin: 0; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { background: rgb(var(--bg)); color: rgb(var(--ink)); }
+  #app { height: 100%; }
+  :focus-visible { outline: 2px solid #00c389; outline-offset: 2px; }
+
+  .tn { color: rgb(var(--fg)); background: rgb(var(--c) / .12); border: 1px solid rgb(var(--c) / .32); }
+  .tn-rose { --c: 244 63 94; --fg: var(--rose-fg); } .tn-amber { --c: 245 158 11; --fg: var(--amber-fg); }
+  .tn-indigo { --c: 99 102 241; --fg: var(--indigo-fg); } .tn-cx { --c: 0 195 137; --fg: var(--cx-fg); }
+  .tn-cyan { --c: 6 182 212; --fg: var(--cyan-fg); } .tn-purple { --c: 168 85 247; --fg: var(--purple-fg); }
+  .tn-slate { --c: 100 116 139; --fg: var(--slate-fg); }
+  .tn-blue { --c: 59 130 246; --fg: var(--blue-fg); } .c-blue { color: rgb(var(--blue-fg)); }
+  .c-rose { color: rgb(var(--rose-fg)); } .c-amber { color: rgb(var(--amber-fg)); }
+  .c-cx { color: rgb(var(--cx-fg)); } .c-indigo { color: rgb(var(--indigo-fg)); }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--line2)); border-radius: 9999px; }

@@ -1,0 +1,7 @@
+  /* ---------- Case drawer ---------- */
+  @keyframes drawerIn { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
+  #case-drawer { position: fixed; inset: 0; z-index: 45; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 0 0 100vmax rgb(0 0 0 / .25); }
+  .drawer-in { animation: drawerIn .28s cubic-bezier(.2,.8,.2,1); }
+
+  @keyframes reviewPulse { 0%,100% { box-shadow: inset 3px 0 0 #f59e0b; } 50% { box-shadow: inset 3px 0 0 #f59e0b, inset 0 0 0 999px rgb(245 158 11 / .06); } }
+  .row-review { animation: reviewPulse 2.4s ease-in-out infinite; }

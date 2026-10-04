@@ -1,0 +1,12 @@
+  /* ---------- Cortex brand ---------- */
+  body { font-family: Lato, ui-sans-serif, system-ui, sans-serif; }
+  .c-brand { color: rgb(var(--brand-ink)); }
+  .c-ai { color: #8b8ff8; } .bg-ai { background: rgb(139 143 248 / .12); }
+  .cortex-tile { background: #000a19; box-shadow: inset 0 0 0 1px rgb(77 255 166 / .25); }
+  @keyframes app-loading-draw { 0% { stroke-dashoffset: 1500; } 45% { stroke-dashoffset: 0; } 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 1500; } }
+  @keyframes app-loading-fill { 0%, 20% { transform: translateY(100%); opacity: 1; } 75% { transform: translateY(-2%); opacity: 1; } 78% { transform: translateY(-2%); opacity: 1; } 88% { transform: translateY(-2%); opacity: 0; } 100% { transform: translateY(100%); opacity: 0; } }
+  @keyframes app-loading-glow { 0%, 50% { filter: drop-shadow(0 0 2px rgba(77,255,166,.3)); } 75% { filter: drop-shadow(0 0 6px rgba(77,255,166,.6)); } 85% { filter: drop-shadow(0 0 4px rgba(77,255,166,.5)); } 100% { filter: drop-shadow(0 0 2px rgba(77,255,166,.3)); } }
+  .app-loader-outline { stroke-dasharray: 1500; animation: app-loading-draw 8s cubic-bezier(.4,0,.2,1) infinite; }
+  .app-loader-mask { animation: app-loading-fill 8s cubic-bezier(.2,.8,.3,1) infinite; }
+  .app-loader-group { animation: app-loading-glow 8s ease-in-out infinite; }
+  #app-loader { transition: opacity .6s ease; }

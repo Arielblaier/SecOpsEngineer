@@ -1,0 +1,10 @@
+  /* ---------- Home story reveal ---------- */
+  .rv { opacity: 0; transform: translateY(16px) scale(.985); filter: blur(6px); transition: opacity .75s ease, transform .75s cubic-bezier(.2,.8,.2,1), filter .75s ease; }
+  .rv.in { opacity: 1; transform: none; filter: none; }
+  @keyframes wordIn { from { opacity: 0; filter: blur(5px); transform: translateY(5px); } to { opacity: 1; filter: none; transform: none; } }
+  .w { display: inline-block; opacity: 0; animation: wordIn .5s ease forwards; white-space: pre; }
+  @keyframes sheen { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  .sheen { position: relative; overflow: hidden; }
+  .sheen::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .35) 50%, transparent 70%); background-size: 200% 100%; animation: sheen 1.4s ease .2s 1 both; }
+  #home-chips { transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+  #home-chips.hide { opacity: 0; transform: translateY(8px); pointer-events: none; }

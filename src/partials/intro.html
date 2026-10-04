@@ -1,0 +1,17 @@
+<div id="intro" class="hidden fixed inset-0 z-[60] items-start justify-center p-4 overflow-y-auto bg-[rgb(var(--bg)/0.78)] backdrop-blur-md">
+  <div id="intro-card" class="intro-in relative my-auto w-full max-w-xl rounded-[32px] border border-indigo-400/25 shadow-2xl px-6 sm:px-14 pt-10 pb-8 text-center overflow-hidden" style="background:radial-gradient(420px 260px at 50% 0%, rgb(99 102 241 / .22), transparent 70%), linear-gradient(180deg, rgb(20 26 56 / .96), rgb(10 14 30 / .98))">
+    <button onclick="skipIntro()" class="absolute top-4 right-4 text-[11px] text-ink3 hover:text-ink px-2 py-1 rounded-lg hover:bg-hov">Skip intro</button>
+    <div class="relative flex justify-center">
+      <div class="jv st-cortex" data-jv="intro" style="width:150px;height:150px"></div>
+    </div>
+    <div id="intro-lines" class="relative mt-5 space-y-3 min-h-[118px]"></div>
+    <div id="intro-roster" class="relative mt-6 flex flex-wrap justify-center gap-5 min-h-[96px]"></div>
+    <div class="relative mt-7 min-h-[52px]">
+      <button id="intro-go" onclick="startGame()" class="hidden glow-btn px-8 py-3.5 rounded-full bg-ink hover:opacity-90 text-panel text-[14.5px] font-bold items-center gap-2 mx-auto">
+        Meet your workforce <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <div id="intro-about" class="relative mt-4 text-[11.5px] text-ink3 opacity-0 transition-all duration-700">Concept demo · Cortex · simulated data</div>
+    <div id="intro-hint" class="relative text-[11px] text-ink4 mt-3 opacity-0 transition-opacity duration-500">Press Enter to begin</div>
+  </div>
+</div>

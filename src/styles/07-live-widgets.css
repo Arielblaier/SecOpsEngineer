@@ -1,0 +1,11 @@
+  /* ---------- Live widgets ---------- */
+  .seg-live { position: relative; overflow: hidden; }
+  .seg-live::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); transform: translateX(-100%); animation: shimmer 1.8s ease-in-out infinite; }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+  @keyframes kflash { 0% { box-shadow: 0 0 0 0 rgb(0 195 137 / .55); background-color: rgb(0 195 137 / .16); } 100% { box-shadow: 0 0 0 8px rgb(0 195 137 / 0); } }
+  @keyframes kflashWarn { 0% { box-shadow: 0 0 0 0 rgb(245 158 11 / .55); background-color: rgb(245 158 11 / .16); } 100% { box-shadow: 0 0 0 8px rgb(245 158 11 / 0); } }
+  .kflash { animation: kflash .9s ease-out; } .kflash-warn { animation: kflashWarn .9s ease-out; }
+  @keyframes deltaUp { 0% { opacity: 0; transform: translateY(4px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
+  .delta { position: absolute; right: 8px; top: 6px; font: 700 10px "JetBrains Mono", monospace; animation: deltaUp 1.3s ease-out forwards; pointer-events: none; }
+  @keyframes tabBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .bump { display: inline-block; animation: tabBump .5s ease-out; }

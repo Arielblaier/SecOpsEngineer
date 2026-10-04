@@ -1,0 +1,39 @@
+  /* ---------- Entity ---------- */
+  @keyframes morph {
+    0%,100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg) scale(1); }
+    25% { border-radius: 40% 60% 70% 30% / 50% 60% 40% 60%; transform: rotate(90deg) scale(1.04); }
+    50% { border-radius: 30% 60% 40% 70% / 60% 40% 60% 40%; transform: rotate(180deg) scale(.97); }
+    75% { border-radius: 70% 30% 50% 50% / 40% 70% 30% 60%; transform: rotate(270deg) scale(1.03); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spinR { to { transform: rotate(-360deg); } }
+  @keyframes breathe { 0%,100% { opacity: .45; transform: scale(1); } 50% { opacity: .85; transform: scale(1.12); } }
+  .entity { --e1: #00c389; --e2: #22d3ee; --e3: #34d399; --speed: 10s; position: relative; width: 168px; height: 168px; transition: width .5s, height .5s; }
+  .entity .aura { position: absolute; inset: 14%; border-radius: 9999px; background: radial-gradient(circle, var(--e1), transparent 70%); filter: blur(22px); animation: breathe 4s ease-in-out infinite; }
+  .entity .ring { position: absolute; inset: 0; animation: spin 24s linear infinite; }
+  .entity .ring2 { animation: spinR 36s linear infinite; }
+  .entity .ring circle { fill: none; stroke: var(--e1); }
+  .entity .b1, .entity .b2, .entity .b3 { position: absolute; inset: 30%; animation: morph var(--speed) ease-in-out infinite; }
+  .entity .b1 { background: linear-gradient(135deg, var(--e1), var(--e2)); opacity: .55; filter: blur(3px); inset: 27%; animation-direction: reverse; animation-duration: calc(var(--speed) * .7); }
+  .entity .b2 { background: linear-gradient(45deg, var(--e3), var(--e1) 55%, var(--e2)); box-shadow: 0 0 40px -6px var(--e1); }
+  .entity .b3 { inset: 40%; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.85), rgba(255,255,255,0) 60%); animation-duration: calc(var(--speed) * 1.3); mix-blend-mode: screen; }
+  .entity.thinking { --e1: #6366f1; --e2: #22d3ee; --e3: #a78bfa; --speed: 3.2s; }
+  .entity.thinking .ring { animation-duration: 6s; } .entity.thinking .ring2 { animation-duration: 9s; }
+  .entity.alert { --e1: #f59e0b; --e2: #f43f5e; --e3: #fbbf24; --speed: 4s; }
+  .entity.listening { --speed: 6s; }
+  .entity.listening .aura { opacity: .95; }
+  .entity.small { width: 96px; height: 96px; }
+  #wf-born { display: none !important; }
+  #entity.jv { width: 132px; height: 132px; }
+  #entity.jv.small { width: 64px; height: 64px; }
+  #stage:has(#entity.small) #ent-name { display: none; }
+  #entity-btn { transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+  #entity-btn.tap { transform: scale(1.08); }
+  @keyframes bar { 0%,100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+  .voice span { display: inline-block; width: 3px; height: 14px; margin: 0 1.5px; border-radius: 2px; background: #3b82f6; animation: bar .9s ease-in-out infinite; transform-origin: center; }
+  .voice span:nth-child(2) { animation-delay: .12s; } .voice span:nth-child(3) { animation-delay: .24s; }
+  .voice span:nth-child(4) { animation-delay: .36s; } .voice span:nth-child(5) { animation-delay: .48s; }
+  @keyframes ring-bell { 0%,100% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+  .bell-ring { animation: ring-bell .8s ease-in-out 2; transform-origin: top center; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .fade-up { animation: fadeUp .35s ease-out; }

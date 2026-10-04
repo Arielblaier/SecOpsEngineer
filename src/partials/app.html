@@ -1,0 +1,372 @@
+<div id="app" class="flex overflow-hidden">
+
+  <!-- NAV RAIL -->
+  <aside class="hidden lg:flex w-14 border-r border-line bg-panel flex-col justify-between shrink-0 z-30 select-none">
+    <div class="flex flex-col items-center py-3">
+      <div class="w-9 h-9 rounded-xl cortex-tile flex items-center justify-center mb-5" title="Cortex"><svg viewBox="0 -5 198 245" class="w-4 h-5" aria-hidden="true"><path d="M125.421 50.7771C85.8879 50.7771 53.8326 80.9328 53.8326 118.131C53.8326 155.326 85.8832 185.48 125.412 185.484L125.421 50.7771C164.953 50.7771 197 80.933 197 118.131C197 155.326 164.941 185.48 125.412 185.484L125.421 236C56.1635 236 0 183.162 0 118.002C0 52.8273 56.1635 0 125.421 0V50.7771Z" fill="#4DFFA6"/></svg></div>
+      <nav class="w-full px-2 space-y-2">
+        <button onclick="navigateTo('home')" data-nav="home" class="nav-btn w-10 h-10 mx-auto rounded-xl flex items-center justify-center" title="Home"><i data-lucide="house" class="w-4 h-4"></i></button>
+        <button onclick="navigateTo('autonomous')" data-nav="autonomous" class="nav-btn w-10 h-10 mx-auto rounded-xl flex items-center justify-center" title="Workforce"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+        <button onclick="navigateTo('cases')" data-nav="cases" class="nav-btn w-10 h-10 mx-auto rounded-xl flex items-center justify-center" title="Cases"><i data-lucide="table" class="w-4 h-4"></i></button>
+        <button onclick="navigateTo('insights')" data-nav="insights" class="nav-btn w-10 h-10 mx-auto rounded-xl flex items-center justify-center" title="Agent insights"><i data-lucide="gauge" class="w-4 h-4"></i></button>
+      </nav>
+    </div>
+    <div class="flex flex-col items-center p-2 border-t border-line space-y-2 relative">
+      <button onclick="toggleDemoMenu(event)" class="w-10 h-10 rounded-xl hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Demo controls"><i data-lucide="zap" class="w-4 h-4"></i></button>
+      <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Toggle theme (T)"><span id="theme-icon-wrap"></span></button>
+      <div class="w-8 h-8 rounded-full bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center c-indigo text-xs font-bold" title="Guy R. (SecOps Lead)">GR</div>
+    </div>
+  </aside>
+
+  <!-- Demo popover -->
+  <div id="demo-menu" class="hidden fixed left-4 lg:left-16 bottom-24 w-64 rounded-xl bg-panel border border-line2 shadow-2xl p-2 z-50 text-xs">
+    <div class="px-2.5 py-1.5 text-[11px] text-ink3">Demo controls</div>
+    <button onclick="injectIncident()" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-start gap-2">
+      <i data-lucide="siren" class="w-4 h-4 c-rose mt-0.5 shrink-0"></i>
+      <span><span class="font-semibold text-ink block">Inject critical case</span><span class="text-ink3 text-[11px]">The agent investigates it live (I)</span></span>
+    </button>
+    <div class="px-2.5 pt-1 pb-1 text-[11px] text-ink3">Agent speed</div>
+    <div id="demo-speed" class="mx-2 mb-2 flex p-0.5 rounded-lg bg-sunk text-[11px]"></div>
+    <button onclick="closeDemoMenu();showExplore()" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2"><i data-lucide="shapes" class="w-4 h-4"></i>Design decisions: investigation area</button>
+    <div class="px-2.5 pt-2 pb-1.5"><div class="text-[11px] text-ink3 mb-1.5">Agents</div><div id="mode-switch" class="flex rounded-lg bg-sunk p-0.5"></div></div>
+    <div class="px-2.5 pt-2 pb-1.5"><div class="text-[11px] text-ink3 mb-1.5">Core style</div><div id="core-switch" class="flex rounded-lg bg-sunk p-0.5"></div></div>
+    <button onclick="closeDemoMenu();showLanding()" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2"><i data-lucide="sparkles" class="w-4 h-4"></i>Show the landing page</button>
+    <button onclick="startTour()" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2"><i data-lucide="map" class="w-3.5 h-3.5"></i> Replay walkthrough</button>
+    <button onclick="resetDemo()" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset demo data</button>
+    <button onclick="toggleShortcuts(true)" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2"><i data-lucide="keyboard" class="w-3.5 h-3.5"></i> Keyboard shortcuts (?)</button>
+  </div>
+
+  <div class="flex-1 flex flex-col overflow-hidden min-w-0">
+    <main class="flex-1 flex overflow-hidden relative">
+
+      <!-- ================= AUTONOMOUS WORKSPACE ================= -->
+      <section id="view-autonomous" class="flex-1 flex overflow-hidden min-w-0">
+        <div id="workspace" data-mpane="cases" class="flex-1 flex overflow-hidden min-w-0">
+
+          <!-- PANE 1: CASES TABLE -->
+          <div id="pane-cases" class="pane relative flex-1 min-w-0 border-r border-line flex flex-col overflow-hidden bg-panel">
+            <div id="case-drawer" class="hidden absolute inset-0 z-20 bg-panel flex-col drawer-in"></div>
+            <div class="px-4 pt-3 pb-2 shrink-0 space-y-2.5">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <h1 class="text-sm font-bold text-ink">Workforce</h1>
+                  <p class="text-[11px] text-ink3 truncate" id="wf-sub">Josh, Maya, Tom and Avi work their queues, you approve what matters</p>
+                </div>
+                <button onclick="mobileTab('copilot')" class="lg:hidden p-2 rounded-lg bg-sunk text-ink2 relative" title="Copilot">
+                  <i data-lucide="sparkles" class="w-4 h-4 c-cx"></i>
+                </button>
+              </div>
+              <div id="pillar-tabs" class="grid gap-1.5"></div>
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div id="tabs" class="flex items-center gap-1 text-[11px]"></div>
+                <div class="relative flex-1 min-w-[180px] max-w-[280px]">
+                  <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-[7px] text-ink4"></i>
+                  <input type="text" id="search-input" placeholder="Search cases, hosts, IDs" oninput="S.search=this.value;renderTable()"
+                         class="w-full text-xs pl-8 pr-8 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink4 focus:outline-none focus:border-cx">
+                  <kbd class="absolute right-2 top-[5px] text-[11px] font-mono text-ink4 border border-line rounded px-1">/</kbd>
+                </div>
+              </div>
+              <div id="metrics" class="flex items-stretch gap-2 flex-nowrap overflow-hidden">
+                <div class="flex-1 min-w-[200px] rounded-xl bg-sunk px-3 py-2 flex flex-col justify-center gap-1.5">
+                  <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-ink3 font-medium flex items-center gap-1.5"><span id="q-live" class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Queue flow</span>
+                    <span class="flex items-center gap-2.5 font-mono">
+                      <span class="c-amber"><span id="lg-pending">0</span> pending</span>
+                      <span class="c-blue"><span id="lg-in_progress">0</span> in progress</span>
+                      <span class="c-cx"><span id="lg-resolved">0</span> resolved</span>
+                    </span>
+                  </div>
+                  <div class="relative">
+                    <div class="h-3 rounded-full bg-panel flex gap-[2px]">
+                      <div id="bar-pending" class="h-full rounded-l-full bg-amber-500 transition-all duration-1000 ease-out"></div>
+                      <div id="bar-in_progress" class="h-full bg-blue-500 transition-all duration-1000 ease-out seg-live overflow-hidden"></div>
+                      <div id="bar-resolved" class="h-full rounded-r-full bg-cx transition-all duration-1000 ease-out"></div>
+                    </div>
+                    <div id="bar-deltas" class="absolute inset-0 pointer-events-none"></div>
+                  </div>
+                </div>
+                <div class="kpi relative rounded-xl bg-sunk px-3 py-1.5 min-w-[112px]" id="kpi-auto">
+                  <div class="text-[11px] text-ink3 flex items-center gap-1"><i data-lucide="bot" class="w-3 h-3"></i>Auto-resolved</div>
+                  <div class="text-[18px] leading-6 font-bold font-mono c-cx"><span data-v>0</span></div>
+                  <div class="text-[11px] text-ink4" data-sub>by the agent today</div>
+                </div>
+                <div class="kpi relative rounded-xl bg-sunk px-3 py-1.5 min-w-[112px]" id="kpi-sla">
+                  <div class="text-[11px] text-ink3">Human SLA</div>
+                  <div class="text-[18px] leading-6 font-bold font-mono text-ink"><span data-v>—</span></div>
+                  <div class="text-[11px]" data-sub>target 15m</div>
+                </div>
+                <div class="kpi relative rounded-xl bg-sunk px-3 py-1.5 min-w-[132px]" id="kpi-done">
+                  <div class="text-[11px] text-ink3">Completed · last 60m</div>
+                  <div class="flex items-end gap-2">
+                    <div class="text-[18px] leading-6 font-bold font-mono text-ink"><span data-v>0</span></div>
+                    <svg id="done-spark" viewBox="0 0 60 18" class="w-[60px] h-[18px] mb-0.5"></svg>
+                  </div>
+                  <div class="text-[11px] text-ink4" data-sub>agent 0 · you 0</div>
+                </div>
+                <div class="kpi relative rounded-xl bg-sunk px-3 py-1.5 min-w-[112px]" id="kpi-mttr">
+                  <div class="text-[11px] text-ink3">Agent MTTR</div>
+                  <div class="text-[18px] leading-6 font-bold font-mono c-indigo"><span data-v>—</span></div>
+                  <div class="text-[11px] text-ink4" data-sub>mean time to verdict</div>
+                </div>
+              </div>
+            </div>
+            <div id="table-head" class="cols px-3 py-1.5 border-y border-line bg-panel2 text-[11px] font-semibold text-ink3 shrink-0 select-none"></div>
+            <div id="table-body" class="flex-1 overflow-y-auto"></div>
+            <div class="px-4 py-1.5 border-t border-line text-[11px] text-ink4 font-mono flex justify-between shrink-0">
+              <span id="table-count"></span><span class="inline-flex items-center gap-2"><span id="freeze-lbl">Live order · pauses while your pointer is on the table</span><button onclick="S.userFreeze=!S.userFreeze;S.freeze=S.userFreeze;if(!S.userFreeze){S.frozenIds=null;S.frozenLc=null;}renderTable();$('freeze-btn').textContent=S.userFreeze?'Unfreeze':'Freeze order';$('freeze-lbl').textContent=S.userFreeze?'Order frozen':'Live order · pauses while your pointer is on the table'" id="freeze-btn" class="px-2 py-0.5 rounded-full border border-line2 text-ink2 hover:text-ink">Freeze order</button></span>
+            </div>
+          </div>
+
+          <!-- PANE 2: AGENT LOG -->
+          <div id="log-rail" class="hidden lg:flex w-11 shrink-0 border-r border-line bg-panel2 flex-col items-center py-3 gap-3 cursor-pointer hover:bg-hov" onclick="toggleLog()" title="Open agent log (L)">
+            <i data-lucide="chevrons-right" class="w-4 h-4 text-ink3"></i>
+            <span class="relative flex w-2 h-2"><span class="rail-ping absolute inline-flex w-full h-full rounded-full bg-cx opacity-60 animate-ping"></span><span class="relative inline-flex w-2 h-2 rounded-full bg-cx"></span></span>
+            <span id="rail-badge" class="hidden min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold font-mono flex items-center justify-center"></span>
+            <span class="vtext text-[11px] font-semibold text-ink3 mt-1">Agent log</span>
+            <span id="rail-now" class="vtext text-[11px] text-ink4 truncate max-h-[260px]"></span>
+          </div>
+          <div id="pane-log" class="pane hidden shrink-0 flex-col overflow-hidden border-r border-line bg-panel2">
+            <div class="px-3 h-12 border-b border-line flex items-center justify-between shrink-0 bg-panel">
+              <div class="flex items-center gap-2">
+                <span class="relative flex w-2 h-2"><span id="live-ping" class="absolute inline-flex w-full h-full rounded-full bg-cx opacity-60 animate-ping"></span><span id="live-dot" class="relative inline-flex w-2 h-2 rounded-full bg-cx"></span></span>
+                <span class="text-[13px] font-bold text-ink">Agent log</span>
+                <span id="live-label" class="text-[11px] c-cx">Live</span>
+              </div>
+              <div class="flex items-center gap-1 text-[11px]">
+                <div class="flex rounded-lg bg-sunk p-0.5" id="log-scope"></div>
+                <button onclick="toggleSimulation()" id="btn-pause" class="w-7 h-7 rounded-lg hover:bg-hov text-ink2 flex items-center justify-center" title="Pause / resume (P)"></button>
+                <button onclick="toggleLog()" class="hidden lg:flex w-7 h-7 rounded-lg hover:bg-hov text-ink3 items-center justify-center" title="Collapse (L)"><i data-lucide="chevrons-left" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+            <div class="px-3 py-2 border-b border-line bg-panel flex items-center gap-2 min-w-0">
+              <span class="w-6 h-6 rounded-lg bg-cx/10 flex items-center justify-center shrink-0"><i data-lucide="activity" class="w-3.5 h-3.5 c-cx"></i></span>
+              <div class="min-w-0">
+                <div class="text-[11px] text-ink4">Working on now</div>
+                <div id="prompt" class="text-[13px] text-ink2 leading-snug transition-opacity duration-300"></div>
+              </div>
+            </div>
+            <div id="log-agents" class="grid grid-cols-4 border-b border-line bg-panel text-center"></div>
+            <div class="relative flex-1 min-h-0">
+              <div id="console" class="absolute inset-0 overflow-y-auto bg-panel"></div>
+              <button id="log-newpill" onclick="logToBottom()" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-ink text-panel text-[11px] font-semibold shadow-lg items-center gap-1">
+                <i data-lucide="arrow-down" class="w-3 h-3"></i><span id="log-newcount">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PANE 3: COPILOT -->
+          <div id="pane-copilot" class="pane shrink-0 flex flex-col bg-panel overflow-hidden relative">
+            <div class="px-4 h-12 flex items-center justify-between shrink-0">
+              <div class="flex items-center gap-2 text-xs">
+                <span id="cp-agent-name" class="font-bold text-ink tracking-wide">Josh <span class="font-normal text-ink3">· Security Analyst</span></span>
+                <span id="cp-mode" class="text-[11px] text-ink3">Standing by</span>
+              </div>
+              <button id="cp-bell" onclick="openCatchup()" class="relative p-2 rounded-xl hover:bg-hov text-ink2" title="Decisions (C)">
+                <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+                <span id="cp-bell-badge" class="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold font-mono flex items-center justify-center ring-2 ring-[rgb(var(--panel))]">0</span>
+              </button>
+            </div>
+
+            <div id="cp-main" class="flex-1 flex flex-col overflow-hidden">
+              <div id="stage" class="flex flex-col items-center justify-center flex-1 transition-all duration-500 px-6">
+                <div id="wf-born-wrap" class="relative">
+                  <div id="wf-born" class="absolute pointer-events-none" style="left:-70%;top:-40%;width:240%;height:160%"></div>
+                  <button id="entity-btn" onclick="focusCommand()" aria-label="Talk to AgentiX" class="relative z-[1]">
+                    <div id="entity" class="jv st-cortex" data-jv="main"></div>
+                  </button>
+                </div>
+                <div id="ent-name" class="text-center mt-2 leading-tight"></div>
+                <div class="text-center mt-3 space-y-1 min-h-[52px]">
+                  <div id="ent-label" class="text-[15px] font-semibold text-ink">Standing by</div>
+                  <div id="ent-voice" class="voice hidden h-4"><span></span><span></span><span></span><span></span><span></span></div>
+                  <div id="ent-sub" class="text-[12px] text-ink3"></div>
+                  <button id="cp-cta" onclick="openCatchup()" class="hidden mt-3 w-full max-w-[340px] mx-auto px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[14px] font-bold items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition"></button>
+                </div>
+              </div>
+              <div id="cp-scroll" class="hidden flex-1 overflow-y-auto cp-pad pb-3 space-y-5">
+                <div id="brief"></div>
+                <div id="transcript" class="space-y-4"></div>
+              </div>
+            </div>
+
+            <div class="cp-pad pb-4 pt-2 shrink-0 space-y-2">
+              <div id="suggestions" class="flex flex-wrap gap-1.5 justify-center"></div>
+              <div class="relative flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
+                <span id="ctx-chip" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2" title="Commands apply to this case"></span>
+                <input type="text" id="cmd" placeholder="Give a command…" onkeydown="if(event.key==='Enter') submitCmd()" onfocus="setEntity('listening')" onblur="setEntity()"
+                       class="flex-1 min-w-0 bg-transparent text-[13px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
+                <button onclick="submitCmd()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+
+            <!-- CATCHUP TAKEOVER -->
+            <div id="catchup" class="hidden absolute inset-0 z-20 bg-panel flex-col takeover">
+              <div class="px-4 h-12 flex items-center justify-between border-b border-line shrink-0">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg tn tn-amber flex items-center justify-center"><i data-lucide="bell-ring" class="w-3.5 h-3.5"></i></span>
+                  <div>
+                    <div class="text-[13px] font-bold text-ink leading-tight">Decisions</div>
+                    <div id="cu-sub" class="text-[11px] text-ink3 leading-tight"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 relative"><div id="cu-dots" class="flex items-center gap-1"></div>
+                  <button id="cu-hist-btn" onclick="S.cu.hist=!S.cu.hist;renderCatchupChrome()" class="hidden h-7 px-2 rounded-lg border border-line2 text-[11.5px] text-ink2 hover:text-ink items-center gap-1" title="Your recent decisions · revert">↶ <span id="cu-hist-n"></span></button>
+                  <div id="cu-hist" class="hidden absolute right-0 top-10 w-[340px] rounded-xl border border-line2 bg-panel shadow-2xl z-30 p-2"></div>
+                  <button onclick="closeCatchup()" class="w-8 h-8 rounded-lg hover:bg-hov text-ink2 hover:text-ink flex items-center justify-center" title="Close decisions (Esc)"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+              </div>
+              <div id="cu-agents" class="px-4 py-2 border-b border-line flex items-center gap-1.5 overflow-x-auto shrink-0"></div>
+              <div id="cu-stage" class="flex-1 min-h-0 flex flex-col"></div>
+              
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= INSIGHTS ================= -->
+      <section id="view-home" class="hidden flex-1 min-w-0 overflow-hidden relative">
+        <div class="flex-1 flex min-w-0 h-full">
+          <div id="home-col" class="flex-1 min-w-0 flex flex-col">
+            <div id="home-scroll" class="flex-1 overflow-y-auto overflow-x-hidden" style="scroll-snap-type:y proximity">
+              <div id="home-hero" class="relative overflow-hidden" style="height:var(--hmH,100%);scroll-snap-align:start" onmousemove="heroTilt(event)" onmouseleave="heroTilt(null)">
+                <div class="absolute inset-x-0 top-[3%] text-center z-[3] px-6 pointer-events-none">
+                  <div class="hm-label">BANK US · SECURITY OPERATIONS</div>
+                  <div id="home-hello" class="text-[clamp(26px,2.8vw,40px)] font-black text-ink leading-tight mt-1">Good morning, Guy</div>
+                  <div id="home-sub" class="text-[clamp(14px,1.1vw,16px)] text-ink2 mt-1.5"></div>
+                </div>
+                <svg id="hero-goo" class="born absolute inset-0 w-full h-full z-0 pointer-events-none" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet"></svg>
+                <div id="hero-orb-wrap" class="absolute left-1/2 top-[55.6%] -translate-x-1/2 -translate-y-1/2 z-[1]" style="height:40%;aspect-ratio:1">
+                  <div class="jv st-cortex" data-jv="home" style="width:100%;height:100%"></div>
+                </div>
+                <div id="hero-tip" class="hidden absolute z-[5] w-[320px] rounded-2xl p-4 pointer-events-none" style="background:linear-gradient(180deg, rgb(30 38 84 / .96), rgb(13 18 38 / .97));border:1px solid rgb(129 140 248 / .45);box-shadow:0 24px 60px -20px rgb(0 0 0 / .7)"></div>
+                <svg id="hero-svg" class="born absolute inset-0 w-full h-full z-[2]" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet"></svg>
+                <button onclick="homeNextFrom(null)" class="absolute bottom-4 right-6 z-[3] flex flex-col items-center gap-0.5 text-ink3 hover:text-ink">
+                  <span class="text-[12.5px] tracking-wide">What happened in your environment</span><span class="animate-bounce"><i data-lucide="chevrons-down" class="w-4 h-4"></i></span>
+                </button>
+              </div>
+              <div class="max-w-[900px] mx-auto px-5 sm:px-8 pb-10">
+                <div id="home-thread" class="space-y-6"></div>
+              </div>
+            </div>
+            <div class="shrink-0 border-t border-line bg-panel">
+              <div class="max-w-[880px] mx-auto px-5 sm:px-8 py-3 space-y-2">
+                <div id="home-chips" class="flex flex-wrap gap-1.5"></div>
+                <div class="flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx">
+                  <span class="pl-3 shrink-0"><span class="block w-5 h-5 agent-av"></span></span>
+                  <input id="home-input" placeholder="Ask anything, or tell your workforce what to do…" data-ph-single="Ask Josh anything, or tell him what to do…" onkeydown="if(event.key==='Enter') homeSend()" class="flex-1 min-w-0 bg-transparent px-3 py-3.5 text-[14px] text-ink placeholder:text-ink3 focus:outline-none">
+                  <button onclick="homeSend()" class="mr-2 p-2 rounded-xl text-ink3 hover:bg-ink hover:text-panel"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-cases" class="hidden relative flex-1 flex-col overflow-hidden min-w-0 bg-bg">
+        <div class="px-5 sm:px-8 pt-5 pb-4 flex items-start justify-between gap-3 flex-wrap shrink-0">
+          <div>
+            <div class="text-[13px] text-ink3">Cases &amp; Issues <span class="mx-1.5">›</span> <span class="text-ink2">Cases</span></div>
+            <h1 class="text-[32px] text-ink leading-tight mt-2 flex items-center gap-2">Case Management <i data-lucide="chevron-down" class="w-5 h-5 text-ink3"></i></h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="toWorkforce()" class="px-3 py-2 rounded-lg bg-hov hover:bg-line text-ink text-[14px] font-semibold inline-flex items-center gap-2" title="Switch to the workforce view">
+              <span class="w-4 h-4 agent-av"></span>Workforce view<span id="wf-btn-count" class="hidden px-1.5 rounded-md bg-amber-500 text-slate-950 text-[11px] font-bold"></span></button>
+            <button class="px-4 py-2 rounded-lg bg-hov hover:bg-line text-ink text-[14px] font-semibold">Create case</button>
+            <button class="p-2 rounded-lg hover:bg-hov text-ink2"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+        <div class="flex-1 min-h-0 mx-3 sm:mx-5 mb-3 rounded-2xl bg-panel border border-line flex flex-col overflow-hidden">
+          <div class="relative px-5 pt-4 pb-3 shrink-0">
+            <div id="ct-colmenu" onclick="event.stopPropagation()" class="hidden absolute right-4 top-12 z-20 w-56 rounded-xl p-2 border border-indigo-400/30 shadow-2xl" style="background:linear-gradient(180deg, rgb(26 33 70 / .98), rgb(13 18 38 / .98))"></div>
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-3">
+                <button onclick="S.ct.fbar=!S.ct.fbar;renderCaseTable()" class="relative p-1.5 rounded-md hover:bg-hov text-ink2" title="Filters"><i data-lucide="filter" class="w-4 h-4"></i><span id="ct-fcount" class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-ink text-panel text-[10px] font-bold flex items-center justify-center"></span></button>
+                <span id="ct-results" class="text-[15px] text-ink2"></span>
+                <button onclick="S.ct.ids=null;renderCaseTable()" class="p-1 rounded hover:bg-hov text-ink3" title="Refresh"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+              </div>
+              <div class="flex items-center gap-4 text-[15px] text-ink2">
+                <span class="relative flex items-center"><button onclick="S.ct.sOpen=!S.ct.sOpen;renderCaseTable();setTimeout(()=>{const e=document.getElementById('ct-search');if(e&&S.ct.sOpen)e.focus()},10)" class="p-1.5 rounded-md hover:bg-hov" title="Search"><i data-lucide="search" class="w-4 h-4"></i></button>
+                  <input id="ct-search" type="text" placeholder="Search cases" oninput="S.ct.q=this.value;S.ct.page=0;renderCaseTable()" class="hidden w-56 ml-1 text-[13px] px-3 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink3 focus:outline-none"></span>
+                <button onclick="event.stopPropagation();$('ct-colmenu').classList.toggle('hidden')" class="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-hov"><i data-lucide="columns-3" class="w-4 h-4"></i>Display</button>
+                <i data-lucide="upload" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="ct-filters" class="hidden mt-3 flex items-center gap-2 flex-wrap"></div>
+          </div>
+          <div id="ct-donuts" class="hidden"></div>
+          <div class="flex-1 min-h-0 overflow-auto">
+            <table class="w-full min-w-[1300px] text-[15px] border-collapse">
+              <thead id="ct-head" class="sticky top-0 z-[2] bg-panel"></thead>
+              <tbody id="ct-body"></tbody>
+            </table>
+          </div>
+          <div class="px-5 py-2.5 border-t border-line flex items-center justify-between text-[13px] text-ink3 shrink-0">
+            <span id="ct-info"></span>
+            <div class="flex items-center gap-1">
+              <button onclick="S.ct.page=Math.max(0,S.ct.page-1);renderCaseTable()" class="p-1.5 rounded-lg hover:bg-hov"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+              <span id="ct-page" class="font-mono px-1"></span>
+              <button onclick="S.ct.page++;renderCaseTable()" class="p-1.5 rounded-lg hover:bg-hov"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="wf-offer" class="hidden fixed right-5 bottom-20 lg:bottom-6 z-40 w-[min(360px,calc(100vw-40px))] rounded-2xl bg-panel border border-line2 shadow-2xl p-4">
+        <div class="flex items-start gap-3">
+          <span class="w-9 h-9 agent-av shrink-0 mt-0.5"></span>
+          <div class="min-w-0 flex-1">
+            <div class="text-[14px] font-semibold text-ink" id="wf-offer-title">Your workforce is busy</div>
+            <div class="text-[12.5px] text-ink2 mt-0.5 leading-snug" id="wf-offer-body"></div>
+          </div>
+          <button onclick="hideOffer(true)" class="p-1 -mr-1 -mt-1 rounded-lg hover:bg-hov text-ink3" title="Not now"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button onclick="toWorkforce()" class="flex-1 py-2.5 rounded-xl bg-ink text-panel hover:opacity-90 text-[13px] font-bold inline-flex items-center justify-center gap-1.5">Move to workforce view <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+          <button onclick="hideOffer(true)" class="px-3 py-2.5 rounded-xl bg-sunk text-ink2 text-[13px] font-semibold">Not now</button>
+        </div>
+      </div>
+
+      <section id="view-anatomy" class="hidden flex-1 flex-col overflow-y-auto min-w-0" style="background:radial-gradient(1000px 560px at 50% -10%, rgb(99 102 241 / .16), transparent 70%), #070b16"></section>
+      <section id="view-insights" class="hidden flex-1 flex-col overflow-y-auto p-3 sm:p-6 gap-4 min-w-0">
+        <div class="flex items-end justify-between gap-4 flex-wrap">
+          <div><div class="hm-label">AGENT INSIGHTS</div>
+            <h1 class="hm-title mt-1">How your workforce is doing</h1>
+            <p class="text-[14px] text-ink3 mt-1" id="ins-sub">Josh, Maya, Tom and Avi, live.</p></div>
+          <div id="ins-team" class="flex items-center gap-2"></div>
+        </div>
+        <div id="ins-kpis" class="grid grid-cols-2 xl:grid-cols-4 gap-3"></div>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+          <div class="xl:col-span-2 bg-panel border border-line rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 class="text-sm font-semibold text-ink">Verdicts per hour</h2>
+              <div class="flex items-center gap-3 text-[11px] text-ink3">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-rose-500"></span>Malicious</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-500"></span>Inconclusive</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-cx"></span>Benign</span>
+              </div>
+            </div>
+            <div id="ins-chart" class="w-full overflow-x-auto"></div>
+          </div>
+          <div class="bg-panel border border-line rounded-2xl p-4">
+            <h2 class="text-sm font-semibold text-ink mb-3">Top MITRE techniques (confirmed threats)</h2>
+            <div id="ins-mitre" class="space-y-2"></div>
+          </div>
+          <div class="xl:col-span-3 bg-panel border border-line rounded-2xl p-4">
+            <h2 class="text-sm font-semibold text-ink mb-3">Lifecycle by domain</h2>
+            <div id="ins-domains" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="lg:hidden border-t border-line bg-panel grid text-[10.5px] shrink-0" style="grid-template-columns:repeat(7,minmax(0,1fr))" id="mobile-tabs">
+      <button data-tab="home" onclick="mobileTab('home')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="house" class="w-4 h-4"></i>Home</button>
+      <button data-tab="cases" onclick="mobileTab('cases')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="table" class="w-4 h-4"></i>Cases</button>
+      <button data-tab="log" onclick="mobileTab('log')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="terminal" class="w-4 h-4"></i>Log</button>
+      <button data-tab="copilot" onclick="mobileTab('copilot')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="sparkles" class="w-4 h-4"></i>AgentiX</button>
+      <button data-tab="all" onclick="mobileTab('all')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="table" class="w-4 h-4"></i>All cases</button>
+      <button data-tab="insights" onclick="mobileTab('insights')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="gauge" class="w-4 h-4"></i>Insights</button>
+      <button data-tab="anatomy" onclick="mobileTab('anatomy')" class="py-2 flex flex-col items-center gap-0.5"><i data-lucide="graduation-cap" class="w-4 h-4"></i>Learn</button>
+    </nav>
+  </div>
+</div>
+

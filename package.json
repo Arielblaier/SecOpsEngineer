@@ -1,0 +1,19 @@
+{
+  "name": "cortex-agentic-workforce",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local, offline, editable copy of the Cortex Agentic Workforce concept demo",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/build.mjs dev",
+    "build": "node scripts/build.mjs build",
+    "vendor": "node scripts/vendor.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.1.0",
+    "@fontsource/lato": "^5.1.0",
+    "lucide": "0.460.0",
+    "tailwindcss": "3.4.16",
+    "three": "0.128.0"
+  }
+}

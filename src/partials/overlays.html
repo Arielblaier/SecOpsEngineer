@@ -1,0 +1,29 @@
+<div id="app-loader" class="fixed inset-0 z-[90] flex" style="background:#000a19">
+  <svg class="m-auto" style="width:102px;height:120px" viewBox="0 -5 198 245" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><filter id="app-loader-blur"><feGaussianBlur stdDeviation="1.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <mask id="app-loader-mask"><path d="M0,246 L197,246 L197,0 Q147,15 98.5,0 Q50,15 0,0 Z" fill="#fff" class="app-loader-mask"/></mask></defs>
+    <g class="app-loader-group"><path class="app-loader-outline" d="M125.421 50.7771C85.8879 50.7771 53.8326 80.9328 53.8326 118.131C53.8326 155.326 85.8832 185.48 125.412 185.484L125.421 50.7771C164.953 50.7771 197 80.933 197 118.131C197 155.326 164.941 185.48 125.412 185.484L125.421 236C56.1635 236 0 183.162 0 118.002C0 52.8273 56.1635 0 125.421 0V50.7771Z" fill="none" stroke="#4DFFA6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#app-loader-blur)"/>
+      <g mask="url(#app-loader-mask)"><path d="M125.421 50.7771C85.8879 50.7771 53.8326 80.9328 53.8326 118.131C53.8326 155.326 85.8832 185.48 125.412 185.484L125.421 50.7771C164.953 50.7771 197 80.933 197 118.131C197 155.326 164.941 185.48 125.412 185.484L125.421 236C56.1635 236 0 183.162 0 118.002C0 52.8273 56.1635 0 125.421 0V50.7771Z" fill="#4DFFA6"/></g></g>
+  </svg>
+</div>
+
+<div id="gtip" class="fixed z-[200] hidden pointer-events-none w-max max-w-[380px] rounded-xl p-3 text-[13px] text-ink2 leading-relaxed" style="background:linear-gradient(180deg, rgb(30 38 84 / .97), rgb(13 18 38 / .98));border:1px solid rgb(129 140 248 / .45);box-shadow:0 24px 60px -20px rgb(0 0 0 / .7)"></div>
+<div id="tour" class="hidden fixed inset-0 z-[70]">
+  <div id="tour-spot"></div>
+  <div id="tour-card" class="w-[min(360px,calc(100vw-32px))] rounded-2xl bg-panel border border-line2 shadow-2xl p-5"></div>
+</div>
+
+<div id="shortcuts" class="hidden fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" onclick="if(event.target===this) toggleShortcuts(false)">
+  <div class="w-full max-w-sm rounded-2xl bg-panel border border-line2 p-5 text-xs shadow-2xl">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-bold text-ink">Keyboard shortcuts</h3>
+      <button onclick="toggleShortcuts(false)" class="p-1 rounded hover:bg-hov text-ink3"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-ink2" id="shortcut-list"></div>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 translate-y-10 opacity-0 transition-all duration-200 pointer-events-none bg-panel border border-line2 text-ink px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2">
+  <span id="toast-icon"></span><span id="toast-msg">Done</span>
+</div>
+

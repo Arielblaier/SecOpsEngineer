@@ -1,0 +1,8 @@
+  /* ---------- Walkthrough ---------- */
+  #tour-spot { position: fixed; border-radius: 18px; pointer-events: none; transition: left .55s cubic-bezier(.2,.8,.2,1), top .55s cubic-bezier(.2,.8,.2,1), width .55s cubic-bezier(.2,.8,.2,1), height .55s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 0 0 9999px rgb(8 12 21 / .58), 0 0 0 2px #00c389, 0 0 34px 6px rgb(0 195 137 / .45); }
+  @keyframes spotPulse { 0%,100% { outline-color: rgb(0 195 137 / .0); outline-offset: 2px; } 50% { outline-color: rgb(0 195 137 / .7); outline-offset: 8px; } }
+  #tour-spot { outline: 2px solid transparent; animation: spotPulse 2s ease-in-out infinite; }
+  @keyframes offerIn { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+  .offer-in { animation: offerIn .45s cubic-bezier(.2,.8,.2,1); }
+  #tour-card { position: fixed; transition: left .55s cubic-bezier(.2,.8,.2,1), top .55s cubic-bezier(.2,.8,.2,1), opacity .25s; }
