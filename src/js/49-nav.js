@@ -54,6 +54,7 @@ function closeDemoMenu() { $('demo-menu').classList.add('hidden'); }
 document.addEventListener('click', e => { if (!e.target.closest('#demo-menu')) closeDemoMenu(); });
 
 function resetDemo() {
+  if (MAYA) return mReset();
   closeDemoMenu(); closeCaseDrawer(); S.briefSig = null; document.querySelectorAll('[data-v],[id^=tabn-],[id^=lg-]').forEach(e => { e._v = undefined; }); initState(); closeCatchup(); applyLogCollapse();
   $('search-input').value = '';
   setPrompt('Validating SMB session fan-out on Domain-Ctrl-02…');
@@ -68,6 +69,7 @@ function toggleShortcuts(on) {
 }
 
 document.addEventListener('keydown', e => {
+  if (MAYA) { if (M) mKey(e); return; }
   { const lp = document.getElementById('landing'), ex = document.getElementById('explore'); if (ex && !ex.classList.contains('hidden')) { if (e.key === 'Escape') hideExplore(); return; } if (lp && !lp.classList.contains('hidden')) return; }
   if (tourOpen()) { if (e.key === 'Enter' || e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); const f = tourSteps[tourI] && tourSteps[tourI].final; f ? endTour(true) : tourNext(); } else if (e.key === 'ArrowLeft') tourBack(); else if (e.key === 'Escape') endTour(false); return; }
   if (S.view === 'home' && storyResolve && ['Enter', ' ', 'ArrowDown'].includes(e.key) && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); storyContinue(); return; }

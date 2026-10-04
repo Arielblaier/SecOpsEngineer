@@ -1,0 +1,43 @@
+/* ======================================================================
+   MAYA · INSIGHTS
+   Value regained, not rules produced. No coverage percentage: a status per
+   technique that says what is true.
+   ====================================================================== */
+function mRuleChain(W, r) {
+  /* A step counts against a rule only when an open task says that step starves this rule. */
+  const open = W.tasks.filter(t => t.status !== 'done' && (t.affects.rules || []).includes(r.id));
+  const p = W.pipes.find(x => x.id === r.pipe), rv = myRuleReview(W, r);
+  const data = mPipeInst(W, p).status === 'ok' && p.dest.includes('Analytics') && !open.some(t => ['source', 'filter', 'parsing', 'routing'].includes(t.layer));
+  const mapped = !open.some(t => t.layer === 'model');
+  const tested = W.tasks.some(t => (t.affects.rules || []).includes(r.id) && t.validation && (t.status === 'progress' || ['approved', 'edited'].includes(t.end)));
+  return { data, mapped, enabled: r.status === 'Enabled', healthy: rv.v === 'Healthy', tested, rv };
+}
+function mInsights() {
+  const W = M.W, st = myStats(W), P = mP();
+  const kpi = (label, val, sub, tone) => `<div class="rounded-2xl bg-panel border border-line p-4"><div class="text-[12.5px] text-ink3">${label}</div><div class="text-[30px] leading-9 font-bold font-mono ${tone}">${val}</div><div class="text-[12.5px] text-ink3">${sub}</div></div>`;
+  const byLayer = MY_LAYERS.map(([k, n, i]) => [k, n, i, W.tasks.filter(t => t.layer === k).length, myLayerOpen(W, k).length]);
+  const mx = Math.max(1, ...byLayer.map(x => x[3]));
+  const below = W.tasks.filter(t => t.layer !== 'rule').length;
+  const yes = b => b ? `<span class="c-cx">${ic('check', 'w-4 h-4')}</span>` : `<span class="c-rose">${ic('x', 'w-4 h-4')}</span>`;
+  const techRows = W.rules.filter(r => r.tech && !r.retired).map(r => { const c = mRuleChain(W, r);
+    return `<tr class="border-t border-line hover:bg-hov cursor-pointer" onclick="mOpenRule(${r.id})"><td class="px-3 py-2.5 whitespace-nowrap"><span class="font-mono text-[12.5px] text-ink">${esc(r.tech.split(' - ')[0])}</span> <span class="text-ink3">${esc(r.tech.split(' - ')[1] || '')}</span></td><td class="px-3 py-2.5 text-ink2 min-w-[220px]">${esc(r.name)}</td><td class="px-3 py-2.5 text-center">${yes(c.data)}</td><td class="px-3 py-2.5 text-center">${yes(c.mapped)}</td><td class="px-3 py-2.5 text-center">${yes(c.enabled)}</td><td class="px-3 py-2.5 text-center">${c.tested ? yes(true) : '<span class="text-ink4 text-[12px]">never</span>'}</td><td class="px-3 py-2.5">${mChip(c.rv.v)}</td></tr>`; }).join('');
+  const ends = [['approved', 'Approved'], ['edited', 'Approved with edits'], ['auto', 'Closed automatically'], ['handed', 'Handed over'], ['watch', 'Watching'], ['rejected', 'Rejected'], ['dismissed', 'Dismissed']].map(([k, l]) => [l, W.tasks.filter(t => t.status === 'done' && t.end === k).length]).filter(x => x[1]);
+  $('mv-insights').innerHTML = `<div data-scroll class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+    <div class="flex items-end justify-between gap-4 flex-wrap"><div><div class="hm-label">AGENT INSIGHTS</div><h1 class="hm-title mt-1">What Maya gave back</h1><p class="text-[14px] text-ink3 mt-1">Measured as detections that work and noise that is gone. Maya is not rewarded for producing rules.</p></div><div class="flex items-center gap-2.5 rounded-2xl bg-panel border border-line px-3 py-2">${agentAv(P, 30)}<div class="leading-tight"><div class="text-[13px] font-bold text-ink">Maya</div><div class="text-[11.5px] text-ink3">${st.done} done · ${st.progress} in progress · ${st.pending} waiting</div></div></div></div>
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      ${kpi('Detections working and useful', `${st.share}%`, `${st.healthy} of ${st.enabled} enabled rules`, st.share >= 70 ? 'c-cx' : 'c-amber')}
+      ${kpi('Issues removed per week', st.removed.toLocaleString(), 'from changes you approved', 'c-indigo')}
+      ${kpi('Problems that start below the rule', `${below}<span class="text-ink4 text-[16px]"> of ${W.tasks.length}</span>`, 'in the data, filter or mapping', 'text-ink')}
+      ${kpi('New rules written', '0', 'every gap was closed with existing content or data', 'text-ink')}
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+      <div class="bg-panel border border-line rounded-2xl p-4"><h2 class="text-[14px] font-semibold text-ink">Where problems start</h2><p class="text-[12.5px] text-ink3 mb-3">All tasks, by the step where the root cause sits.</p>
+        <div class="space-y-2.5">${byLayer.map(([k, n, i, all, open]) => `<div><div class="flex items-center justify-between text-[12.5px] mb-1"><span class="inline-flex items-center gap-1.5 text-ink2">${ic(i, 'w-3.5 h-3.5 text-ink3')}${n}</span><span class="font-mono text-ink3">${all}${open ? ` · <span class="c-amber">${open} open</span>` : ''}</span></div><div class="h-2 rounded-full bg-sunk overflow-hidden flex"><div class="h-full bg-amber-500" style="width:${open / mx * 100}%"></div><div class="h-full bg-cx" style="width:${(all - open) / mx * 100}%"></div></div></div>`).join('')}</div>
+        <div class="mt-3 text-[11.5px] text-ink3 flex gap-3"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span>Open</span><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-cx"></span>Closed</span></div>
+        <h2 class="text-[14px] font-semibold text-ink mt-5">How tasks ended</h2><div class="mt-2 flex flex-wrap gap-1.5">${ends.map(([l, n]) => `<span class="px-2.5 py-1 rounded-lg bg-sunk border border-line text-[12.5px] text-ink2">${l} <b class="font-mono text-ink">${n}</b></span>`).join('') || '<span class="text-[12.5px] text-ink3">No task has ended yet.</span>'}</div>
+      </div>
+      <div class="xl:col-span-2 bg-panel border border-line rounded-2xl p-4 min-w-0"><h2 class="text-[14px] font-semibold text-ink">ATT&CK status, technique by technique</h2><p class="text-[12.5px] text-ink3 mb-2">A rule that exists is not coverage. Each row says whether the data arrives, the fields are mapped, the rule is enabled and it was ever tested.</p>
+        <div class="overflow-x-auto"><table class="w-full text-[13px] border-collapse"><thead class="text-[12px] text-ink3"><tr><th class="text-left font-semibold px-3 py-2">Technique</th><th class="text-left font-semibold px-3 py-2">Rule</th><th class="font-semibold px-3 py-2">Data arrives</th><th class="font-semibold px-3 py-2">Mapped</th><th class="font-semibold px-3 py-2">Enabled</th><th class="font-semibold px-3 py-2">Tested</th><th class="text-left font-semibold px-3 py-2">AI Review</th></tr></thead><tbody>${techRows}</tbody></table></div>
+      </div>
+    </div></div>`;
+}

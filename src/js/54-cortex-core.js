@@ -60,7 +60,7 @@ function setCoreStyle(st) {
 }
 function renderModeSwitch() {
   const el = $('mode-switch'); if (!el) return;
-  el.innerHTML = [['single', 'Single agent'], ['multi', 'Workforce']].map(([k, l]) => `<button onclick="setAgentMode('${k}', true)" class="flex-1 py-1 rounded-md text-[11.5px] ${AGENT_MODE === k ? 'bg-panel text-ink font-semibold shadow-sm' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('');
+  el.innerHTML = [['maya', 'Maya'], ['single', 'Josh'], ['multi', 'Workforce']].map(([k, l]) => `<button onclick="setAgentMode('${k}', true)" class="flex-1 py-1 rounded-md text-[11.5px] ${AGENT_MODE === k ? 'bg-panel text-ink font-semibold shadow-sm' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('');
 }
 function renderCoreSwitch() {
   renderModeSwitch();

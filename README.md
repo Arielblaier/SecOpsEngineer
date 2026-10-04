@@ -93,6 +93,68 @@ git checkout main              # back to the original
 `dist/` is not tracked. Rename the built file per variant if you want to keep
 several side by side.
 
+## The `dev` branch: Maya's story
+
+`main` tells the story of Josh, the Security Analyst. `dev` adds a third mode
+that tells the same kind of story for **Maya, the SecOps Engineer**, with the
+focus on detection engineering. It is the default mode on this branch. The
+other two modes still work: switch from the landing page, or from the demo
+menu (the lightning icon) under "Agents".
+
+What the Maya mode shows:
+
+| Screen | What it is for |
+|---|---|
+| Home | The morning briefing. The chain from data source to rule, with the step where each problem starts |
+| Workforce | Maya's queue of agentic tasks. This is where decisions are made |
+| The task (side sheet) | Work done, diagnosis, current state next to the recommended change, validation, the one decision |
+| Correlation Rules | The native table, plus three added columns: AI Review, Confidence, Task status |
+| Data Streams | Each pipeline as source, filter, parsing, data model, destination. Maya's marker sits on the failing step |
+| Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes Maya's task on its own |
+| Insights | Value regained, and an ATT&CK status per technique instead of one percentage |
+
+Leaving a task and coming back:
+
+- Every task links to the native screen where its objects live.
+- After that jump, a bar at the top names the task, says whether the decision
+  still waits, and offers "Back to the task" and "Decide here". It stays while
+  you move between native screens. Esc also goes back.
+- On a native screen you reached on your own, a pill at the bottom right shows
+  how many decisions wait and returns you to the queue.
+
+Where the code is:
+
+```
+src/js/60-maya-data.js      The world: sources, pipelines, rules, tasks. The ONLY place numbers live
+src/js/61-maya-core.js      State, navigation, side sheet, return bar, decisions pill
+src/js/62-maya-task.js      The agentic task and deciding on it
+src/js/63-maya-work.js      Workforce screen
+src/js/64-maya-home.js      Home and the scripted answers
+src/js/65-maya-rules.js     Correlation Rules
+src/js/66-maya-streams.js   Data Streams
+src/js/67-maya-sources.js   Data Sources & Integrations
+src/js/68-maya-insights.js  Insights
+src/js/69-maya-landing.js   Landing page
+src/styles/16-maya.css      Styles for all of the above
+```
+
+Two rules for editing the Maya mode:
+
+**Numbers are computed, never typed.** Every count on every screen comes from
+`myStats`, `myRuleReview` and the objects in `60-maya-data.js`. A decision
+changes the world in one function, `myApply`, and every screen redraws from
+it. If you add a number to a screen, derive it. Dates in the story are counted
+back from the current time for the same reason.
+
+**The Maya files run after the original boot.** In Maya mode the original
+views are hidden and the original simulation loop stays paused. The four
+existing files that were touched (`05`, `49`, `54`, `57`) only add the mode
+switch and hand over to `mBoot()`.
+
+Rule names, table columns and screen layouts follow the real product screens.
+Volumes, people and failures are invented. The Data Streams screen follows a
+design mockup, not a shipped screen.
+
 ## Changing a library or font
 
 Edit the version in `package.json`, run `npm install`, then `npm run vendor`.

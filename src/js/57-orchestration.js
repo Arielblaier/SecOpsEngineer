@@ -36,6 +36,6 @@ function refresh() {
   ['home', 'autonomous', 'cases', 'insights', 'anatomy'].forEach(v => { const el = $('view-' + v); if (el) { el.classList.toggle('hidden', v !== 'home'); if (v === 'home') el.classList.add('flex'); } });
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === 'home'));
   { let skip = false; try { skip = sessionStorage.getItem('cortex-skip-landing') === '1'; sessionStorage.removeItem('cortex-skip-landing'); } catch (e) {}
-  setTimeout(() => { const l = $('app-loader'); l.style.opacity = '0'; setTimeout(() => l.remove(), 650); if (skip) { applyAgentModeCopy(); introDone = true; const ov = $('intro'); ov.classList.add('hidden'); ov.classList.remove('flex'); startGame(); toast(SINGLE ? 'Single agent: Josh only' : 'Workforce: Josh, Maya, Tom and Avi', 'users'); } else showLanding(); }, skip ? 900 : 2600); }
+  setTimeout(() => { const l = $('app-loader'); l.style.opacity = '0'; setTimeout(() => l.remove(), 650); if (MAYA) { mBoot(skip); return; } if (skip) { applyAgentModeCopy(); introDone = true; const ov = $('intro'); ov.classList.add('hidden'); ov.classList.remove('flex'); startGame(); toast(SINGLE ? 'Single agent: Josh only' : 'Workforce: Josh, Maya, Tom and Avi', 'users'); } else showLanding(); }, skip || MAYA ? 900 : 2600); }
   applySizes();
 })();

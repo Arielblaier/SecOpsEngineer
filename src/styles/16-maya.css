@@ -1,0 +1,41 @@
+  /* MAYA · SecOps Engineer screens */
+  .mcols { display: grid; grid-template-columns: 132px 84px 86px minmax(200px, 1fr) 106px 74px 96px 36px; column-gap: 12px; }
+  @media (max-width: 1100px) { .mcols { grid-template-columns: 124px 78px minmax(0, 1fr); } .mcols > :nth-child(3), .mcols > :nth-child(n+5) { display: none; } }
+
+  .m-sheet-in { animation: mSheetIn .26s cubic-bezier(.2,.8,.2,1); }
+  @keyframes mSheetIn { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* columns and banners the agent adds to a native screen */
+  .m-newcol { background: rgb(99 102 241 / .06); }
+  thead .m-newcol { background: rgb(99 102 241 / .12); }
+
+  /* what the user came for, after a pivot from a task */
+  .m-focus { box-shadow: inset 3px 0 0 #f59e0b; background: rgb(245 158 11 / .10) !important; animation: mFocus 1.6s ease-out 2; }
+  .m-node.m-focus { box-shadow: 0 0 0 2px #f59e0b; }
+  @keyframes mFocus { 0% { background-color: rgb(245 158 11 / .32); } 100% { background-color: rgb(245 158 11 / .10); } }
+
+  /* the bar that brings the user back to the task */
+  .m-return { border-bottom: 1px solid rgb(var(--line2)); background: rgb(var(--panel)); position: relative; z-index: 5; }
+  .m-return::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; }
+  .m-return-amber { background: linear-gradient(90deg, rgb(245 158 11 / .16), rgb(var(--panel)) 55%); } .m-return-amber::before { background: #f59e0b; }
+  .m-return-blue { background: linear-gradient(90deg, rgb(59 130 246 / .16), rgb(var(--panel)) 55%); } .m-return-blue::before { background: #3b82f6; }
+  .m-return-cx { background: linear-gradient(90deg, rgb(0 195 137 / .16), rgb(var(--panel)) 55%); } .m-return-cx::before { background: #00c389; }
+
+  /* current and recommended */
+  .m-del { background: rgb(244 63 94 / .13); color: rgb(var(--rose-fg)); }
+  .m-add { background: rgb(0 195 137 / .13); color: rgb(var(--cx-fg)); }
+  .m-pulse { animation: mPulse 2.2s ease-in-out infinite; }
+  @keyframes mPulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(var(--c) / .0); } 50% { box-shadow: 0 0 0 4px rgb(var(--c) / .22); } }
+
+  /* Data Streams */
+  .m-pipe { display: grid; grid-template-columns: minmax(190px, 1.25fr) 28px minmax(170px, 1fr) 28px minmax(170px, 1fr) 28px minmax(170px, 1fr) 28px minmax(190px, 1.15fr); align-items: center; min-width: 1120px; }
+  .m-pipe-head { padding-top: 12px; padding-bottom: 8px; }
+  .m-node { position: relative; display: flex; align-items: center; gap: 10px; height: 54px; padding: 0 12px; border-radius: 14px; border: 1px solid rgb(var(--line2)); background: rgb(var(--card)); min-width: 0; cursor: pointer; transition: border-color .15s, background .15s; }
+  .m-node:hover { border-color: rgb(var(--ink4)); }
+  .m-node-bad { border-color: rgb(245 158 11 / .65); background: rgb(245 158 11 / .08); }
+  .m-node-none { border-style: dashed; border-color: rgb(var(--line)); background: transparent; justify-content: center; cursor: default; }
+  .m-node-none:hover { border-color: rgb(var(--line)); }
+  .m-wire { height: 2px; background: linear-gradient(90deg, rgb(99 102 241 / .7), rgb(0 195 137 / .7)); }
+  .m-wire-off { background: repeating-linear-gradient(90deg, rgb(var(--line2)) 0 4px, transparent 4px 8px); }
+  .m-mark { position: absolute; top: -9px; right: -7px; border-radius: 9999px; box-shadow: 0 0 0 2px rgb(var(--panel)), 0 0 0 4px rgb(245 158 11 / .8); animation: mMark 1.8s ease-in-out infinite; }
+  @keyframes mMark { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
