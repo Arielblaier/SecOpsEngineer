@@ -258,14 +258,16 @@ function mHere() {
 /* With the panel closed, two things stay in view: the AgentiX icon with the number of decisions, and a pill that speaks about this screen. */
 function mDock() {
   const el = $('m-dock'), ax = $('m-agx'); if (!el) return;
-  const n = myPendingTasks(M.W).length, closed = !mPanelOn(), show = !!M_NATIVE[M.view] && closed && !M.sheet, here = show ? mHere() : [];
+  const n = myPendingTasks(M.W).length, home = M.view === 'home', closed = !mPanelOn(), show = (!!M_NATIVE[M.view] || (home && n > 0)) && closed && !M.sheet, here = show ? mHere() : [];
+  el.style.bottom = home ? '132px' : '';
   el.classList.toggle('hidden', !show); el.classList.toggle('flex', show);
-  if (show) el.innerHTML = `${mAv('sec', 30, true)}<span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${here.length ? `${here.length} decision${here.length === 1 ? '' : 's'} on this screen` : 'No decisions on this screen'}</span><span class="block text-[11.5px] text-ink3">${n ? `${n} waiting in total` : 'Nothing is waiting for you'} · ${here.length ? 'Review' : 'Open SecOps'}</span></span>${ic(here.length ? 'arrow-right' : 'panel-right-open', 'w-4 h-4 text-ink3')}`;
-  ax.classList.toggle('hidden', !closed); ax.classList.toggle('flex', closed);
-  if (closed) ax.innerHTML = `<svg viewBox="0 0 24 24" class="w-6 h-6"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#2dd4bf" stroke-width="1.6"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="#5eead4" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#99f6e4"/></svg>${n ? `<span class="absolute -bottom-0.5 -left-1 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[10.5px] font-bold font-mono flex items-center justify-center ring-2 ring-[rgb(var(--bg))]">${n}</span>` : ''}`;
+  if (show) el.innerHTML = `${mAv('sec', 30, true)}<span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${home ? `${n} decision${n === 1 ? '' : 's'} waiting` : here.length ? `${here.length} decision${here.length === 1 ? '' : 's'} on this screen` : 'No decisions on this screen'}</span><span class="block text-[11.5px] text-ink3">${home ? 'Review them one by one' : `${n ? `${n} waiting in total` : 'Nothing is waiting for you'} · ${here.length ? 'Review' : 'Open SecOps'}`}</span></span>${ic(here.length ? 'arrow-right' : 'panel-right-open', 'w-4 h-4 text-ink3')}`;
+  /* Home is already the conversation, so the icon is not needed there. */
+  const icon = closed && !home; ax.classList.toggle('hidden', !icon); ax.classList.toggle('flex', icon);
+  if (icon) ax.innerHTML = `<svg viewBox="0 0 24 24" class="w-6 h-6"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#2dd4bf" stroke-width="1.6"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="#5eead4" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#99f6e4"/></svg>${n ? `<span class="absolute -bottom-0.5 -left-1 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[10.5px] font-bold font-mono flex items-center justify-center ring-2 ring-[rgb(var(--bg))]">${n}</span>` : ''}`;
   ax.title = n ? `AgentiX · ${n} decision${n === 1 ? '' : 's'} waiting` : 'AgentiX';
 }
-function mDockGo() { const h = mHere(); if (h.length) { M.deck = h.map(t => t.id); mOpenTask(h[0].id); } else mOpenPanel(); }
+function mDockGo() { if (M.view === 'home') return mReviewAll(); const h = mHere(); if (h.length) { M.deck = h.map(t => t.id); mOpenTask(h[0].id); } else mOpenPanel(); }
 function mAgxGo() { if (M.view === 'home') return mNav('work'); mOpenPanel(); }
 
 /* ---------- the side sheet: a native object (a rule, an indicator, a pipeline step or a source) ---------- */

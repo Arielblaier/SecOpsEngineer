@@ -61,7 +61,7 @@ function mLog() {
     return `<div ${id ? `onclick="mOpenTask('${id}')"` : ''} class="px-4 py-3 border-b border-line ${id ? 'cursor-pointer hover:bg-hov' : ''}">
       <div class="flex items-center gap-2 text-[11.5px]"><span class="${k[1]} shrink-0">${ic(k[2], 'w-3.5 h-3.5')}</span><span class="font-semibold ${k[1]}">${k[0]}</span><span class="font-mono text-ink4">${d.toTimeString().slice(0, 8)}</span>${id ? `<span class="ml-auto font-mono text-ink4">${id}</span>` : ''}</div>
       <div class="mt-1 text-[13px] text-ink2 leading-snug">${esc(l.text.replace(/^MSN-\d+: /, ''))}</div></div>`; }).join('');
-  return `<div id="m-log" class="hidden lg:flex w-[300px] 2xl:w-[340px] shrink-0 flex-col border-l border-line bg-panel2 overflow-hidden">
+  return `<div id="m-log" class="hidden lg:flex w-[300px] 2xl:w-[340px] shrink-0 min-h-0 flex-col border-l border-line bg-panel2 overflow-hidden">
     <div class="px-4 h-12 flex items-center justify-between shrink-0 border-b border-line"><div class="flex items-center gap-2 text-[13.5px]"><span class="w-2 h-2 rounded-full bg-cx animate-pulse"></span><b class="text-ink">Activity log</b><span class="text-[11.5px] c-cx">Live</span></div><button onclick="M.logOpen=false;mRender()" class="p-1.5 rounded-lg hover:bg-hov text-ink2" title="Collapse (L)">${ic('chevrons-left', 'w-4 h-4')}</button></div>
     <div class="px-4 py-3 border-b border-line flex gap-3 shrink-0"><span class="w-7 h-7 rounded-lg tn tn-cx flex items-center justify-center shrink-0">${ic('activity', 'w-3.5 h-3.5')}</span><div class="min-w-0"><div class="text-[11.5px] text-ink3">Working on now</div><div class="text-[13px] text-ink leading-snug">${esc(now)}…</div></div></div>
     <div class="flex-1 overflow-y-auto">${rows}</div></div>`;
@@ -80,8 +80,8 @@ function mWork() {
       <span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 min-w-0">${ic(MY_LAYER[t.layer].icon, 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${MY_LAYER[t.layer].name}</span></span>
       <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(t.agent, 20)}<span class="truncate">${M_AG[t.agent].name}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'pending' ? 'No open decisions.' : 'Nothing here right now.'}</div>`;
 
-  $('mv-work').innerHTML = `<div class="flex-1 min-w-0 flex">
-    <div class="flex-1 min-w-0 flex flex-col bg-panel">
+  $('mv-work').innerHTML = `<div class="flex-1 min-w-0 min-h-0 flex">
+    <div class="flex-1 min-w-0 min-h-0 flex flex-col bg-panel">
       <div class="px-5 pt-4 pb-3 shrink-0 space-y-3">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="min-w-0"><h1 class="text-[18px] font-bold text-ink leading-tight">Missions</h1><p class="text-[12.5px] text-ink3">SecOps</p></div>
@@ -93,7 +93,7 @@ function mWork() {
         </div>
         ${mWidgets()}
       </div>
-      <div data-scroll class="flex-1 min-h-0 overflow-auto border-t border-line">
+      <div data-scroll class="flex-1 min-h-[160px] overflow-auto border-t border-line">
         <div class="m-table">
           <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Impact</span><span>Age</span><span>Root cause</span><span>Owner</span></div>
           ${rows}
