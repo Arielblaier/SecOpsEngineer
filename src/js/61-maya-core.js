@@ -8,16 +8,17 @@ let M = null;
 const M_VIEWS = ['home', 'work', 'rules', 'iocs', 'streams', 'sources', 'insights'];
 const M_NATIVE = { rules: 'Correlation Rules', iocs: 'IOC Rules', streams: 'Data Streams', sources: 'Data Sources & Integrations' };
 const M_NAV = [
-  ['home', 'house', 'Home', 'Home'], ['work', 'sparkles', 'Agentic tasks', 'Tasks'], null,
+  ['home', 'house', 'Home', 'Home'], ['work', 'sparkles', 'Missions', 'Missions'], null,
   ['rules', 'file-code-2', 'Correlation Rules', 'Rules'], ['iocs', 'fingerprint', 'IOC Rules', 'IOCs'], ['streams', 'workflow', 'Data Streams', 'Streams'], ['sources', 'cable', 'Data Sources & Integrations', 'Sources'], null,
   ['insights', 'gauge', 'Insights', 'Insights']
 ];
-const M_USER = 'Guy R.';
+const M_USER = 'Ariel B.';
 /* Seconds between new triggers while the demo is open. ?live=10 makes it faster. */
 const M_LIVE_GAP = (() => { try { const v = +new URLSearchParams(location.search).get('live'); return v > 0 ? v * 1000 : 60000; } catch (e) { return 60000; } })();
 
 /* ---------- the agents ---------- */
 const M_AG = {
+  sec: { name: 'SecOps', role: 'Detections and the data behind them', c: ['#3ee6a0', '#36d4ea', '#7ff7d6'], hex: '#10b981' },
   det: { name: 'Detection Engineer', role: 'Rules, indicators and coverage', c: ['#8b5cf6', '#c4b5fd', '#c4b5fd'], hex: '#8b5cf6' },
   pipe: { name: 'Pipeline Engineer', role: 'Filtering, parsing and normalizing', c: ['#06b6d4', '#67e8f9', '#67e8f9'], hex: '#06b6d4' },
   inv: { name: 'Investigation Agent', role: 'Triage and investigation', c: ['#3b82f6', '#7dd3fc', '#93c5fd'], hex: '#3b82f6' },
@@ -38,12 +39,12 @@ const mRule = id => M.W.rules.find(r => r.id === id) || M.W.suggested.find(r => 
 
 function mInit() {
   if (M) mLiveStop();
-  M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {} };
+  M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {} };
   mLiveStart();
 }
 
 /* ---------- small shared pieces ---------- */
-/* The AI suggestion: what the agent proposes to do. With a task, the chip opens that task in the agent panel. */
+/* The AI suggestion: what the agent proposes to do. With a mission, the chip opens that mission in the agent panel. */
 function mSug(s, o = {}) {
   if (!s) return '<span class="text-ink4">—</span>';
   const m = MY_SUGGEST[s] || ['slate', ''], t = o.task;
@@ -66,20 +67,23 @@ const mFromName = t => t.trigger.from ? M_AG[M_FROM[t.trigger.from]].name : '';
 /* ---------- boot ---------- */
 function mBoot() {
   mInit();
-  document.title = 'Cortex · SecOps Engineering';
+  document.title = 'Cortex · SecOps';
   ['home', 'autonomous', 'cases', 'insights', 'anatomy'].forEach(v => { const el = $('view-' + v); if (el) { el.classList.add('hidden'); el.classList.remove('flex'); } });
   ['wf-offer', 'intro', 'landing'].forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.classList.remove('flex'); } });
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 flex-col border-l border-line overflow-hidden">
-      <div id="m-panel-head" class="px-4 h-12 flex items-center justify-between gap-3 shrink-0 border-b border-line"></div>
-      <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 py-4"></div>
-      <div class="px-4 pb-4 pt-2.5 shrink-0 space-y-2 border-t border-line">
-        <div id="m-panel-chips" class="flex flex-wrap gap-1.5"></div>
-        <div class="flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
-          <span id="m-panel-ctx" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2"></span>
-          <input type="text" id="m-cmd" autocomplete="off" placeholder="Ask the agents, or tell them what to check…" onkeydown="if(event.key==='Enter')mSend()" class="flex-1 min-w-0 bg-transparent text-[13.5px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
-          <button onclick="mSend()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send">${ic('arrow-up', 'w-4 h-4')}</button>
+      <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
+      <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
+      <div class="px-4 pb-4 pt-3 shrink-0 space-y-2.5">
+        <div id="m-panel-acts"></div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 min-w-0 flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
+            <span id="m-panel-ctx" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2"></span>
+            <input type="text" id="m-cmd" autocomplete="off" placeholder="Give a command…" onkeydown="if(event.key==='Enter')mSend()" class="flex-1 min-w-0 bg-transparent text-[13.5px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
+            <button onclick="mSend()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send">${ic('arrow-up', 'w-4 h-4')}</button>
+          </div>
+          <button id="m-later" onclick="mDeckMove(1)" class="hidden shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-ink2 hover:text-ink" title="Skip to the next decision (→)">Later ${ic('chevron-right', 'w-4 h-4')}</button>
         </div>
       </div>
     </aside>`);
@@ -92,6 +96,9 @@ function mBoot() {
   if (rail) rail.id = 'm-rail';
   const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(7,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
   mPatchDemoMenu();
+  /* The signed-in user, and a reset button that is always in reach. */
+  const me = document.querySelector('#app aside [title^="Guy"]');
+  if (me) { me.title = 'Ariel B. (SecOps Lead)'; me.textContent = 'AB'; me.insertAdjacentHTML('beforebegin', `<button id="m-reset" onclick="location.reload()" class="w-10 h-10 rounded-xl hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Reset the demo (R)">${ic('rotate-ccw', 'w-4 h-4')}</button>`); }
   window.addEventListener('resize', () => { if (M) mPanelShow(); });
   mNav('home');
 }
@@ -102,7 +109,7 @@ function mPatchDemoMenu() {
     if (/injectIncident/.test(oc)) { b.setAttribute('onclick', 'closeDemoMenu();mArriveNext()'); b.innerHTML = `${ic('zap', 'w-3.5 h-3.5')} Send a new trigger now`; } });
   ['demo-speed', 'core-switch'].forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); const lab = el.previousElementSibling; if (lab && id === 'demo-speed') lab.classList.add('hidden'); if (id === 'core-switch') el.parentElement.classList.add('hidden'); } });
 }
-function mReset() { closeDemoMenu(); mCloseSheet(); mInit(); mNav('home'); toast('Demo data reset', 'rotate-ccw'); }
+function mReset() { location.reload(); }
 
 /* ---------- new triggers arrive while the screen is open ---------- */
 function mLiveStart() { [0, 1, 2].forEach(n => M.timers.push(setTimeout(() => mArrive(n), M_LIVE_GAP * (n + 1)))); }
@@ -110,12 +117,13 @@ function mLiveStop() { (M.timers || []).forEach(x => { clearTimeout(x); clearInt
 function mArrive(n) {
   const t = myArrive(M.W, n); if (!t) return;
   t.live = true; t.shown = 1;
-  toast(`New trigger · ${M_AG[t.agent].name} started ${t.id}`, 'zap');
+  toast(`New trigger · ${t.id} started`, 'zap');
   mRender();
   /* The agent works through its steps, then asks for a decision. */
   const stepMs = Math.min(20000, M_LIVE_GAP / 3) / t.steps.length;
   const iv = setInterval(() => {
     t.shown++;
+    if (t.shown <= t.steps.length) M.W.log.unshift({ t: Date.now(), kind: 'step', text: `${t.id}: ${t.steps[t.shown - 1]}` });
     if (t.shown >= t.steps.length) { clearInterval(iv); myReady(M.W, t); toast(`${t.id} is ready for your decision`, 'bell-ring'); }
     mRender();
   }, stepMs);
@@ -125,13 +133,13 @@ function mArriveNext() { const n = M.W.incoming.findIndex(t => !M.W.tasks.includ
 
 /* ---------- navigation ---------- */
 function mNav(view, opts = {}) {
-  /* Moving between native screens keeps the way back to the task. Leaving them drops it. */
+  /* Moving between native screens keeps the way back to the mission. Leaving them drops it. */
   if (!opts.keepPivot && !(M.pivot && M_NATIVE[view])) M.pivot = null;
   if (M.pivot) M.pivot.view = view;
-  if (view === 'home') { M.panelOpen = false; M.panelTask = null; M.editing = null; }
-  /* The panel follows the user. A task stays in it only on the tasks screen or while following a pivot. */
-  const dropTask = !M.pivot && view !== 'work' && view !== M.view && !!M.panelTask;
-  if (dropTask) { M.panelTask = null; M.editing = null; }
+  if (view === 'home') { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; }
+  /* The panel follows the user. A mission stays in it only on the missions screen or while following a pivot. */
+  const dropTask = !M.pivot && view !== M.view && (view !== 'work' ? !!(M.panelTask || M.panelObj) : !!M.panelObj);
+  if (dropTask) { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; }
   M.view = view;
   M_VIEWS.forEach(v => { const el = $('mv-' + v); el.classList.toggle('hidden', v !== view); el.classList.toggle('flex', v === view); });
   const sec = $('mv-' + view); if (sec && !opts.keepScroll) sec.dataset.top = '1';
@@ -172,22 +180,34 @@ const mWide = () => window.innerWidth >= 1024;
 const mPanelOn = () => M.view !== 'home' && (M.panelOpen || (M.view === 'work' && mWide()));
 function mPanelShow() { const el = $('m-panel'), on = mPanelOn(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); }
 function mOpenPanel() { M.panelOpen = true; mRender(); }
-function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.editing = null; mRender(); }
-/* Opening a task always means: show it in the agent panel. From Home that happens on the tasks screen. */
+function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; mRender(); }
+/* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
 function mOpenTask(id) {
+  const t = mTask(id); if (!t) return;
   if (M.lastDecision && M.lastDecision.id !== id) M.lastDecision = null;
+  /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
+  if (t.status === 'pending' && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
-  M.panelTask = id; M.panelOpen = true; M.editing = null;
+  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();
-  if (changed) { const sc = $('m-panel-scroll'); if (sc) sc.scrollTop = 0; }
+  if (changed) $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
 }
-function mPanelHome() { M.panelTask = null; M.editing = null; M.lastDecision = null; mRender(); const sc = $('m-panel-scroll'); if (sc) sc.scrollTop = 0; }
+/* A native object opens in the same panel: its mission if it has one, otherwise what is known about it. */
+function mOpenObj(kind, id) {
+  const W = M.W, rv = kind === 'rule' ? myRuleReview(W, mRule(id)) : myIocReview(W, W.iocs.find(x => x.id === id));
+  const sg = kind === 'rule' && W.suggested.find(r => r.id === id);
+  if (sg) return mOpenTask(sg.task);
+  if (rv.task && rv.sug !== 'Keep') return mOpenTask(rv.task.id);
+  M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null;
+  mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
+}
+function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' }); }
 
 /* ---------- pivot out, and the way back ---------- */
 function mPivot(taskId, view) {
   M.pivot = { task: taskId, view };
-  M.panelTask = taskId; M.panelOpen = mWide();
+  M.panelTask = taskId; M.panelObj = null; M.panelOpen = mWide();
   M.sheet = null; mSheetShow(false);
   mNav(view, { keepPivot: true });
 }
@@ -210,13 +230,13 @@ function mReturnBar() {
   const msg = waiting ? 'Waiting for your decision' : t.status === 'progress' ? esc(t.progressNote || 'In progress') : esc(mStatusTxt(t));
   el.className = `shrink-0 m-return m-return-${tone}`;
   el.innerHTML = `<div class="flex items-center gap-3 px-4 py-2 flex-wrap">
-    ${mAvs(t, 24)}
+    ${mAv('sec', 26)}
     <div class="min-w-0 flex-1">
-      <div class="text-[11.5px] text-ink3 flex items-center gap-1.5 flex-wrap"><button onclick="mToDecisions()" class="hover:text-ink">Agentic tasks</button>${ic('chevron-right', 'w-3 h-3')}<button onclick="mBackToTask()" class="font-mono hover:text-ink">${t.id}</button>${ic('chevron-right', 'w-3 h-3')}<span class="text-ink2">${M_NATIVE[M.view]}</span></div>
+      <div class="text-[11.5px] text-ink3 flex items-center gap-1.5 flex-wrap"><button onclick="mToDecisions()" class="hover:text-ink">Missions</button>${ic('chevron-right', 'w-3 h-3')}<button onclick="mBackToTask()" class="font-mono hover:text-ink">${t.id}</button>${ic('chevron-right', 'w-3 h-3')}<span class="text-ink2">${M_NATIVE[M.view]}</span></div>
       <div class="text-[13.5px] text-ink truncate"><b class="font-semibold">${esc(t.title)}</b> <span class="c-${tone}">· ${msg}</span></div>
     </div>
-    ${M.panelOpen ? '' : `<button onclick="mOpenTask('${t.id}')" class="px-3 py-2 rounded-xl border border-line2 text-ink text-[13px] font-semibold hover:bg-hov inline-flex items-center gap-1.5">${ic('panel-right-open', 'w-4 h-4')}Show the task here</button>`}
-    <button onclick="mBackToTask()" class="px-3.5 py-2 rounded-xl bg-ink text-panel text-[13px] font-bold inline-flex items-center gap-1.5 hover:opacity-90">${ic('corner-up-left', 'w-4 h-4')}Back to Agentic tasks</button>
+    ${M.panelOpen ? '' : `<button onclick="mOpenTask('${t.id}')" class="px-3 py-2 rounded-xl border border-line2 text-ink text-[13px] font-semibold hover:bg-hov inline-flex items-center gap-1.5">${ic('panel-right-open', 'w-4 h-4')}Show the mission here</button>`}
+    <button onclick="mBackToTask()" class="px-3.5 py-2 rounded-xl bg-ink text-panel text-[13px] font-bold inline-flex items-center gap-1.5 hover:opacity-90">${ic('corner-up-left', 'w-4 h-4')}Back to Missions</button>
     <button onclick="M.pivot=null;mRender()" class="p-1.5 rounded-lg hover:bg-hov text-ink3" title="Stay here and hide this bar">${ic('x', 'w-4 h-4')}</button>
   </div>`;
 }
@@ -225,7 +245,7 @@ function mDock() {
   const el = $('m-dock'); if (!el) return;
   const n = myPendingTasks(M.W).length, show = !!M_NATIVE[M.view] && !mPanelOn() && !M.sheet;
   el.classList.toggle('hidden', !show); el.classList.toggle('flex', show);
-  if (show) el.innerHTML = `<span class="inline-flex items-center">${mAv('det', 30, true)}<span class="-ml-2.5">${mAv('pipe', 30)}</span></span><span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${n ? `${n} decision${n === 1 ? '' : 's'} waiting` : 'Nothing is waiting for you'}</span><span class="block text-[11.5px] text-ink3">Open the agent panel</span></span>${ic('panel-right-open', 'w-4 h-4 text-ink3')}`;
+  if (show) el.innerHTML = `${mAv('sec', 30, true)}<span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${n ? `${n} decision${n === 1 ? '' : 's'} waiting` : 'Nothing is waiting for you'}</span><span class="block text-[11.5px] text-ink3">Open SecOps</span></span>${ic('panel-right-open', 'w-4 h-4 text-ink3')}`;
 }
 
 /* ---------- the side sheet: a native object (a rule, an indicator, a pipeline step or a source) ---------- */
@@ -235,23 +255,23 @@ function mCloseSheet() { if (!M || !M.sheet) return; M.sheet = null; M.reconnect
 function mSheetRender() {
   const s = M.sheet; if (!s) return;
   const el = $('m-sheet'), sc = $('m-sheet-scroll'), top = sc ? sc.scrollTop : 0;
-  el.innerHTML = ({ rule: mRuleSheet, node: mNodeSheet, source: mSourceSheet })[s.kind](s);
+  el.innerHTML = ({ node: mNodeSheet, source: mSourceSheet })[s.kind](s);
   const sc2 = $('m-sheet-scroll'); if (sc2) sc2.scrollTop = top;
 }
-const mOpenRule = id => mOpenSheet({ kind: 'rule', id });
-const mOpenNode = (pipe, stage) => mOpenSheet({ kind: 'node', pipe, stage });
+const mOpenRule = id => mOpenObj('rule', id);
+const mOpenNode = (pipe, stage) => { const t = myNodeTask(M.W, pipe, stage); return t ? mOpenTask(t.id) : mOpenSheet({ kind: 'node', pipe, stage }); };
 const mOpenSource = id => mOpenSheet({ kind: 'source', id });
 const mSheetHead = (crumb, title, sub = '') => `<div class="px-5 pt-4 pb-3 border-b border-line shrink-0 flex items-start gap-3">
   <div class="min-w-0 flex-1"><div class="text-[11.5px] text-ink3">${crumb}</div><div class="text-[19px] font-bold text-ink leading-snug mt-0.5">${title}</div>${sub}</div>
   <button onclick="mCloseSheet()" class="p-2 -mr-1 rounded-lg hover:bg-hov text-ink2" title="Close (Esc)">${ic('x', 'w-5 h-5')}</button></div>`;
-/* The agents' note on a native object: the suggestion, and one way into the task. */
+/* The agents' note on a native object: the suggestion, and one way into the mission. */
 function mSheetNote(t, extra = '') {
   if (!t) return '';
   const open = t.status !== 'done';
   return `<section class="rounded-2xl border-2 p-4 ${open ? 'border-amber-500/50 bg-amber-500/5' : 'border-line bg-sunk'}">
     <div class="flex items-start gap-3">${mAvs(t, 28)}<div class="min-w-0 flex-1"><div class="flex items-center gap-2 flex-wrap">${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12px] text-ink3 font-mono">${t.id}</span>${mStatus(t)}</div>
       <div class="text-[14px] text-ink font-semibold mt-1.5 leading-snug">${esc(t.title)}</div><p class="text-[13px] text-ink2 mt-1 leading-relaxed">${esc(t.diagnosis)}</p>${extra}</div></div>
-    <button onclick="mOpenTask('${t.id}')" class="mt-3 w-full py-2.5 rounded-xl ${t.status === 'pending' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-hov text-ink'} text-[13.5px] font-bold inline-flex items-center justify-center gap-2">${t.status === 'pending' ? 'Review the suggestion' : 'Open the task'}${ic('arrow-right', 'w-4 h-4')}</button></section>`;
+    <button onclick="mOpenTask('${t.id}')" class="mt-3 w-full py-2.5 rounded-xl ${t.status === 'pending' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-hov text-ink'} text-[13.5px] font-bold inline-flex items-center justify-center gap-2">${t.status === 'pending' ? 'Review the suggestion' : 'Open the mission'}${ic('arrow-right', 'w-4 h-4')}</button></section>`;
 }
 
 /* ---------- keyboard ---------- */
@@ -259,9 +279,13 @@ function mKey(e) {
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if (M.panelTask && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
+  if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();
+  if (k === 'l' && M.view === 'work') { M.logOpen = !M.logOpen; return mRender(); }
   if (k === '/') { const el = $('m-cmd'); if (el && mPanelOn()) { e.preventDefault(); el.focus(); } return; }
-  if (M.panelTask && mPanelOn() && !M.sheet) { const t = mTask(M.panelTask); if (t && t.status === 'pending' && !M.editing) { if (k === 'a') return mDecide(t.id, 'approve'); if (k === 'd') return mDecide(t.id, 'reject'); } }
+  if (M.panelTask && mPanelOn() && !M.sheet) { const t = mTask(M.panelTask);
+    if (e.key === 'ArrowRight') return mDeckMove(1); if (e.key === 'ArrowLeft') return mDeckMove(-1);
+    if (t && t.status === 'pending' && !M.editing) { if (k === 'a') return mDecide(t.id, 'approve'); if (k === 'd') return mDecide(t.id, 'reject'); } }
 }

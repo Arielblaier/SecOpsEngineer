@@ -55,6 +55,6 @@ function mNodeSheet(s) {
     : `<section class="rounded-2xl border border-line bg-sunk p-4 flex items-center gap-3">${mAv('pipe', 30)}<p class="text-[13px] text-ink2">No open AI suggestion on this step.</p></section>`;
   return `${mSheetHead(`Data Streams › ${esc(p.product)}`, `${MY_LAYER[st].name} step`)}
     <div id="m-sheet-scroll" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">${maya}${body}
-      <section class="rounded-2xl border border-line p-4"><h3 class="text-[12px] font-bold tracking-wide text-ink3 uppercase mb-2">Rules that read this pipeline</h3><div class="flex flex-wrap gap-1.5">${rules.map(r => `<button onclick="mOpenRule(${r.id})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sunk border border-line hover:border-line2 text-[12.5px] text-ink2">${esc(r.name)} ${mSug(myRuleReview(W, r).sug)}</button>`).join('') || '<span class="text-[13px] text-ink3">None. Nothing depends on this pipeline.</span>'}</div></section>
+      <section class="rounded-2xl border border-line p-4"><h3 class="text-[12px] font-bold tracking-wide text-ink3 uppercase mb-2">Rules that read this pipeline</h3><div class="flex flex-wrap gap-1.5">${rules.map(r => `<button onclick="mCloseSheet();mNav('rules');mOpenRule(${r.id})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sunk border border-line hover:border-line2 text-[12.5px] text-ink2">${esc(r.name)} ${mSug(myRuleReview(W, r).sug)}</button>`).join('') || '<span class="text-[13px] text-ink3">None. Nothing depends on this pipeline.</span>'}</div></section>
     </div>`;
 }

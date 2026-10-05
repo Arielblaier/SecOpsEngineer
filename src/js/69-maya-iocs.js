@@ -1,7 +1,7 @@
 /* ======================================================================
    SECOPS ENGINEERING · NATIVE SCREEN: IOC RULES
    The existing table, plus the same two columns as Correlation Rules:
-   AI suggestion and Confidence. A suggestion opens its task in the agent
+   AI suggestion and Confidence. A suggestion opens its mission in the agent
    panel.
    ====================================================================== */
 function mIocs() {
@@ -9,10 +9,10 @@ function mIocs() {
   const th = (l, extra = '') => `<th class="text-left font-semibold px-3 py-3 whitespace-nowrap ${extra}">${l}</th>`;
   const sev = s => `<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm ${{ High: 'bg-rose-500', Medium: 'bg-amber-500', Low: 'bg-blue-500' }[s]}"></span>${s}</span>`;
   const rows = list.map(i => { const rv = myIocReview(W, i), f = mPivotFocus('ioc', i.id), off = i.status !== 'Enabled';
-    return `<tr ${f ? 'data-focus="1"' : ''} data-ioc="${i.id}" ${rv.task ? `onclick="mOpenTask('${rv.task.id}')"` : ''} class="border-t border-line ${rv.task ? 'cursor-pointer' : ''} hover:bg-hov ${f ? 'm-focus' : ''} ${off ? 'text-ink4' : 'text-ink2'}">
+    return `<tr ${f ? 'data-focus="1"' : ''} data-ioc="${i.id}" onclick="mOpenObj('ioc', ${i.id})" class="border-t border-line cursor-pointer hover:bg-hov ${f ? 'm-focus' : ''} ${(M.panelObj && M.panelObj.kind === 'ioc' && M.panelObj.id === i.id) || (M.panelTask && rv.task && rv.task.id === M.panelTask) ? 'm-sel' : ''} ${off ? 'text-ink4' : 'text-ink2'}">
       <td class="px-3 py-3 font-mono text-[12.5px]">${i.id}</td>
       <td class="px-3 py-3 whitespace-nowrap">${esc(i.mod)}</td>
-      <td class="px-3 py-3 max-w-[230px] ${off ? '' : 'text-ink'}"><span class="inline-flex items-center gap-2 max-w-full">${f ? `<span class="shrink-0 px-1.5 rounded tn tn-amber text-[10.5px] font-bold whitespace-nowrap">FROM TASK</span>` : ''}<span class="truncate font-mono text-[12.5px]" title="${esc(i.ind)}">${esc(i.ind)}</span></span></td>
+      <td class="px-3 py-3 max-w-[230px] ${off ? '' : 'text-ink'}"><span class="inline-flex items-center gap-2 max-w-full">${f ? `<span class="shrink-0 px-1.5 rounded tn tn-amber text-[10.5px] font-bold whitespace-nowrap">FROM MISSION</span>` : ''}<span class="truncate font-mono text-[12.5px]" title="${esc(i.ind)}">${esc(i.ind)}</span></span></td>
       <td class="px-3 py-3">${mSugCell(rv)}</td>
       <td class="px-3 py-3">${mConfCell(rv)}</td>
       <td class="px-3 py-3 whitespace-nowrap">${esc(i.type)}</td>

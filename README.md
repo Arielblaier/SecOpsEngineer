@@ -93,59 +93,51 @@ git checkout main              # back to the original
 `dist/` is not tracked. Rename the built file per variant if you want to keep
 several side by side.
 
-## The `dev` branch: SecOps Engineering
+## The `dev` branch: SecOps
 
 `main` tells the story of Josh, the Security Analyst. `dev` adds a third mode
-for the SecOps Engineering domain, with the focus on detection engineering.
-It is the default mode on this branch. The other two modes still work: switch
-from the demo menu (the lightning icon) under "Agents".
+for SecOps, with the focus on detection engineering. It is the default mode on
+this branch. The other two modes still work: switch from the demo menu (the
+lightning icon) under "Agents".
 
-There is no single named agent in this mode. Two agents work the domain:
-
-- **Detection Engineer**: rules, indicators and coverage.
-- **Pipeline Engineer**: filtering, parsing and normalizing.
-
-Each agent can pass a task to the other and wait for its answer. A task shows
-both agents and what they said to each other.
+The screens are about SecOps, not about an agent. Two agents do the work
+behind it (Detection Engineer: rules, indicators, coverage. Pipeline Engineer:
+filtering, parsing, normalizing). They show up inside a mission, under "How it
+got there", when one passed work to the other.
 
 What the mode shows:
 
 | Screen | What it is for |
 |---|---|
 | Home | The morning briefing. The chain from data source to rule, with the step where each problem starts |
-| Agentic tasks | The queue from both agents, with filters (All, Pending, In progress, Done), search and live widgets |
-| The agent panel | Docked on the right, 40% of the screen. Holds the task card, the conversation and an always-open prompt bar |
-| Correlation Rules | The native table, plus two added columns: AI suggestion and Confidence. A suggested new rule has an Adopt button |
+| Missions | The queue, with filters (All, Pending, In progress, Done), search and live widgets. The table keeps its width and scrolls sideways |
+| Activity log | A thin strip between the list and the panel. Click it (or press L) to open the live log |
+| The panel | Half of the screen. Starts clean and ready to talk. The bell opens the decisions one card at a time, with Approve and Decline fixed at the bottom |
+| Correlation Rules | The native table, plus two added columns: AI suggestion and Confidence. A suggested new rule has an Adopt button. A row opens in the panel |
 | IOC Rules | The native table, plus the same two columns |
-| Data Streams | Each pipeline as source, filter, parsing, data model, destination. The Pipeline Engineer's marker sits on the failing step |
-| Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes the task on its own |
+| Data Streams | Each pipeline as source, filter, parsing, data model, destination. A marker sits on the failing step |
+| Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes the mission on its own |
 | Insights | Value regained, and an ATT&CK status per technique instead of one percentage |
 
-The AI suggestion is what the agent proposes to do: Fix, Tune, Adopt, Connect,
-Drop, Watch, Hand over or Keep. Clicking a suggestion on any native screen
-opens the same task card in the agent panel.
+The AI suggestion is what is proposed: Fix, Tune, Adopt, Connect, Drop, Watch,
+Hand over or Keep. Clicking a suggestion or a row on a native screen opens the
+same mission card in the panel.
+
+Moving between decisions: the arrows and dots at the top of the panel, the
+left and right arrow keys, or "Later". A approves, D declines, Esc closes.
 
 The screen is live. Three new triggers arrive one minute apart. Each one shows
-the agent running, then becomes a decision. Add `?live=10` to the address to
+the run step by step, then becomes a decision. Add `?live=10` to the address to
 make them arrive every 10 seconds, or use "Send a new trigger now" in the demo
-menu.
-
-Leaving a task and coming back:
-
-- Every task links to the native screen where its objects live. The agent
-  panel stays open with the task, so the decision can be made there.
-- After that jump, a bar at the top names the task and offers "Back to Agentic
-  tasks". It stays while you move between native screens. Esc also goes back.
-- On a native screen with the panel closed, a pill at the bottom right shows
-  how many decisions wait and opens the panel.
+menu. The reset button in the left rail (or R) reloads the demo.
 
 Where the code is (the file names keep the old `maya` prefix):
 
 ```
 src/js/60-maya-data.js      The world: sources, pipelines, rules, indicators, tasks. The ONLY place numbers live
-src/js/61-maya-core.js      State, the two agents, navigation, the docked panel, return bar, live triggers
-src/js/62-maya-task.js      The agent panel, the task card, deciding, the prompt bar
-src/js/63-maya-work.js      Agentic tasks screen and its widgets
+src/js/61-maya-core.js      State, navigation, the docked panel, return bar, live triggers
+src/js/62-maya-task.js      The panel, the mission card, deciding, the prompt bar
+src/js/63-maya-work.js      Missions screen, its widgets and the activity log
 src/js/64-maya-home.js      Home and the scripted answers
 src/js/65-maya-rules.js     Correlation Rules
 src/js/66-maya-streams.js   Data Streams
