@@ -16,9 +16,9 @@ function mRules() {
       <td class="px-3 py-3 font-mono text-[12.5px] whitespace-nowrap">${r.type}</td>
       <td class="px-3 py-3 whitespace-nowrap">${r.type === 'SCHEDULED' ? 'Aug 23rd 2026 10:40:00' : off && !r.retired ? 'Real-time (Not Executed)' : 'Real-time'}</td>
       <td class="px-3 py-3 min-w-[260px] ${off ? '' : 'text-ink'}"><span class="inline-flex items-center gap-2">${f ? `<span class="shrink-0 px-1.5 rounded tn tn-amber text-[10.5px] font-bold">FROM TASK</span>` : ''}${esc(r.name)}</span><span class="block text-[11.5px] text-ink4 font-mono">ID ${r.id}</span></td>
-      <td class="px-3 py-3 m-newcol">${rv.task ? `<button onclick="event.stopPropagation();mOpenTask('${rv.task.id}')" title="Open ${rv.task.id}">${mChip(rv.v, 'hover:brightness-125')}</button>` : mChip(rv.v)}</td>
-      <td class="px-3 py-3 m-newcol">${mConf(rv.conf)}</td>
-      <td class="px-3 py-3 m-newcol whitespace-nowrap">${rv.task ? `<button onclick="event.stopPropagation();mOpenTask('${rv.task.id}')" class="inline-flex items-center gap-1.5 text-[12.5px] ${rv.st === 'Pending decision' ? 'c-amber font-semibold' : rv.st === 'In progress' ? 'c-blue font-semibold' : 'text-ink3'} hover:underline">${rv.st}<span class="font-mono text-[11px] text-ink4">${rv.task.id}</span></button>` : '<span class="text-ink4">—</span>'}</td>
+      <td class="px-3 py-3">${rv.task ? `<button onclick="event.stopPropagation();mOpenTask('${rv.task.id}')" title="Open ${rv.task.id}">${mChip(rv.v, 'hover:brightness-125')}</button>` : mChip(rv.v)}</td>
+      <td class="px-3 py-3">${mConf(rv.conf)}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${rv.task ? `<button onclick="event.stopPropagation();mOpenTask('${rv.task.id}')" class="inline-flex items-center gap-1.5 text-[12.5px] ${rv.st === 'Pending decision' ? 'c-amber font-semibold' : rv.st === 'In progress' ? 'c-blue font-semibold' : 'text-ink3'} hover:underline">${rv.st}<span class="font-mono text-[11px] text-ink4">${rv.task.id}</span></button>` : '<span class="text-ink4">—</span>'}</td>
       <td class="px-3 py-3">${r.retired ? 'Retired' : r.status}</td>
       <td class="px-3 py-3 text-right font-mono">${r.issues7d.toLocaleString()}</td>
       <td class="px-3 py-3 whitespace-nowrap">${r.supp ? `<span class="c-cx">On</span> · ${esc(r.supp.dur)}` : 'Off'}</td>
@@ -33,11 +33,11 @@ function mRules() {
       <div class="px-5 py-3 flex items-center justify-between gap-3 flex-wrap shrink-0">
         <div class="flex items-center gap-3 text-[14.5px] text-ink2">${ic('filter', 'w-4 h-4')}<span>${list.length} results</span>${ic('refresh-cw', 'w-4 h-4 text-ink3')}
           <button onclick="M.onlyOpen=!M.onlyOpen;mRender()" class="ml-2 px-3 py-1 rounded-full border text-[12.5px] inline-flex items-center gap-1.5 ${M.onlyOpen ? 'border-amber-500/60 bg-amber-500/10 c-amber font-semibold' : 'border-line2 text-ink2 hover:text-ink'}">${agentAv(mP(), 16, false)}${withTask} with an open task</button></div>
-        <div class="flex items-center gap-4 text-[13px] text-ink3"><span class="inline-flex items-center gap-1.5">${mNew}columns added by the SecOps Engineer</span><span class="inline-flex items-center gap-1.5 text-ink2">${ic('columns-3', 'w-4 h-4')}Display</span></div></div>
+        <div class="flex items-center gap-4 text-[14.5px] text-ink2"><span class="inline-flex items-center gap-1.5">${ic('columns-3', 'w-4 h-4')}Display</span>${ic('download', 'w-4 h-4')}</div></div>
       <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1560px] text-[14px] border-collapse">
-        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule Type')}${th('Last execution')}${th('Name')}${th(`<span class="inline-flex items-center gap-1 c-indigo">${ic('sparkles', 'w-3 h-3')}AI Review</span>`, 'm-newcol')}${th(`<span class="c-indigo">Confidence</span>`, 'm-newcol')}${th(`<span class="c-indigo">Task status</span>`, 'm-newcol')}${th('Status')}${th('# of issues (7d)', 'text-right')}${th('Suppression')}${th('Mitre ATT&CK Tactic')}${th('Mitre ATT&CK Technique')}${th('Source')}</tr></thead>
+        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule Type')}${th('Last execution')}${th('Name')}${th(`<span class="inline-flex items-center gap-1.5"><span class="c-indigo">${ic('sparkles', 'w-3 h-3')}</span>AI Review ${mInfo(M_VERDICT_HELP)}</span>`)}${th('Confidence')}${th('Task status')}${th('Status')}${th('# of issues (7d)', 'text-right')}${th('Suppression')}${th('Mitre ATT&CK Tactic')}${th('Mitre ATT&CK Technique')}${th('Source')}</tr></thead>
         <tbody>${rows}</tbody></table></div>
-      <div class="px-5 py-2.5 border-t border-line text-[13px] text-ink3 shrink-0">Showing ${list.length} of ${W.rules.length} · click a row to open the rule · click an AI Review chip to open Maya’s task</div>
+      <div class="px-5 py-2.5 border-t border-line text-[13px] text-ink3 shrink-0">Showing ${list.length} of ${W.rules.length}</div>
     </div>`;
 }
 

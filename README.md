@@ -98,8 +98,10 @@ several side by side.
 `main` tells the story of Josh, the Security Analyst. `dev` adds a third mode
 that tells the same kind of story for **Maya, the SecOps Engineer**, with the
 focus on detection engineering. It is the default mode on this branch. The
-other two modes still work: switch from the landing page, or from the demo
-menu (the lightning icon) under "Agents".
+other two modes still work: switch from the demo menu (the lightning icon)
+under "Agents". Maya's mode opens straight into the product, with no landing
+page and no presenter text on the screens. Help that belongs to the product
+sits behind small info icons. The landing page is still in the demo menu.
 
 What the Maya mode shows:
 

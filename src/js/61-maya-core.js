@@ -28,7 +28,9 @@ const mImpact = i => `<span class="inline-flex px-2 py-0.5 rounded-md tn tn-${{ 
 const mStatusTxt = t => t.status === 'pending' ? 'Pending decision' : t.status === 'progress' ? 'In progress' : { approved: 'Approved', edited: 'Approved with edits', rejected: 'Rejected', dismissed: 'Dismissed', auto: 'Closed automatically', handed: 'Handed over', watch: 'Watching' }[t.end] || 'Done';
 const mStatus = t => { const tone = t.status === 'pending' ? 'amber' : t.status === 'progress' ? 'blue' : ['rejected', 'dismissed'].includes(t.end) ? 'slate' : 'cx';
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold c-${tone === 'slate' ? 'blue' : tone} ${tone === 'slate' ? 'opacity-70' : ''}"><span class="w-1.5 h-1.5 rounded-full ${tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>${mStatusTxt(t)}</span>`; };
-const mNew = `<span class="c-indigo" title="Added by the SecOps Engineer">${ic('sparkles', 'w-3 h-3')}</span>`;
+/* Help that belongs to the product: a small info icon with a tooltip. */
+const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
+const M_VERDICT_HELP = 'Healthy: checked, nothing wrong. Broken: it cannot fire, or fires on wrong data. Noisy: it fires too much. Gap: something that should be detected is not. Mismatch: XSIAM and the source product disagree. Inconclusive: not enough evidence yet.';
 
 /* ---------- boot ---------- */
 function mBoot(skipLanding) {
@@ -49,7 +51,6 @@ function mBoot(skipLanding) {
   const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(6,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
   mPatchDemoMenu();
   mNav('home');
-  if (skipLanding) toast('Maya, SecOps Engineer', 'wrench'); else mLanding();
 }
 function mPatchDemoMenu() {
   const menu = $('demo-menu'); if (!menu) return;

@@ -20,7 +20,6 @@ function mStageClick(layer) { const t = myLayerOpen(M.W, layer)[0]; if (t) mOpen
 
 function mHome() {
   const W = M.W, st = myStats(W), ss = mStageStats(W), P = mP(), pend = myPendingTasks(W);
-  const t1 = mTask('TSK-1001');
   const auto = W.tasks.filter(t => t.status === 'done');
   const chain = MY_LAYERS.map(([k, n, i], idx) => { const [ok, total, label] = ss[k], open = myLayerOpen(W, k), bad = open.some(t => t.status === 'pending');
     return `${idx ? `<div class="hidden md:flex items-center text-ink4 m-flow">${ic('chevron-right', 'w-4 h-4')}</div>` : ''}
@@ -30,38 +29,38 @@ function mHome() {
         <div class="text-[20px] leading-6 font-bold font-mono ${ok === total ? 'text-ink' : 'c-amber'}">${ok}<span class="text-ink4 text-[13px]"> / ${total}</span></div>
         <div class="text-[11.5px] text-ink3 leading-snug">${label}</div></button>`; }).join('');
 
-  const story = t1 ? `<section class="rounded-3xl border border-line bg-panel p-5 sm:p-6">
-      <div class="hm-label">ONE SYMPTOM, ONE ROOT CAUSE</div>
-      <h2 class="hm-title mt-1">Three rules looked broken. The cause was one line, two layers below them.</h2>
-      <div class="mt-4 grid md:grid-cols-3 gap-3">
-        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${agentAv(PILLARS.analyst, 20, false)}WHAT JOSH SAW</div><p class="mt-2 text-[13.5px] text-ink2 leading-relaxed">38 SentinelOne cases arrived with no severity in two days. They sat at the bottom of the queue, and he handed them to Maya.</p></div>
-        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${ic('file-code-2', 'w-4 h-4')}WHERE A RULE TOOL LOOKS</div><p class="mt-2 text-[13.5px] text-ink2 leading-relaxed">At the three rules that produced them. It would open three items and suggest editing three queries that are in fact correct.</p></div>
-        <div class="rounded-2xl p-4 tn tn-${t1.status === 'done' ? 'cx' : 'amber'}"><div class="flex items-center gap-2 text-[12px] font-bold">${agentAv(P, 20, false)}WHAT MAYA FOUND</div><p class="mt-2 text-[13.5px] text-ink leading-relaxed">A pack update renamed one field. One mapping line in the data model fixes all three rules. It is one task with one decision.</p></div>
-      </div>
-      <div class="mt-4 flex items-center gap-3 flex-wrap">${t1.status === 'pending' ? `<button onclick="mOpenTask('TSK-1001')" class="px-4 py-2.5 rounded-xl bg-ink text-panel text-[13.5px] font-bold inline-flex items-center gap-2">Review this decision${ic('arrow-right', 'w-4 h-4')}</button>` : `<span class="inline-flex items-center gap-2 text-[13.5px] c-cx font-semibold">${ic('circle-check', 'w-4 h-4')}${esc(mStatusTxt(t1))}</span><button onclick="mOpenTask('TSK-1001')" class="text-[13px] text-ink3 hover:text-ink underline underline-offset-2">Open the task</button>`}<button onclick="mPivot('TSK-1001','streams')" class="text-[13px] text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('arrow-up-right', 'w-3.5 h-3.5')}See it in Data Streams</button></div>
+  const top = pend[0], topTr = top && MY_TRIGGER[top.trigger.kind];
+  const story = top ? `<section class="rounded-3xl border border-line bg-panel p-5 sm:p-6">
+      <div class="flex items-center justify-between gap-3 flex-wrap"><div class="hm-label">TOP FINDING</div><div class="flex items-center gap-2">${mChip(top.verdict)}${mConf(top.conf)}${mImpact(top.impact)}<span class="font-mono text-[12px] text-ink3">${top.id}</span></div></div>
+      <h2 class="hm-title mt-1">${esc(top.title)}</h2>
+      <p class="mt-2 text-[14px] text-ink2 leading-relaxed">${esc(top.summary)}</p>
+      <div class="mt-4">${mChain(top.layer, top.verdict)}</div>
+      <div class="mt-3 flex gap-2.5 text-[13px] text-ink3">${top.trigger.from ? agentAv(PILLARS[top.trigger.from], 20, false) : ic(topTr[1], 'w-4 h-4 mt-0.5 shrink-0')}<span><b class="text-ink2">${topTr[0]}${top.trigger.from ? ' from ' + PILLARS[top.trigger.from].name : ''}.</b> ${esc(top.trigger.text)}</span></div>
+      <div class="mt-4 flex items-center gap-3 flex-wrap"><button onclick="mOpenTask('${top.id}')" class="px-4 py-2.5 rounded-xl bg-ink text-panel text-[13.5px] font-bold inline-flex items-center gap-2">Review this decision${ic('arrow-right', 'w-4 h-4')}</button>${(top.pivots || []).slice(0, 1).map(([v, n]) => `<button onclick="mPivot('${top.id}','${v}')" class="text-[13px] text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('arrow-up-right', 'w-3.5 h-3.5')}Open in ${esc(n)}</button>`).join('')}</div>
     </section>` : '';
 
   const waiting = `<section class="rounded-3xl border border-line bg-panel p-5 sm:p-6">
       <div class="flex items-end justify-between gap-3 flex-wrap"><div><div class="hm-label">WAITING FOR YOU</div><h2 class="hm-title mt-1">${pend.length ? `${pend.length} decision${pend.length === 1 ? '' : 's'}, most valuable first` : 'Nothing is waiting for you'}</h2></div>${pend.length ? `<button onclick="mReviewAll()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[13.5px] font-bold inline-flex items-center gap-2">${ic('bell-ring', 'w-4 h-4')}Review them one by one</button>` : ''}</div>
       <div class="mt-4 divide-y divide-line rounded-2xl border border-line overflow-hidden">${pend.map(t => `<button onclick="mOpenTask('${t.id}')" class="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-hov">
-        <span class="w-[76px] shrink-0">${mChip(t.verdict)}</span><span class="min-w-0 flex-1"><span class="block text-[14px] text-ink truncate">${esc(t.title)}</span><span class="block text-[12px] text-ink3 truncate">${esc(t.decision.q)} · starts at: ${MY_LAYER[t.layer].name.toLowerCase()}</span></span>${mImpact(t.impact)}<span class="text-ink4">${ic('chevron-right', 'w-4 h-4')}</span></button>`).join('') || `<div class="px-4 py-6 text-center text-[13.5px] text-ink3">Maya keeps checking. New tasks appear here when something needs a person.</div>`}</div>
+        <span class="w-[76px] shrink-0">${mChip(t.verdict)}</span><span class="min-w-0 flex-1"><span class="block text-[14px] text-ink truncate">${esc(t.title)}</span><span class="block text-[12px] text-ink3 truncate">${esc(t.decision.q)} · starts at: ${MY_LAYER[t.layer].name.toLowerCase()}</span></span>${mImpact(t.impact)}<span class="text-ink4">${ic('chevron-right', 'w-4 h-4')}</span></button>`).join('') || `<div class="px-4 py-6 text-center text-[13.5px] text-ink3">No open decisions.</div>`}</div>
     </section>`;
 
+  const prog = W.tasks.filter(t => t.status === 'progress');
   const own = `<section class="rounded-3xl border border-line bg-panel p-5 sm:p-6">
-      <div class="hm-label">WHAT MAYA DID WITHOUT YOU</div><h2 class="hm-title mt-1">Checks, tests and handovers that needed no decision</h2>
+      <div class="hm-label">NO DECISION NEEDED</div><h2 class="hm-title mt-1">${auto.length} task${auto.length === 1 ? '' : 's'} closed, ${prog.length} in progress</h2>
       <div class="mt-4 grid sm:grid-cols-2 gap-3">
-        <div class="rounded-2xl bg-sunk p-4"><div class="text-[26px] font-bold font-mono c-cx">${st.healthy}</div><div class="text-[13.5px] text-ink font-semibold">rules checked and healthy</div><p class="text-[12.5px] text-ink3 mt-1 leading-relaxed">A healthy check opens no task. You only see what needs attention.</p></div>
-        <div class="rounded-2xl bg-sunk p-4"><div class="text-[26px] font-bold font-mono c-indigo">${W.tasks.filter(t => t.status === 'progress').length}</div><div class="text-[13.5px] text-ink font-semibold">in progress</div><p class="text-[12.5px] text-ink3 mt-1 leading-relaxed">${W.tasks.filter(t => t.status === 'progress').map(t => esc(t.progressNote)).join(' · ') || 'No tests or handovers are running.'}</p></div>
+        <div class="rounded-2xl bg-sunk p-4"><div class="text-[26px] font-bold font-mono c-cx">${st.healthy}</div><div class="text-[13.5px] text-ink font-semibold inline-flex items-center gap-1.5">rules checked and healthy ${mInfo('A healthy check opens no task. Tasks are opened only for detections that need attention.')}</div></div>
+        <div class="rounded-2xl bg-sunk p-4"><div class="text-[26px] font-bold font-mono c-indigo">${prog.length}</div><div class="text-[13.5px] text-ink font-semibold">in progress</div><p class="text-[12.5px] text-ink3 mt-1 leading-relaxed">${prog.map(t => `<button onclick="mOpenTask('${t.id}')" class="hover:text-ink underline underline-offset-2">${esc(t.progressNote)}</button>`).join(' · ')}</p></div>
       </div>
-      <div class="mt-3 divide-y divide-line rounded-2xl border border-line overflow-hidden">${auto.map(t => `<button onclick="mOpenTask('${t.id}')" class="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-hov"><span class="w-[150px] shrink-0">${mStatus(t)}</span><span class="min-w-0 flex-1 text-[13.5px] text-ink2 truncate">${esc(t.title)}</span><span class="text-ink4">${ic('chevron-right', 'w-4 h-4')}</span></button>`).join('')}</div>
+      <div class="mt-3 divide-y divide-line rounded-2xl border border-line overflow-hidden">${auto.map(t => `<button onclick="mOpenTask('${t.id}')" class="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-hov"><span class="w-[150px] shrink-0">${mStatus(t)}</span><span class="min-w-0 flex-1 text-[13.5px] text-ink2 truncate">${esc(t.title)}</span><span class="text-[12px] text-ink4 font-mono">${t.id}</span><span class="text-ink4">${ic('chevron-right', 'w-4 h-4')}</span></button>`).join('')}</div>
     </section>`;
 
-  const fromJosh = W.tasks.filter(t => t.trigger.from === 'analyst').length;
+  const fromJosh = W.tasks.filter(t => t.trigger.from === 'analyst');
   const exchange = `<section class="rounded-3xl border border-line bg-panel p-5 sm:p-6">
-      <div class="hm-label">MAYA AND JOSH</div><h2 class="hm-title mt-1">Josh absorbs noise after the alert. Maya removes it before.</h2>
-      <div class="mt-4 grid md:grid-cols-2 gap-3">
-        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${agentAv(PILLARS.analyst, 20, false)}FROM JOSH TO MAYA</div><ul class="mt-2 space-y-1.5 text-[13.5px] text-ink2"><li>${fromJosh} of Maya’s tasks started from a pattern Josh handed over</li><li>One benign verdict never opens a task. A pattern across many cases does</li><li>A case that could not be judged because data was missing opens a task at once</li></ul></div>
-        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${agentAv(P, 20, false)}FROM MAYA TO JOSH</div><ul class="mt-2 space-y-1.5 text-[13.5px] text-ink2"><li><b class="text-ink">${st.removed.toLocaleString()}</b> fewer issues a week from changes you approved</li><li>${W.facts.length ? `<b class="text-ink">${W.facts.length}</b> environment fact${W.facts.length === 1 ? '' : 's'} shared, each with a review date` : 'Environment facts are shared, each with a review date'}</li><li>Fewer cases Josh cannot judge, because broken data gets fixed</li></ul></div>
+      <div class="hm-label inline-flex items-center gap-1.5">HANDOFFS ${mInfo('A single benign verdict does not open a task. A pattern across many cases does. A case that could not be judged because data was missing opens a task at once.')}</div>
+      <div class="mt-3 grid md:grid-cols-2 gap-3">
+        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${agentAv(PILLARS.analyst, 20, false)}FROM JOSH · ${fromJosh.length}</div><div class="mt-2 space-y-1.5">${fromJosh.map(t => `<button onclick="mOpenTask('${t.id}')" class="w-full text-left flex items-center gap-2 text-[13px] text-ink2 hover:text-ink"><span class="font-mono text-[11.5px] text-ink4 shrink-0">${t.id}</span><span class="truncate flex-1">${esc(t.trigger.text)}</span>${mStatus(t)}</button>`).join('')}</div></div>
+        <div class="rounded-2xl bg-sunk p-4"><div class="flex items-center gap-2 text-[12px] font-bold text-ink3">${agentAv(P, 20, false)}TO JOSH</div><div class="mt-2 grid grid-cols-2 gap-3"><div><div class="text-[22px] font-bold font-mono c-indigo">${st.removed.toLocaleString()}</div><div class="text-[12.5px] text-ink3">fewer issues a week</div></div><div><div class="text-[22px] font-bold font-mono text-ink">${W.facts.length}</div><div class="text-[12.5px] text-ink3 inline-flex items-center gap-1.5">environment facts shared ${mInfo('A reviewed statement about your environment, with a review date. Both agents read the same facts.')}</div></div></div></div>
       </div>
     </section>`;
 
@@ -73,7 +72,7 @@ function mHome() {
         <h1 class="text-[clamp(26px,2.8vw,40px)] font-black text-ink leading-tight mt-3">Good morning, Guy</h1>
         <p class="text-[clamp(14px,1.1vw,16px)] text-ink2 mt-1.5">While you were away, <b class="text-ink">Maya</b> checked <b class="text-ink">${st.rules} detections</b> and <b class="text-ink">${st.inst} data instances</b>. <b class="c-amber">${st.pending} decision${st.pending === 1 ? '' : 's'}</b> need${st.pending === 1 ? 's' : ''} you.</p></div>
       <section class="rounded-3xl border border-line bg-panel2 p-4 sm:p-5">
-        <div class="flex items-end justify-between gap-6 mb-3"><div class="min-w-0"><div class="hm-label">CAN WE SEE IT?</div><div class="text-[14px] text-ink2 mt-1 max-w-[560px]">A detection only works if every step before it works. Maya checks the whole chain and marks the step where a problem starts.</div></div>
+        <div class="flex items-end justify-between gap-6 mb-3"><div class="min-w-0"><div class="hm-label inline-flex items-center gap-1.5">DETECTION CHAIN ${mInfo('A detection works only if every step before it works. Each step shows how many of the pipelines that rules depend on are healthy. A step with an open task is marked.')}</div></div>
           <div class="text-right shrink-0"><div class="text-[32px] leading-8 font-black font-mono ${st.share >= 70 ? 'c-cx' : 'c-amber'}">${st.share}%</div><div class="text-[12px] text-ink3">of enabled detections are working and useful</div></div></div>
         <div class="flex gap-1.5 flex-wrap md:flex-nowrap">${chain}</div>
       </section>
