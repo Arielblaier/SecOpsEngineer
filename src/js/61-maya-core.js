@@ -56,7 +56,10 @@ const mConf = c => { if (!c) return '<span class="text-ink4">—</span>'; const 
 const mImpact = i => `<span class="inline-flex px-2 py-0.5 rounded-md tn tn-${{ High: 'rose', Medium: 'amber', Low: 'blue' }[i]} text-[12px] font-semibold">${i}</span>`;
 const mStatusTxt = t => t.status === 'pending' ? (t.waitOn ? 'Pending · waits on ' + t.waitOn : 'Pending') : t.status === 'progress' ? 'In progress' : { approved: 'Approved', edited: 'Approved with edits', rejected: 'Rejected', dismissed: 'Dismissed', auto: 'Closed automatically', handed: 'Handed over', watch: 'Watching' }[t.end] || 'Done';
 const mStatus = t => { const wait = t.status === 'pending' && t.waitOn, tone = wait ? 'indigo' : t.status === 'pending' ? 'amber' : t.status === 'progress' ? 'blue' : ['rejected', 'dismissed'].includes(t.end) ? 'slate' : 'cx';
-  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${wait ? ic('link-2', 'w-3.5 h-3.5') : `<span class="w-1.5 h-1.5 rounded-full ${tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>`}${wait ? 'Pending' : mStatusTxt(t)}</span>`; };
+  const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${wait ? 'bg-indigo-400' : tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>`;
+  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${dot}${wait ? 'Pending' : mStatusTxt(t)}</span>`; };
+/* Who a pending mission is pending on: a person, or the agent that owns the mission it waits on. */
+const mPendingOn = t => { if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on you</span>`; };
 /* Help that belongs to the product: a small info icon with a tooltip. */
 const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
 const M_SUG_HELP = Object.entries(MY_SUGGEST).map(([k, v]) => `${k}: ${v[1]}.`).join(' ');
@@ -90,7 +93,8 @@ function mBoot() {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="m-sheet-bg" class="hidden fixed inset-0 z-[44] bg-black/50" onclick="mCloseSheet()"></div>
     <aside id="m-sheet" class="hidden fixed inset-y-0 right-0 z-[45] w-[min(780px,100vw)] bg-panel border-l border-line2 shadow-2xl flex-col m-sheet-in"></aside>
-    <button id="m-dock" onclick="mOpenPanel()" class="hidden fixed right-5 bottom-5 z-[42] items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-panel border border-line2 shadow-2xl hover:border-amber-500/60"></button>`);
+    <button id="m-dock" onclick="mDockGo()" class="hidden fixed right-5 bottom-5 z-[42] items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-panel border border-line2 shadow-2xl hover:border-amber-500/60"></button>
+    <button id="m-agx" onclick="mAgxGo()" class="hidden fixed top-1 right-1 z-[46] w-8 h-8 rounded-full items-center justify-center bg-bg hover:bg-hov" title="AgentiX"></button>`);
   const rail = document.querySelector('#app aside nav');
   if (rail) rail.id = 'm-rail';
   const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(8,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
@@ -245,13 +249,24 @@ function mReturnBar() {
     <button onclick="M.pivot=null;mRender()" class="p-1.5 rounded-lg hover:bg-hov text-ink3" title="Stay here and hide this bar">${ic('x', 'w-4 h-4')}</button>
   </div>`;
 }
-/* On a native screen with the panel closed, the dock brings the agents back. */
-function mDock() {
-  const el = $('m-dock'); if (!el) return;
-  const n = myPendingTasks(M.W).length, show = !!M_NATIVE[M.view] && !mPanelOn() && !M.sheet;
-  el.classList.toggle('hidden', !show); el.classList.toggle('flex', show);
-  if (show) el.innerHTML = `${mAv('sec', 30, true)}<span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${n ? `${n} decision${n === 1 ? '' : 's'} waiting` : 'Nothing is waiting for you'}</span><span class="block text-[11.5px] text-ink3">Open SecOps</span></span>${ic('panel-right-open', 'w-4 h-4 text-ink3')}`;
+/* Decisions that touch what the current screen shows. */
+function mHere() {
+  const pend = myPendingTasks(M.W), v = M.view, f = v === 'rules' ? t => (t.affects.rules || []).length || t.affects.suggested : v === 'iocs' ? t => (t.affects.iocs || []).length : v === 'streams' ? t => !!t.affects.node : v === 'sources' ? t => t.layer === 'source' : null;
+  if (v === 'mitre') { const ids = new Set(mTechs().flatMap(c => c.techs).filter(t => t.task).map(t => t.task.id)); return pend.filter(t => ids.has(t.id) || ids.has(t.unblocks)); }
+  return f ? pend.filter(f) : pend;
 }
+/* With the panel closed, two things stay in view: the AgentiX icon with the number of decisions, and a pill that speaks about this screen. */
+function mDock() {
+  const el = $('m-dock'), ax = $('m-agx'); if (!el) return;
+  const n = myPendingTasks(M.W).length, closed = !mPanelOn(), show = !!M_NATIVE[M.view] && closed && !M.sheet, here = show ? mHere() : [];
+  el.classList.toggle('hidden', !show); el.classList.toggle('flex', show);
+  if (show) el.innerHTML = `${mAv('sec', 30, true)}<span class="text-left leading-tight"><span class="block text-[13px] font-bold text-ink">${here.length ? `${here.length} decision${here.length === 1 ? '' : 's'} on this screen` : 'No decisions on this screen'}</span><span class="block text-[11.5px] text-ink3">${n ? `${n} waiting in total` : 'Nothing is waiting for you'} · ${here.length ? 'Review' : 'Open SecOps'}</span></span>${ic(here.length ? 'arrow-right' : 'panel-right-open', 'w-4 h-4 text-ink3')}`;
+  ax.classList.toggle('hidden', !closed); ax.classList.toggle('flex', closed);
+  if (closed) ax.innerHTML = `<svg viewBox="0 0 24 24" class="w-6 h-6"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#2dd4bf" stroke-width="1.6"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="#5eead4" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#99f6e4"/></svg>${n ? `<span class="absolute -bottom-0.5 -left-1 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[10.5px] font-bold font-mono flex items-center justify-center ring-2 ring-[rgb(var(--bg))]">${n}</span>` : ''}`;
+  ax.title = n ? `AgentiX · ${n} decision${n === 1 ? '' : 's'} waiting` : 'AgentiX';
+}
+function mDockGo() { const h = mHere(); if (h.length) { M.deck = h.map(t => t.id); mOpenTask(h[0].id); } else mOpenPanel(); }
+function mAgxGo() { if (M.view === 'home') return mNav('work'); mOpenPanel(); }
 
 /* ---------- the side sheet: a native object (a rule, an indicator, a pipeline step or a source) ---------- */
 function mSheetShow(on) { ['m-sheet', 'm-sheet-bg'].forEach(id => $(id).classList.toggle('hidden', !on)); $('m-sheet').classList.toggle('flex', on); }

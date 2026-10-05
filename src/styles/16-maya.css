@@ -1,7 +1,7 @@
   /* SECOPS ENGINEERING screens */
   /* The missions table keeps its full width. Columns that do not fit are reached by scrolling sideways. */
   .m-table { min-width: 1080px; }
-  .mcols { display: grid; grid-template-columns: 98px 112px minmax(330px, 1fr) 96px 78px 44px 116px 170px; column-gap: 14px; }
+  .mcols { display: grid; grid-template-columns: 138px 112px minmax(330px, 1fr) 96px 78px 44px 116px 170px; column-gap: 14px; }
   .mcols > * { min-width: 0; }
   .m-vert { writing-mode: vertical-rl; transform: rotate(180deg); }
   .m-wwrap { container-type: inline-size; }
@@ -69,3 +69,6 @@
   .m-tech-noisy { box-shadow: inset 3px 0 0 #f59e0b; background: rgb(245 158 11 / .07); }
   .m-tech-sel { border-color: #00c389 !important; }
 
+
+  /* room for the AgentiX icon in the top right corner */
+  #mv-rules > div:first-child, #mv-iocs > div:first-child, #mv-streams > div:first-child, #mv-sources > div:first-child, #mv-mitre > div:first-child { padding-right: 60px; }

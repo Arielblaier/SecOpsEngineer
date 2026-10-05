@@ -29,7 +29,7 @@ const MY_SUGGEST = {
   Keep: ['slate', 'Checked. Nothing to change']
 };
 const MY_CARD = {
-  source: 'Missing data source', pipeline: 'Broken data or mapping', broken: 'Broken rule', noisy: 'Noisy rule',
+  source: 'Missing data source', integration: 'Missing integration', pipeline: 'Broken data or mapping', broken: 'Broken rule', noisy: 'Noisy rule',
   content: 'Existing content available', gap: 'Coverage gap', ioc: 'Indicator', retire: 'Rules to retire', settings: 'Rule settings', handover: 'Handed over', check: 'Third-party source check'
 };
 const MY_TRIGGER = { sweep: ['Scheduled sweep', 'clock'], change: ['Change event', 'git-commit-horizontal'], handoff: ['Handoff', 'corner-down-right'], human: ['Human request', 'user'] };
@@ -261,18 +261,26 @@ function myWorld() {
       decision: null, outcome: 'Approved by Ariel B. Internal deny events are kept. MSN-1004 continued on its own: the port-scan rule is in a 7-day silent test.',
       affects: { rules: [230], source: 'fortigate' },
       pivots: [['streams', 'Data Streams', 'the filter step']] },
-    { id: 'MSN-1006', card: 'content', title: 'Impossible-travel logins: connect Okta and adopt the Marketplace rule', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', opened: now - 30 * H,
+    { id: 'MSN-1006', card: 'gap', title: 'Impossible-travel logins are not detected: no Okta sign-in data', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', waitOn: 'MSN-1014', opened: now - 30 * H,
       trigger: { kind: 'human', text: 'Ariel B. asked: “Add a rule for impossible-travel logins.”' },
-      summary: 'The identity provider is not connected. A Marketplace rule covers impossible travel once it is, so no new rule is needed.',
-      steps: ['Looked for the data first: Okta sign-in logs are not connected', 'Searched existing content: the Marketplace has “Okta - Impossible travel”', 'Checked what else the source unlocks: 9 Marketplace detections need Okta sign-in logs', 'No new rule is needed'],
-      diagnosis: 'Coverage gap caused by a missing data source.',
-      current: { kind: 'settings', label: 'Coverage for impossible travel', rows: [['Okta sign-in logs', 'Not connected'], ['Rule', 'None'], ['Detections that need Okta', '0 of 9 working']] },
-      recommended: { kind: 'settings', label: 'Coverage for impossible travel', rows: [['Okta sign-in logs', 'Connect (needs the identity team)'], ['Rule', 'Enable Marketplace “Okta - Impossible travel”'], ['Detections that need Okta', '9 of 9 working']] },
-      validation: { rows: [['Detections unlocked', 0, 9, 9]], note: 'The Marketplace rule runs in a silent test for 14 days after the source is connected, before it creates issues.' },
-      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'A request is opened for the identity team. When data arrives the Detection Engineer enables the Marketplace rule in a silent test and comes back with the result.', risk: 'Low. It is a recommendation. Nothing changes until the source is connected.', reversible: true },
+      summary: 'No rule can detect impossible travel today, because Okta sign-in logs are not ingested. A Marketplace rule covers it once they are, so no new rule is needed.',
+      steps: ['Looked for the data first: no Okta sign-in logs are ingested', 'Searched existing content: the Marketplace has “Okta - Impossible travel”', 'No new rule is needed. The missing piece is the Okta integration, so opened MSN-1014 for the Pipeline Engineer'],
+      diagnosis: 'Coverage gap caused by a missing integration, not by a missing rule.',
+      validation: null, decision: null,
+      after: 'Closed automatically. Okta sign-in logs arrive and the Marketplace rule finished its silent test.',
       affects: { rules: [], source: 'okta' },
       pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
-
+    { id: 'MSN-1014', card: 'integration', title: 'Missing integration: Okta sign-in logs are not connected', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', unblocks: 'MSN-1006', opened: now - 30 * H + 15 * 60000,
+      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1006: is there identity sign-in data for an impossible-travel rule?' },
+      summary: 'Okta is the identity provider for the workforce and it is not connected to XSIAM. 9 Marketplace detections need its sign-in logs, including impossible travel. Connecting it needs an API token from the identity team.',
+      steps: ['Checked what is ingested: Entra ID and Active Directory sign-ins arrive, Okta does not', 'Checked the Marketplace: the Okta pack brings the parser, the data model and 9 detections, with no custom work', 'Estimated the volume: about 2 GB a day', 'An API token is needed, and an agent cannot create credentials, so this needs the identity team'],
+      diagnosis: 'A data source that detections need is not connected.',
+      current: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Not connected'], ['Detections that need it', '0 of 9 working'], ['Impossible travel', 'Not detected']] },
+      recommended: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Connect (API token from the identity team)'], ['Detections that need it', '9 of 9, after a 14-day silent test'], ['Impossible travel', 'Marketplace rule “Okta - Impossible travel”']] },
+      validation: { rows: [['Detections unlocked', 0, 9, 9]], note: 'Expected ingestion is about 2 GB a day. The Marketplace rules run in a silent test for 14 days before they create issues.' },
+      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'A request is opened for the identity team, with the steps and the scope of the API token. MSN-1006 continues when the data arrives.', risk: 'Low. Nothing changes until the source is connected.', reversible: true },
+      affects: { rules: [], source: 'okta' },
+      pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
     { id: 'MSN-1005', card: 'retire', title: 'Retire 3 leftover rules: a duplicate, an old beta and a test', verdict: 'Noisy', conf: 'High', impact: 'Low', layer: 'rule', status: 'pending', opened: now - 50 * H, noise: 'Duplicate',
       trigger: { kind: 'sweep', text: 'Weekly sweep: two enabled rules have the same query, and two disabled rules have not run for 6 weeks.' },
       summary: 'One rule is an exact copy of another and doubles its issues. Two more are leftovers that nobody uses.',
@@ -373,7 +381,7 @@ function myWorld() {
   const TEAM = {
     'MSN-1001': { sug: 'Fix', agent: 'det' }, 'MSN-1012': { sug: 'Fix', agent: 'pipe' }, 'MSN-1003': { sug: 'Fix', agent: 'pipe' },
     'MSN-1002': { sug: 'Tune', agent: 'det' }, 'MSN-1004': { sug: 'Fix', agent: 'det' }, 'MSN-0999': { sug: 'Fix', agent: 'pipe' },
-    'MSN-1006': { sug: 'Connect', agent: 'det' }, 'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
+    'MSN-1006': { sug: 'Adopt', agent: 'det' }, 'MSN-1014': { sug: 'Connect', agent: 'pipe' }, 'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
     'MSN-0998': { sug: 'Tune', agent: 'det' }, 'MSN-0996': { sug: 'Watch', agent: 'det' }, 'MSN-0994': { sug: 'Tune', agent: 'det' },
     'MSN-0991': { sug: 'Keep', agent: 'pipe' }, 'MSN-0988': { sug: 'Hand over', agent: 'det' }
   };
@@ -438,6 +446,7 @@ function myWorld() {
     [now - 20 * H + 60000, 'test', 'MSN-1004 continued: 7-day silent test started on the port-scan rule'],
     [now - 9 * H, 'test', 'Silent test finished for the Chrome extension rule: 14 days'],
     [now - 9 * H + 60000, 'task', 'Opened MSN-1002 with the test result'],
+    [now - 30 * H + 15 * 60000, 'task', 'Opened MSN-1014 for the Pipeline Engineer: MSN-1006 waits on it'],
     [now - 26 * H, 'sweep', `Weekly sweep: ${rules.length} rules reviewed, 2 candidates`],
     [now - 30 * H, 'done', 'Ariel B. approved MSN-0994: ATT&CK mapping on 2 rules']
   ].map(([t, kind, text]) => ({ t, kind, text }));
@@ -542,9 +551,9 @@ function myApply(W, t, choice, whoName) {
   } else if (t.id === 'MSN-1005') {
     rule(222).status = 'Disabled'; rule(222).retired = true; rule(222).issues7d = 0; rule(216).retired = true; rule(218).retired = true; t.weekly = 61;
     close(end, `${verb} by ${who}. Rule 222 is disabled and rules 216 and 218 are retired. All three can be restored.`);
-  } else if (t.id === 'MSN-1006') {
+  } else if (t.id === 'MSN-1014') {
     t.status = 'progress'; t.by = who; t.progressNote = 'Waiting for the identity team'; t.decision = null; t.handed = true;
-    W.log.unshift({ t: now, kind: 'handoff', text: 'MSN-1006: request sent to the identity team to connect Okta' });
+    W.log.unshift({ t: now, kind: 'handoff', text: 'MSN-1014: request sent to the identity team to connect Okta' });
     return;
   }
   else if (t.id === 'MSN-1007') {

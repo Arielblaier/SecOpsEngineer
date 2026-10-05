@@ -8,9 +8,12 @@ const M_TABS = [['all', 'All'], ['pending', 'Pending'], ['progress', 'In progres
 function mWorkList() {
   const W = M.W, order = { pending: 0, progress: 1, done: 2 }, q = M.q.trim().toLowerCase();
   /* A mission that just started stays visible in Pending while its agent runs, so a new trigger is never missed. */
-  return W.tasks.filter(t => M.tab === 'all' || t.status === M.tab || (M.tab === 'pending' && mRunning(t)))
+  const list = W.tasks.filter(t => M.tab === 'all' || t.status === M.tab || (M.tab === 'pending' && mRunning(t)))
     .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || ''].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.waitOn ? 1 : 0) - (b.waitOn ? 1 : 0) || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
+    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
+  /* A mission that waits on another sits right under it, so the pair reads as one story. */
+  list.filter(t => t.waitOn).forEach(t => { const k = list.findIndex(x => x.id === t.waitOn); if (k < 0) return; list.splice(list.indexOf(t), 1); list.splice(list.findIndex(x => x.id === t.waitOn) + 1, 0, t); });
+  return list;
 }
 /* ---------- widgets ---------- */
 function mRing(pct, col, label, size = 62) {
@@ -69,8 +72,8 @@ function mWork() {
   const dot = { pending: 'bg-amber-500', progress: 'bg-blue-500', done: 'bg-cx' };
   const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
     return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : t.status === 'pending' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
-      <span>${mStatus(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
-      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn} · ${M_AG[(mTask(t.waitOn) || t).agent].name}</span>` : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : esc(MY_CARD[t.card])}</span></span>
+      <span class="leading-tight">${mStatus(t)}${mPendingOn(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
+      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span> · ${esc(MY_CARD[t.card])}` : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : esc(MY_CARD[t.card])}</span></span>
       <span>${run ? '<span class="text-ink4">—</span>' : mConf(t.conf)}</span>
       <span>${mImpact(t.impact)}</span>
       <span class="text-[12.5px] text-ink3">${myAge(Date.now() - t.opened)}</span>
