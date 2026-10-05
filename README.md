@@ -93,65 +93,81 @@ git checkout main              # back to the original
 `dist/` is not tracked. Rename the built file per variant if you want to keep
 several side by side.
 
-## The `dev` branch: Maya's story
+## The `dev` branch: SecOps Engineering
 
 `main` tells the story of Josh, the Security Analyst. `dev` adds a third mode
-that tells the same kind of story for **Maya, the SecOps Engineer**, with the
-focus on detection engineering. It is the default mode on this branch. The
-other two modes still work: switch from the demo menu (the lightning icon)
-under "Agents". Maya's mode opens straight into the product, with no landing
-page and no presenter text on the screens. Help that belongs to the product
-sits behind small info icons. The landing page is still in the demo menu.
+for the SecOps Engineering domain, with the focus on detection engineering.
+It is the default mode on this branch. The other two modes still work: switch
+from the demo menu (the lightning icon) under "Agents".
 
-What the Maya mode shows:
+There is no single named agent in this mode. Two agents work the domain:
+
+- **Detection Engineer**: rules, indicators and coverage.
+- **Pipeline Engineer**: filtering, parsing and normalizing.
+
+Each agent can pass a task to the other and wait for its answer. A task shows
+both agents and what they said to each other.
+
+What the mode shows:
 
 | Screen | What it is for |
 |---|---|
 | Home | The morning briefing. The chain from data source to rule, with the step where each problem starts |
-| Workforce | Maya's queue of agentic tasks. This is where decisions are made |
-| The task (side sheet) | Work done, diagnosis, current state next to the recommended change, validation, the one decision |
-| Correlation Rules | The native table, plus three added columns: AI Review, Confidence, Task status |
-| Data Streams | Each pipeline as source, filter, parsing, data model, destination. Maya's marker sits on the failing step |
-| Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes Maya's task on its own |
+| Agentic tasks | The queue from both agents, with filters (All, Pending, In progress, Done), search and live widgets |
+| The agent panel | Docked on the right, 40% of the screen. Holds the task card, the conversation and an always-open prompt bar |
+| Correlation Rules | The native table, plus two added columns: AI suggestion and Confidence. A suggested new rule has an Adopt button |
+| IOC Rules | The native table, plus the same two columns |
+| Data Streams | Each pipeline as source, filter, parsing, data model, destination. The Pipeline Engineer's marker sits on the failing step |
+| Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes the task on its own |
 | Insights | Value regained, and an ATT&CK status per technique instead of one percentage |
+
+The AI suggestion is what the agent proposes to do: Fix, Tune, Adopt, Connect,
+Drop, Watch, Hand over or Keep. Clicking a suggestion on any native screen
+opens the same task card in the agent panel.
+
+The screen is live. Three new triggers arrive one minute apart. Each one shows
+the agent running, then becomes a decision. Add `?live=10` to the address to
+make them arrive every 10 seconds, or use "Send a new trigger now" in the demo
+menu.
 
 Leaving a task and coming back:
 
-- Every task links to the native screen where its objects live.
-- After that jump, a bar at the top names the task, says whether the decision
-  still waits, and offers "Back to the task" and "Decide here". It stays while
-  you move between native screens. Esc also goes back.
-- On a native screen you reached on your own, a pill at the bottom right shows
-  how many decisions wait and returns you to the queue.
+- Every task links to the native screen where its objects live. The agent
+  panel stays open with the task, so the decision can be made there.
+- After that jump, a bar at the top names the task and offers "Back to Agentic
+  tasks". It stays while you move between native screens. Esc also goes back.
+- On a native screen with the panel closed, a pill at the bottom right shows
+  how many decisions wait and opens the panel.
 
-Where the code is:
+Where the code is (the file names keep the old `maya` prefix):
 
 ```
-src/js/60-maya-data.js      The world: sources, pipelines, rules, tasks. The ONLY place numbers live
-src/js/61-maya-core.js      State, navigation, side sheet, return bar, decisions pill
-src/js/62-maya-task.js      The agentic task and deciding on it
-src/js/63-maya-work.js      Workforce screen
+src/js/60-maya-data.js      The world: sources, pipelines, rules, indicators, tasks. The ONLY place numbers live
+src/js/61-maya-core.js      State, the two agents, navigation, the docked panel, return bar, live triggers
+src/js/62-maya-task.js      The agent panel, the task card, deciding, the prompt bar
+src/js/63-maya-work.js      Agentic tasks screen and its widgets
 src/js/64-maya-home.js      Home and the scripted answers
 src/js/65-maya-rules.js     Correlation Rules
 src/js/66-maya-streams.js   Data Streams
 src/js/67-maya-sources.js   Data Sources & Integrations
 src/js/68-maya-insights.js  Insights
-src/js/69-maya-landing.js   Landing page
+src/js/69-maya-iocs.js      IOC Rules
 src/styles/16-maya.css      Styles for all of the above
 ```
 
-Two rules for editing the Maya mode:
+Two rules for editing this mode:
 
 **Numbers are computed, never typed.** Every count on every screen comes from
-`myStats`, `myRuleReview` and the objects in `60-maya-data.js`. A decision
-changes the world in one function, `myApply`, and every screen redraws from
-it. If you add a number to a screen, derive it. Dates in the story are counted
-back from the current time for the same reason.
+`myStats`, `myRuleReview`, `myIocReview` and the objects in `60-maya-data.js`.
+A decision changes the world in one function, `myApply`, and every screen
+redraws from it. If you add a number to a screen, derive it. Dates in the
+story are counted back from the current time for the same reason.
 
-**The Maya files run after the original boot.** In Maya mode the original
-views are hidden and the original simulation loop stays paused. The four
-existing files that were touched (`05`, `49`, `54`, `57`) only add the mode
-switch and hand over to `mBoot()`.
+**These files run after the original boot.** In this mode the original views
+are hidden and the original simulation loop stays paused. The existing files
+that were touched (`05`, `49`, `54`, `57`, and the loader timing in
+`04-cortex-brand.css`) only add the mode switch, hand over to `mBoot()`, and
+let the Cortex loader finish its animation.
 
 Rule names, table columns and screen layouts follow the real product screens.
 Volumes, people and failures are invented. The Data Streams screen follows a

@@ -1,9 +1,11 @@
 /* ======================================================================
-   MAYA · THE SECOPS ENGINEER'S WORLD
-   One source of truth. Every number on every Maya screen is computed from
-   the objects below, so the screens cannot disagree with each other.
+   SECOPS ENGINEERING · THE WORLD
+   One source of truth. Every number on every screen is computed from the
+   objects below, so the screens cannot disagree with each other.
    Rule names and screen layouts follow the real product screens. Volumes,
    people and failures are invented for the story.
+   Two agents work this domain: the Detection Engineer (rules, indicators,
+   coverage) and the Pipeline Engineer (filtering, parsing, normalizing).
    ====================================================================== */
 const MY_LAYERS = [
   ['source', 'Data source', 'cable'], ['filter', 'Filter', 'filter'], ['parsing', 'Parsing', 'braces'],
@@ -13,11 +15,22 @@ const MY_LAYER = Object.fromEntries(MY_LAYERS.map(([k, n, i]) => [k, { name: n, 
 const MY_VERDICT = {
   Healthy: ['cx', 'Checked, nothing wrong'], Broken: ['rose', 'It cannot fire, or it fires on wrong data'], Noisy: ['amber', 'It fires too much'],
   Gap: ['indigo', 'Something that should be detected is not'], Mismatch: ['purple', 'XSIAM and the source product disagree'],
-  Inconclusive: ['slate', 'Maya could not decide yet'], Leftover: ['slate', 'Disabled and unused'], Retired: ['slate', 'Disabled on Maya’s recommendation'], 'Not reviewed': ['slate', 'Maya has not looked at this rule']
+  Inconclusive: ['slate', 'Not enough evidence yet'], Leftover: ['slate', 'Disabled and unused'], Retired: ['slate', 'Disabled on an agent suggestion'], 'Not reviewed': ['slate', 'Not reviewed yet']
+};
+/* What the agent suggests doing. This is what the user sees: proactive, not a judgment. */
+const MY_SUGGEST = {
+  Fix: ['rose', 'Repair something that is broken: a source, a filter, a parsing rule or a mapping'],
+  Tune: ['amber', 'Reduce noise without losing detections: a setting, an environment fact or the rule logic'],
+  Adopt: ['cx', 'Add a new rule, or enable content that already exists'],
+  Connect: ['cyan', 'Bring a data source that detections are waiting for'],
+  Drop: ['purple', 'Disable or retire a rule or an indicator that no longer earns its place'],
+  Watch: ['slate', 'Not enough evidence yet. No change, checked again later'],
+  'Hand over': ['indigo', 'The fix belongs to another owner, such as the Palo Alto content team'],
+  Keep: ['slate', 'Checked. Nothing to change']
 };
 const MY_CARD = {
   source: 'Missing data source', pipeline: 'Broken data or mapping', broken: 'Broken rule', noisy: 'Noisy rule',
-  content: 'Existing content available', gap: 'Coverage gap', retire: 'Rules to retire', settings: 'Rule settings', handover: 'Handed over', check: 'Third-party source check'
+  content: 'Existing content available', gap: 'Coverage gap', ioc: 'Indicator', retire: 'Rules to retire', settings: 'Rule settings', handover: 'Handed over', check: 'Third-party source check'
 };
 const MY_TRIGGER = { sweep: ['Scheduled sweep', 'clock'], change: ['Change event', 'git-commit-horizontal'], handoff: ['Handoff', 'corner-down-right'], human: ['Human request', 'user'] };
 
@@ -72,7 +85,7 @@ function myWorld() {
       parsing: { name: 'google_chrome', origin: 'Marketplace', text: '[INGEST:vendor="Google", product="Chrome",\n target_dataset="google_chrome_raw", no_hit=keep]' },
       model: { name: 'Chrome model', origin: 'Marketplace', ok: true }, dest: ['Analytics'] },
     { id: 'p-cp', src: 'checkpoint', product: 'Threat Emulation', filter: null,
-      parsing: { name: 'check_point_threat_emulation', origin: 'Default', text: '[INGEST:vendor="Check Point", product="Threat Emulation",\n target_dataset="check_point_threat_emulation_raw", no_hit=drop]' },
+      parsing: { name: 'check_point_threat_emulation', origin: 'User defined', text: '[INGEST:vendor="Check Point", product="Threat Emulation",\n target_dataset="check_point_threat_emulation_raw", no_hit=drop]' },
       model: { name: 'Check Point model', origin: 'Default', ok: true }, dest: ['Analytics'] },
     { id: 'p-m365', src: 'm365', product: 'Microsoft 365 audit', filter: null,
       parsing: { name: 'msft_o365', origin: 'Default', text: '[INGEST:vendor="Microsoft", product="Office 365",\n target_dataset="msft_o365_general_raw", no_hit=keep]' },
@@ -124,7 +137,7 @@ function myWorld() {
       xql: 'datamodel dataset = check_point_threat_emulation_raw\n| filter xdm.alert.name = "malicious"\n| fields *' }),
     R(236, 'M365 - Mail forwarding rule to external domain', { pipe: 'p-m365', source: U('Dana L.'), issues7d: 6, mod: 'Jun 18th 2026', tactic: 'TA0009 - Collection', tech: 'T1114.003 - Email Forwarding Rule', cat: 'Collection', desc: 'Inbox rule that forwards mail outside the company',
       xql: 'datamodel dataset = msft_o365_general_raw\n| filter xdm.event.operation = "New-InboxRule" and xdm.target.domain != "bankus.example"\n| fields *' }),
-    R(237, 'M365 - Mass download from SharePoint', { pipe: 'p-m365', source: U('Dana L.'), issues7d: 3, mod: 'Jun 18th 2026', tactic: 'TA0010 - Exfiltration', tech: 'T1567 - Exfiltration Over Web Service', cat: 'Exfiltration', desc: 'One user downloads more than 500 files in 10 minutes',
+    R(237, 'M365 - Mass download from SharePoint', { pipe: 'p-m365', source: U('Dana L.'), issues7d: 25, mod: 'Jun 18th 2026', tactic: 'TA0010 - Exfiltration', tech: 'T1567 - Exfiltration Over Web Service', cat: 'Exfiltration', desc: 'One user downloads more than 500 files in 10 minutes',
       xql: 'datamodel dataset = msft_o365_general_raw\n| filter xdm.event.operation = "FileDownloaded"\n| comp count() as files by xdm.source.user.username\n| filter files > 500' }),
     R(238, 'DNS - Tunneling to rare TLD', { pipe: 'p-dns', source: U('Guy R.'), issues7d: 2, mod: 'Sep 30th 2026', tactic: 'TA0011 - Command and Control', tech: 'T1071.004 - DNS', cat: 'Command and Control', desc: 'Steady stream of long DNS queries to a rarely seen top-level domain',
       xql: 'datamodel dataset = infoblox_dns_raw\n| filter length(xdm.network.dns.dns_question.name) > 60\n| comp count() as q by xdm.source.ipv4, tld\n| filter q > 200' })
@@ -133,9 +146,9 @@ function myWorld() {
   /* ---------- Agentic tasks ---------- */
   const tasks = [
     { id: 'TSK-1001', card: 'pipeline', title: 'SentinelOne severity arrives empty: 3 rules create issues with no severity', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', opened: now - 5 * H,
-      trigger: { kind: 'handoff', from: 'analyst', text: 'Josh opened 38 SentinelOne cases in 2 days with no severity, so they were triaged late.' },
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent opened 38 SentinelOne cases in 2 days with no severity, so they were triaged late.' },
       summary: 'A change in the SentinelOne pack renamed the field that carries severity. Three rules read it through the data model, so one mapping line breaks all three.',
-      steps: ['Read the 38 cases Josh handed over: all came from three rules and all had an empty severity', 'Checked the three rules: the queries are valid and still fire', 'Followed the field the rules read, xdm.alert.severity, down to the data model', `Found that the SentinelOne pack update on ${packDay} stopped sending threatInfo_severity`, 'Wrote a corrected mapping and replayed 7 days of events through it'],
+      steps: ['Read the 38 cases the Investigation Agent handed over: all came from three rules and all had an empty severity', 'Checked the three rules: the queries are valid and still fire', 'Followed the field the rules read, xdm.alert.severity, down to the data model', `Found that the SentinelOne pack update on ${packDay} stopped sending threatInfo_severity`, 'Wrote a corrected mapping and replayed 7 days of events through it'],
       diagnosis: 'The rules are fine. The data model maps xdm.alert.severity from a field the source no longer sends.',
       current: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_severity,', 'del'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
       recommended: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = coalesce(threatInfo_confidenceLevel, threatInfo_severity),', 'add'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
@@ -152,19 +165,19 @@ function myWorld() {
       current: { kind: 'settings', label: 'Amazon S3 · Cloud audit logs · production', rows: [['Status', 'Error'], ['Last event received', myWhen(down)], ['Error', 'Access denied, the access key expired'], ['Rules without data', '2']] },
       recommended: { kind: 'settings', label: 'Amazon S3 · Cloud audit logs · production', rows: [['Status', 'Connected'], ['Action', 'Replace the access key (needs a person)'], ['After reconnect', 'Backfill 46 hours from the queue'], ['Rules without data', '0']] },
       validation: { rows: [['Rules receiving data', 0, 2, 2]], note: `The queue keeps 14 days of events, so nothing is lost if the key is replaced before ${lastChance}.` },
-      decision: { q: 'Replace the access key, or hand this to the cloud team?', approve: 'Hand over to cloud team', effect: 'Maya opens a request for the cloud team with the error, the instance and the two rules. She cannot create credentials herself.', risk: 'Low. Restores access that existed before. No new access is granted.', reversible: true, selfFix: 'You can also replace the key yourself in Data Sources.' },
+      decision: { q: 'Replace the access key, or hand this to the cloud team?', approve: 'Hand over to cloud team', effect: 'The Pipeline Engineer opens a request for the cloud team with the error, the instance and the two rules. An agent cannot create credentials.', risk: 'Low. Restores access that existed before. No new access is granted.', reversible: true, selfFix: 'You can also replace the key yourself in Data Sources.' },
       affects: { rules: [233, 234], instance: 's3-audit', source: 's3', node: { pipe: 'p-aws', stage: 'source' } },
       pivots: [['sources', 'Data Sources & Integrations', 'the instance in error'], ['rules', 'Correlation Rules', 'the 2 rules']] },
 
     { id: 'TSK-1002', card: 'noisy', title: 'Chrome extension installs: 1,250 issues a month, 92% from approved extensions', verdict: 'Noisy', conf: 'High', impact: 'Medium', layer: 'rule', status: 'pending', opened: now - 9 * H, noise: 'Low-value true positive',
-      trigger: { kind: 'handoff', from: 'analyst', text: 'Josh resolved 140 cases from this rule as benign in 14 days. Analysts agreed with 138 of them.' },
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 140 cases from this rule as benign in 14 days. Analysts agreed with 138 of them.' },
       summary: 'The rule alerts on any installation of a browser extension. It is correct, and almost nobody acts on it.',
       steps: ['Measured 30 days: 1,250 issues', 'Grouped them by user and extension: 9 extensions approved by IT produce 1,150 of them', 'Checked the label quality: 138 of 140 benign verdicts were confirmed by an analyst', 'Selected issue suppression and an environment fact. The query does not change', 'Ran the change silently next to the live rule for 14 days'],
       diagnosis: 'Low-value true positive. The rule is correct and the behavior is expected in this environment.',
       current: { kind: 'settings', label: 'Chrome - Chrome Extension Install Event', rows: [['Issue suppression', 'Off'], ['Environment facts', 'None'], ['Issues in 30 days', '1,250']] },
       recommended: { kind: 'settings', label: 'Chrome - Chrome Extension Install Event', rows: [['Issue suppression', 'On · 24 hours · by user and extension ID'], ['Environment facts', `9 extensions approved by IT · review on ${reviewDay}`], ['Issues in 30 days', '100']] },
       validation: { rows: [['Issues per month', 1250, 100, 1250], ['Issues on unapproved extensions kept', 100, 100, 100]], silent: true, note: 'Backtest on 30 days and a 14-day silent test.' },
-      decision: { q: 'Approve the suppression and the environment fact?', approve: 'Approve change', effect: 'Suppression is turned on for this rule. The fact is saved with a review date and is shared with Josh.', risk: 'Low. Unapproved extensions still alert.', reversible: true },
+      decision: { q: 'Approve the suppression and the environment fact?', approve: 'Approve change', effect: 'Suppression is turned on for this rule. The fact is saved with a review date and is shared with the Investigation Agent.', risk: 'Low. Unapproved extensions still alert.', reversible: true },
       affects: { rules: [224], source: 'chrome' },
       pivots: [['rules', 'Correlation Rules', 'the rule']] },
 
@@ -188,7 +201,7 @@ function myWorld() {
       current: { kind: 'settings', label: 'Coverage for impossible travel', rows: [['Okta sign-in logs', 'Not connected'], ['Rule', 'None'], ['Detections that need Okta', '0 of 9 working']] },
       recommended: { kind: 'settings', label: 'Coverage for impossible travel', rows: [['Okta sign-in logs', 'Connect (needs the identity team)'], ['Rule', 'Enable Marketplace “Okta - Impossible travel”'], ['Detections that need Okta', '9 of 9 working']] },
       validation: { rows: [['Detections unlocked', 0, 9, 9]], note: 'The Marketplace rule runs in a silent test for 14 days after the source is connected, before it creates issues.' },
-      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'Maya opens a request for the identity team. When data arrives she enables the Marketplace rule in a silent test and comes back with the result.', risk: 'Low. It is a recommendation. Nothing changes until the source is connected.', reversible: true },
+      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'A request is opened for the identity team. When data arrives the Detection Engineer enables the Marketplace rule in a silent test and comes back with the result.', risk: 'Low. It is a recommendation. Nothing changes until the source is connected.', reversible: true },
       affects: { rules: [], source: 'okta' },
       pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
 
@@ -204,8 +217,32 @@ function myWorld() {
       affects: { rules: [222, 216, 218] },
       pivots: [['rules', 'Correlation Rules', 'the 3 rules']] },
 
+    { id: 'TSK-1007', card: 'ioc', title: 'Indicator hash matches a signed software updater: 290 issues a week, all benign', verdict: 'Noisy', conf: 'High', impact: 'Medium', layer: 'rule', status: 'pending', opened: now - 7 * H, noise: 'Stale indicator',
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 290 issues from this indicator as benign in 7 days.' },
+      summary: 'A file hash added in 2022 now matches the current version of a signed endpoint-management updater. Every match is benign.',
+      steps: ['Grouped 7 days of issues: all 290 come from one process, the endpoint-management updater', 'Checked the file: signed by its vendor and present on 1,900 hosts', 'Checked reputation today: none of the 3 intel sources lists the hash as malicious', 'Checked the indicator: added in December 2022, no expiration date'],
+      diagnosis: 'Stale indicator. It no longer points at a malicious file.',
+      current: { kind: 'settings', label: 'IOC rule 1 · Hash', rows: [['Indicator', '51ff4a03…68b1f5705'], ['Status', 'Enabled'], ['Expiration date', 'Never'], ['Issues in 7 days', '290']] },
+      recommended: { kind: 'settings', label: 'IOC rule 1 · Hash', rows: [['Indicator', '51ff4a03…68b1f5705'], ['Status', 'Disabled'], ['Expiration date', 'Today'], ['Issues in 7 days', '0']] },
+      validation: { rows: [['Issues per week', 290, 0, 290], ['Confirmed malicious matches lost', 0, 0, 1]], note: 'Checked on 30 days: no match of this indicator was confirmed malicious.' },
+      decision: { q: 'Drop this indicator?', approve: 'Drop indicator', effect: 'The indicator is disabled and expires today. It can be restored.', risk: 'Low. The hash is no longer listed as malicious.', reversible: true },
+      affects: { rules: [], iocs: [1] },
+      pivots: [['iocs', 'IOC Rules', 'the indicator']] },
+
+    { id: 'TSK-1008', card: 'gap', title: 'New rule suggested: Office application launching a script host', verdict: 'Gap', conf: 'Medium', impact: 'Medium', layer: 'rule', status: 'pending', opened: now - 12 * H,
+      trigger: { kind: 'handoff', from: 'hunter', text: 'The Threat Hunter agent found Word launching mshta.exe on 2 finance workstations and marked the hunt as repeatable.' },
+      summary: 'The data is present, and no existing rule, Palo Alto analytic or Marketplace content covers this pattern on SentinelOne data. A new correlation rule is suggested.',
+      steps: ['Checked the data: SentinelOne process events are arriving and mapped', 'Searched Palo Alto analytics and the Marketplace: nothing covers this pattern on SentinelOne data', 'Looked for an existing rule to enhance: none reads the parent and child process', 'Wrote a new rule and mapped it to ATT&CK T1218.005', 'Backtested it on 30 days'],
+      diagnosis: 'Coverage gap. The data is present and no existing content covers it.',
+      current: { kind: 'settings', label: 'Coverage for T1218.005 Mshta', rows: [['Rule', 'None'], ['Existing content', 'None found'], ['Data', 'SentinelOne process events, arriving']] },
+      recommended: { kind: 'code', label: 'New rule · SentinelOne - Office application launching a script host', lines: [['datamodel dataset = sentinelone_xdr_raw', 'add'], ['| filter xdm.source.process.name in ("winword.exe", "excel.exe", "powerpnt.exe")', 'add'], ['| filter xdm.target.process.name in ("mshta.exe", "wscript.exe", "cscript.exe")', 'add'], ['| fields *', 'add']] },
+      validation: { rows: [['Matches in 30 days', 0, 2, 2]], note: 'Backtest on 30 days: 2 matches, the two hosts the hunt found. No other match.' },
+      decision: { q: 'Adopt this rule?', approve: 'Adopt rule', effect: 'The rule is added to Correlation Rules and enabled, with the Detection Engineer as its source.', risk: 'Low. Detection only, and two matches in 30 days.', reversible: true },
+      affects: { rules: [], suggested: 241 },
+      pivots: [['rules', 'Correlation Rules', 'the suggested rule']] },
+
     { id: 'TSK-0998', card: 'noisy', title: 'VPN brute-force rule counts retries as attacks: tuned version is in a silent test', verdict: 'Noisy', conf: 'Medium', impact: 'Medium', layer: 'rule', status: 'progress', opened: now - 9 * D, noise: 'Logic error', progressNote: 'Silent test · day 9 of 14',
-      trigger: { kind: 'handoff', from: 'analyst', text: 'Josh resolved 61 cases from this rule as benign in 14 days. Most were one user retrying an expired password.' },
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 61 cases from this rule as benign in 14 days. Most were one user retrying an expired password.' },
       summary: 'The rule counts failed logins per user. A person or a service retrying an expired password looks the same as an attack.',
       steps: ['Read the rule’s intent: catch password guessing against the VPN portal', 'Found the flaw: it groups by user, not by source, and never asks whether a login then succeeded', 'Rewrote it: group by source address, raise the threshold, require a success after the failures', 'Backtested on 30 days, then started a 14-day silent test'],
       diagnosis: 'Logic error in the rule. It counts failed logins per user and never checks whether a login then succeeded.',
@@ -221,7 +258,7 @@ function myWorld() {
       summary: 'The rule was edited five days ago. Two issues in five days are not enough to say whether it is noisy or healthy.',
       steps: ['Counted issues since the edit: 2', 'Both were closed as benign, by one analyst, with no reason given', 'Decided not to act on two weak labels'],
       diagnosis: 'Not enough evidence to call the rule noisy or healthy.',
-      validation: null, decision: null, outcome: `No change. Maya checks again on ${recheck}.`,
+      validation: null, decision: null, outcome: `No change. Checked again on ${recheck}.`,
       affects: { rules: [238] }, pivots: [['rules', 'Correlation Rules', 'the rule']] },
 
     { id: 'TSK-0994', card: 'settings', title: 'ATT&CK mapping added to 2 Chrome rules', verdict: 'Gap', conf: 'High', impact: 'Low', layer: 'rule', status: 'done', end: 'approved', by: 'Guy R.', opened: now - 3 * D, closed: now - 30 * H,
@@ -241,7 +278,7 @@ function myWorld() {
       affects: { rules: [236, 237], source: 'm365' }, pivots: [['sources', 'Data Sources & Integrations', 'the source']] },
 
     { id: 'TSK-0988', card: 'handover', title: 'Palo Alto analytic “Suspicious PowerShell download” is noisy here: evidence sent to the content team', verdict: 'Noisy', conf: 'Medium', impact: 'Medium', layer: 'rule', status: 'done', end: 'handed', opened: now - 6 * D, closed: now - 6 * D + 4 * H,
-      trigger: { kind: 'handoff', from: 'analyst', text: 'Josh resolved 412 issues from this analytic as benign in one week.' },
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 412 issues from this analytic as benign in one week.' },
       summary: 'This analytic is Palo Alto content and cannot be tuned in the tenant.',
       steps: ['Traced the benign issues to signed software-distribution scripts', 'Confirmed the logic belongs to Palo Alto, not to the customer', 'Sent the field evidence to the Palo Alto content team', 'Changed nothing in this tenant'],
       diagnosis: 'Noise in Palo Alto content.',
@@ -249,12 +286,79 @@ function myWorld() {
       affects: { rules: [] }, pivots: [] }
   ];
 
-  /* ---------- What Maya did, newest first ---------- */
+
+  /* ---------- IOC rules ---------- */
+  const iocs = [
+    { id: 7, mod: 'Dec 2nd 2025 03:49:29', ind: 'dnscat2.exe, dnscat2-client.exe, dnscat2-win32.exe, 8f3b4db351b8a50e…', type: 'File Name', sev: 'High', issues: 0, issues7d: 0, source: 'Guy R.', exp: 'Never', status: 'Enabled', rep: 'Bad', rel: 'B - Usually reliable' },
+    { id: 3, mod: 'Dec 22nd 2022 21:27:25', ind: '73.213.32.45', type: 'IP', sev: 'High', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Suspicious', rel: 'C - Fairly reliable' },
+    { id: 2, mod: 'Dec 22nd 2022 21:26:45', ind: 'myexternalip.com', type: 'Domain Name', sev: 'Medium', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Suspicious', rel: 'C - Fairly reliable' },
+    { id: 1, mod: 'Dec 22nd 2022 21:25:52', ind: '51ff4a033018d9343049305061dcde77cb5f26f5ec48d1be42669f368b1f5705', type: 'Hash', sev: 'High', issues: 1241, issues7d: 290, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Bad', rel: 'B - Usually reliable' },
+    { id: 5, mod: 'Mar 4th 2024 10:12:03', ind: 'update-check.example.net', type: 'Domain Name', sev: 'Low', issues: 0, issues7d: 0, source: 'Omer A.', exp: 'Expired', status: 'Disabled', rep: 'Unknown', rel: 'F - Cannot be judged' },
+    { id: 4, mod: 'Jan 9th 2023 08:40:11', ind: '198.51.100.23', type: 'IP', sev: 'Medium', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Expired', status: 'Disabled', rep: 'Unknown', rel: 'F - Cannot be judged' }
+  ];
+
+  /* ---------- A rule the agent suggests. It becomes a real rule when adopted. ---------- */
+  const suggested = [R(241, 'SentinelOne - Office application launching a script host', { pipe: 'p-s1', source: { kind: 'agent', name: 'Detection Engineer' }, mod: 'Today', tactic: 'TA0005 - Defense Evasion', tech: 'T1218.005 - Mshta', cat: 'Defense Evasion', desc: 'An Office application starts mshta, wscript or cscript', task: 'TSK-1008',
+    xql: 'datamodel dataset = sentinelone_xdr_raw\n| filter xdm.source.process.name in ("winword.exe", "excel.exe", "powerpnt.exe")\n| filter xdm.target.process.name in ("mshta.exe", "wscript.exe", "cscript.exe")\n| fields *' })];
+
+  /* ---------- Who works on what, and what the two agents said to each other ---------- */
+  const TEAM = {
+    'TSK-1001': { sug: 'Fix', agent: 'det', fixer: 'pipe', collab: [['det', 'Three rules read xdm.alert.severity and all three get it empty. The rules are valid, so I asked the Pipeline Engineer to check the mapping.'], ['pipe', 'The pack update stopped sending threatInfo_severity. I wrote a corrected mapping and replayed 7 days through it.']] },
+    'TSK-1003': { sug: 'Fix', agent: 'pipe', collab: [['pipe', 'The audit-log instance is in error: the access key expired. I asked the Detection Engineer what depends on it.'], ['det', 'Two enabled rules read this dataset. Both have had no data since the instance stopped.']] },
+    'TSK-1002': { sug: 'Tune', agent: 'det' },
+    'TSK-1004': { sug: 'Fix', agent: 'det', fixer: 'pipe', collab: [['det', 'The port-scan rule is enabled and has been silent for 23 days. Its source is healthy, so I asked the Pipeline Engineer to check what happens in between.'], ['pipe', 'A filter added that day drops every deny event. I wrote a narrower filter that keeps deny events between internal hosts.']] },
+    'TSK-1006': { sug: 'Connect', agent: 'det', collab: [['det', 'A rule for impossible travel was requested. I asked the Pipeline Engineer whether identity sign-in data exists.'], ['pipe', 'Okta is not connected. Once it is, the Marketplace parser and data model cover it with no custom work.']] },
+    'TSK-1005': { sug: 'Drop', agent: 'det' }, 'TSK-1007': { sug: 'Drop', agent: 'det' }, 'TSK-1008': { sug: 'Adopt', agent: 'det' },
+    'TSK-0998': { sug: 'Tune', agent: 'det' }, 'TSK-0996': { sug: 'Watch', agent: 'det' }, 'TSK-0994': { sug: 'Tune', agent: 'det' },
+    'TSK-0991': { sug: 'Keep', agent: 'pipe' }, 'TSK-0988': { sug: 'Hand over', agent: 'det' }
+  };
+  tasks.forEach(t => Object.assign(t, TEAM[t.id]));
+
+  /* ---------- Tasks that arrive while the screen is open ---------- */
+  const incoming = [
+    { id: 'TSK-1009', card: 'pipeline', title: 'Check Point verdicts for archive files are dropped at parsing', verdict: 'Mismatch', sug: 'Fix', agent: 'det', fixer: 'pipe', conf: 'High', impact: 'Medium', layer: 'parsing', progressNote: 'Waiting for the Pipeline Engineer',
+      trigger: { kind: 'change', text: 'The Check Point Threat Emulation pack was updated 20 minutes ago.' },
+      summary: 'After a pack update the parsing rule drops a new event type, so 5 of 14 Check Point verdicts never reach the rule.',
+      steps: ['Compared the product with XSIAM after the update: the product reports 14 verdicts, XSIAM shows 9', 'Checked the rule: valid, and it fired on all 9', 'Asked the Pipeline Engineer to trace the 5 missing events', 'Found the cause: the update added the event type “archive verdict”, and the parsing rule drops what it does not know', 'Replayed the last 24 hours through the changed parsing rule'],
+      diagnosis: 'The product and XSIAM disagree. The parsing rule drops an event type that the pack update added.',
+      current: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=drop]', 'del']] },
+      recommended: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=keep]', 'add']] },
+      validation: { rows: [['Verdicts reaching the rule (24 hours)', 9, 14, 14]], note: 'Replayed the last 24 hours through the changed rule.' },
+      decision: { q: 'Approve the parsing change?', approve: 'Approve fix', effect: 'Event types the parsing rule does not know are kept. The rule sees every Check Point verdict.', risk: 'Low. It adds a small number of events.', reversible: true },
+      affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['streams', 'Data Streams', 'the parsing step'], ['rules', 'Correlation Rules', 'the rule']],
+      collab: [['det', 'After the pack update the product reports 14 verdicts and XSIAM shows 9. The rule is valid. I asked the Pipeline Engineer to trace the 5 missing events.']],
+      answer: ['pipe', 'The update added the event type “archive verdict”. The parsing rule has no_hit=drop, so those events are dropped. The change is attached.'] },
+    { id: 'TSK-1010', card: 'noisy', title: 'SharePoint mass-download rule fires on the nightly backup account', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Low', layer: 'rule', noise: 'Benign true positive', progressNote: 'Detection Engineer is diagnosing',
+      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 22 cases from this rule as benign in 7 days. All came from one service account.' },
+      summary: 'The backup service account downloads thousands of files every night. The rule is correct for people and wrong for this account.',
+      steps: ['Grouped 7 days of issues: 22 of 25 come from the account svc-backup', 'Checked the account: a service account, registered as the nightly backup job', 'Checked the labels: analysts agreed with all 22 benign verdicts', 'Selected an environment fact. The query does not change'],
+      diagnosis: 'Benign true positive. Expected behavior of one known account.',
+      current: { kind: 'settings', label: 'M365 - Mass download from SharePoint', rows: [['Environment facts', 'None'], ['Issues in 7 days', '25']] },
+      recommended: { kind: 'settings', label: 'M365 - Mass download from SharePoint', rows: [['Environment facts', `svc-backup is the nightly backup account · review on ${reviewDay}`], ['Issues in 7 days', '3']] },
+      validation: { rows: [['Issues per week', 25, 3, 25], ['Issues on other accounts kept', 3, 3, 3]], note: 'Backtest on 30 days. Downloads by any other account still alert.' },
+      decision: { q: 'Approve the environment fact?', approve: 'Approve change', effect: 'The fact is saved with a review date and shared with the Investigation Agent.', risk: 'Low. Only one named service account is affected.', reversible: true },
+      affects: { rules: [237], source: 'm365' }, pivots: [['rules', 'Correlation Rules', 'the rule']] },
+    { id: 'TSK-1011', card: 'ioc', title: '2 indicators from 2022 never matched and have no expiration date', verdict: 'Noisy', sug: 'Drop', agent: 'det', conf: 'Medium', impact: 'Low', layer: 'rule', noise: 'Stale indicator', progressNote: 'Detection Engineer is diagnosing',
+      trigger: { kind: 'sweep', text: 'Weekly sweep of IOC rules.' },
+      summary: 'Two indicators added in December 2022 have never matched and never expire. One of them is a public “what is my IP” service.',
+      steps: ['Listed enabled indicators with no expiration date', 'Checked matches since they were added: none for either', 'Checked reputation today: the IP is no longer listed, and the domain is a public IP-lookup service'],
+      diagnosis: 'Stale indicators. They cost matching time and can only produce false positives.',
+      current: { kind: 'settings', label: 'IOC rules 3 and 2', rows: [['73.213.32.45 (IP)', 'Enabled · never expires · 0 matches'], ['myexternalip.com (Domain)', 'Enabled · never expires · 0 matches']] },
+      recommended: { kind: 'settings', label: 'IOC rules 3 and 2', rows: [['73.213.32.45 (IP)', 'Disable · expire today'], ['myexternalip.com (Domain)', 'Disable · expire today']] },
+      validation: { rows: [['Matches lost', 0, 0, 1]], note: 'Neither indicator matched since December 2022, so confidence is medium, not high.' },
+      decision: { q: 'Drop these two indicators?', approve: 'Drop both', effect: 'Both indicators are disabled and expire today. They can be restored.', risk: 'Low. Neither has ever matched.', reversible: true },
+      affects: { rules: [], iocs: [3, 2] }, pivots: [['iocs', 'IOC Rules', 'the 2 indicators']] }
+  ];
+
+  /* Issues per week before today. The last point of the trend is always computed from the rules and indicators. */
+  const history = [2105, 2140, 2168, 2190, 2214, 2231, 2246];
+
+  /* ---------- Agent activity, newest first ---------- */
   const log = [
     [now - 6 * 60000, 'sweep', `Hourly data-health sweep: ${sources.flatMap(x => x.instances).length} instances checked, ${sources.flatMap(x => x.instances).filter(i => i.status === 'err').length} in error`],
     [now - 41 * 60000, 'check', 'Compared Check Point verdicts with XSIAM: 14 of 14 match'],
     [now - 3 * H, 'task', 'Opened TSK-1003: AWS audit logs stopped'],
-    [now - 5 * H, 'handoff', 'Josh handed over 38 SentinelOne cases with no severity'],
+    [now - 5 * H, 'handoff', 'The Investigation Agent handed over 38 SentinelOne cases with no severity'],
     [now - 5 * H + 9 * 60000, 'task', 'Opened TSK-1001: one mapping line behind 3 rules'],
     [now - 9 * H, 'test', 'Silent test finished for the Chrome extension rule: 14 days'],
     [now - 9 * H + 60000, 'task', 'Opened TSK-1002 with the test result'],
@@ -262,7 +366,7 @@ function myWorld() {
     [now - 30 * H, 'done', 'Guy R. approved TSK-0994: ATT&CK mapping on 2 rules']
   ].map(([t, kind, text]) => ({ t, kind, text }));
 
-  return { sources, pipes, rules, tasks, log, facts: [], dates: { packDay, filterDay, reviewDay } };
+  return { sources, pipes, rules, tasks, iocs, suggested, incoming, history, log, facts: [], dates: { packDay, filterDay, reviewDay } };
 }
 
 /* ---------- Derived values: never typed twice ---------- */
@@ -270,21 +374,35 @@ const myOpen = W => W.tasks.filter(t => t.status !== 'done');
 /* One order everywhere: most impact first, then the one that has waited longest. */
 const myRank = (a, b) => ({ High: 0, Medium: 1, Low: 2 })[a.impact] - ({ High: 0, Medium: 1, Low: 2 })[b.impact] || a.opened - b.opened;
 const myPendingTasks = W => W.tasks.filter(t => t.status === 'pending').sort(myRank);
+/* v is the health of the rule. sug is what the agent suggests, which is what the user sees. */
 function myRuleReview(W, r) {
-  if (r.retired) return { v: 'Retired', conf: '', task: W.tasks.find(t => (t.affects.rules || []).includes(r.id) && t.card === 'retire'), st: 'Done' };
-  const ts = W.tasks.filter(t => (t.affects.rules || []).includes(r.id));
+  if (r.retired) return { v: 'Retired', sug: '', conf: '', task: W.tasks.find(t => (t.affects.rules || []).includes(r.id) && t.card === 'retire') };
+  /* While an agent is still running, nothing is known about the rule yet: its health does not change. */
+  const mine = W.tasks.filter(t => (t.affects.rules || []).includes(r.id)), run = mine.find(t => t.live && t.status === 'progress');
+  if (run) { const base = myRuleReview({ tasks: W.tasks.filter(t => t !== run) }, r); return Object.assign(base, { task: run }); }
+  const ts = mine;
   const open = ts.find(t => t.status !== 'done');
-  if (open && open.card === 'retire' && r.status === 'Disabled') return { v: 'Leftover', conf: open.conf, task: open, st: 'Pending decision' };
-  if (open) return { v: open.verdict, conf: open.conf, task: open, st: open.status === 'pending' ? 'Pending decision' : 'In progress' };
+  if (open && open.card === 'retire' && r.status === 'Disabled') return { v: 'Leftover', sug: 'Drop', conf: open.conf, task: open };
+  if (open) return { v: open.verdict, sug: open.sug, conf: open.conf, task: open };
   const last = ts.slice().sort((a, b) => (b.closed || 0) - (a.closed || 0))[0];
   if (last) {
-    if (last.end === 'rejected' || last.end === 'dismissed') return { v: last.verdict, conf: last.conf, task: last, st: 'Done' };
-    if (last.end === 'watch') return { v: 'Inconclusive', conf: last.conf, task: last, st: 'Done' };
-    return { v: 'Healthy', conf: 'High', task: last, st: 'Done' };
+    if (last.end === 'rejected' || last.end === 'dismissed') return { v: last.verdict, sug: last.sug, conf: last.conf, task: last, declined: true };
+    if (last.end === 'watch') return { v: 'Inconclusive', sug: 'Watch', conf: last.conf, task: last };
+    return { v: 'Healthy', sug: 'Keep', conf: 'High', task: last };
   }
-  if (r.status === 'Disabled') return { v: 'Not reviewed', conf: '', task: null, st: '' };
-  return { v: 'Healthy', conf: 'High', task: null, st: '' };
+  if (r.status === 'Disabled') return { v: 'Not reviewed', sug: '', conf: '', task: null };
+  return { v: 'Healthy', sug: 'Keep', conf: 'High', task: null };
 }
+function myIocReview(W, i) {
+  const run = W.tasks.find(t => (t.affects.iocs || []).includes(i.id) && t.live && t.status === 'progress');
+  if (run) return { sug: 'Keep', conf: 'High', task: run };
+  const ts = W.tasks.filter(t => (t.affects.iocs || []).includes(i.id)), open = ts.find(t => t.status !== 'done');
+  if (open) return { sug: open.sug, conf: open.conf, task: open };
+  if (i.status !== 'Enabled') return { sug: '', conf: '', task: ts[0] || null };
+  const last = ts[0]; if (last && (last.end === 'rejected' || last.end === 'dismissed')) return { sug: last.sug, conf: last.conf, task: last, declined: true };
+  return { sug: 'Keep', conf: 'High', task: null };
+}
+const myIssuesNow = W => W.rules.reduce((a, r) => a + r.issues7d, 0) + W.iocs.reduce((a, i) => a + i.issues7d, 0);
 function myStats(W) {
   const enabled = W.rules.filter(r => r.status === 'Enabled');
   const rev = enabled.map(r => myRuleReview(W, r).v);
@@ -296,7 +414,7 @@ function myStats(W) {
     rules: W.rules.length, enabled: enabled.length, healthy, share: Math.round(healthy / enabled.length * 100),
     pending: myPendingTasks(W).length, progress: W.tasks.filter(t => t.status === 'progress').length, done: W.tasks.filter(t => t.status === 'done').length,
     inst: inst.length, instOk: inst.filter(i => i.status === 'ok').length, instErr: inst.filter(i => i.status === 'err').length,
-    sources: W.sources.length, byVerdict, removed
+    sources: W.sources.length, byVerdict, removed, iocs: W.iocs.length, issuesNow: myIssuesNow(W)
   };
 }
 /* Open tasks that sit on one step of one pipeline */
@@ -312,12 +430,12 @@ function myApply(W, t, choice, whoName) {
   const who = whoName.replace(/\.$/, '');
   const now = Date.now(), rule = id => W.rules.find(r => r.id === id);
   const close = (end, outcome) => { t.status = 'done'; t.end = end; t.closed = now; t.by = who; t.outcome = outcome; };
-  if (choice === 'reject') return close('rejected', `Rejected by ${who}. Nothing changed. The verdict stays on the affected objects.`);
-  if (choice === 'dismiss') return close('dismissed', `Dismissed by ${who}. Nothing changed, and Maya will not raise this again unless it gets worse.`);
+  if (choice === 'reject') return close('rejected', `Rejected by ${who}. Nothing changed. The suggestion stays visible on the affected objects.`);
+  if (choice === 'dismiss') return close('dismissed', `Dismissed by ${who}. Nothing changed, and this is not raised again unless it gets worse.`);
   const edited = choice === 'edit', end = edited ? 'edited' : 'approved', verb = edited ? 'Approved with edits' : 'Approved';
   if (t.id === 'TSK-1001') {
     W.pipes.find(p => p.id === 'p-s1').model.ok = true;
-    close(end, `${verb} by ${who}. Severity is filled on new issues from all three rules. Maya watches for 7 days and reopens the task if the field goes empty again.`);
+    close(end, `${verb} by ${who}. Severity is filled on new issues from all three rules. The Pipeline Engineer watches for 7 days and reopens the task if the field goes empty again.`);
   } else if (t.id === 'TSK-1002') {
     const r = rule(224); r.supp = { dur: '24 hours', fields: 'user, extension ID' }; r.issues7d = 23; t.weekly = 267;
     W.facts.push({ text: '9 browser extensions approved by IT', review: W.dates.reviewDay, by: who });
@@ -337,6 +455,22 @@ function myApply(W, t, choice, whoName) {
     W.log.unshift({ t: now, kind: 'handoff', text: 'TSK-1006: request sent to the identity team to connect Okta' });
     return;
   }
+  else if (t.id === 'TSK-1007') {
+    const i = W.iocs.find(x => x.id === 1); i.status = 'Disabled'; i.exp = 'Expired'; i.issues7d = 0; t.weekly = 290;
+    close(end, `${verb} by ${who}. The indicator is disabled and expired. It removes 290 issues a week.`);
+  } else if (t.id === 'TSK-1008') {
+    const r = W.suggested.find(x => x.id === 241); if (r) { W.suggested = W.suggested.filter(x => x !== r); r.task = null; if (edited) r.xql = t.recommended.lines.map(l => l[0]).join('\n'); W.rules.unshift(r); t.affects.rules = [241]; }
+    close(end, `${verb} by ${who}. The rule is enabled in Correlation Rules, with the Detection Engineer as its source.`);
+  } else if (t.id === 'TSK-1009') {
+    const p = W.pipes.find(x => x.id === 'p-cp'); p.parsing.text = p.parsing.text.replace('no_hit=drop', 'no_hit=keep');
+    close(end, `${verb} by ${who}. The parsing rule keeps unknown event types. All Check Point verdicts reach the rule.`);
+  } else if (t.id === 'TSK-1010') {
+    rule(237).issues7d = 3; t.weekly = 22; W.facts.push({ text: 'svc-backup is the nightly backup account', review: W.dates.reviewDay, by: who });
+    close(end, `${verb} by ${who}. The environment fact is saved. It removes 22 issues a week and keeps alerts on every other account.`);
+  } else if (t.id === 'TSK-1011') {
+    W.iocs.filter(x => [3, 2].includes(x.id)).forEach(x => { x.status = 'Disabled'; x.exp = 'Expired'; });
+    close(end, `${verb} by ${who}. Both indicators are disabled and expired.`);
+  }
   W.log.unshift({ t: now, kind: 'done', text: `${who} ${edited ? 'approved an edited version of' : 'approved'} ${t.id}` });
 }
 /* A person fixes the source in the native screen. The task notices and closes itself. */
@@ -346,8 +480,24 @@ function myReconnect(W, instId, whoName) {
   inst.status = 'ok'; inst.last = Date.now(); inst.count = 18400; inst.note = '';
   const t = W.tasks.find(x => x.status !== 'done' && x.affects.instance === instId);
   if (t) { t.status = 'done'; t.end = 'auto'; t.closed = Date.now(); t.by = who; t.decision = null;
-    t.outcome = `Closed automatically. ${who} replaced the access key in Data Sources, events are arriving again, and Maya is backfilling 46 hours from the queue.`;
+    t.outcome = `Closed automatically. ${who} replaced the access key in Data Sources, events are arriving again, and the Pipeline Engineer is backfilling 46 hours from the queue.`;
     W.rules.filter(r => t.affects.rules.includes(r.id)).forEach(r => { r.backfill = true; });
     W.log.unshift({ t: Date.now(), kind: 'done', text: `${t.id} closed automatically: data is arriving again` }); }
   return t;
+}
+
+/* A new trigger arrives: the task appears as in progress while the agent runs. */
+function myArrive(W, n) {
+  const t = W.incoming[n]; if (!t || W.tasks.includes(t)) return null;
+  t.status = 'progress'; t.opened = Date.now(); t.fresh = Date.now(); W.tasks.unshift(t);
+  W.log.unshift({ t: Date.now(), kind: t.trigger.kind === 'handoff' ? 'handoff' : 'sweep', text: `${MY_TRIGGER[t.trigger.kind][0]}: ${t.trigger.text}` });
+  W.log.unshift({ t: Date.now(), kind: 'task', text: `Opened ${t.id}: ${t.title}` });
+  return t;
+}
+/* The agent finishes: the task now waits for a person. */
+function myReady(W, t) {
+  if (!t || t.status !== 'progress' || !t.decision) return;
+  t.status = 'pending'; t.fresh = Date.now(); t.progressNote = '';
+  if (t.answer) { t.collab = (t.collab || []).concat([t.answer]); t.answer = null; }
+  W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id} is ready for a decision` });
 }
