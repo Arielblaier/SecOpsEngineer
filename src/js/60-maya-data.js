@@ -8,7 +8,7 @@
    coverage) and the Pipeline Engineer (filtering, parsing, normalizing).
    ====================================================================== */
 const MY_LAYERS = [
-  ['source', 'Data source', 'cable'], ['filter', 'Filter', 'filter'], ['parsing', 'Parsing', 'braces'],
+  ['integration', 'Integration', 'plug'], ['source', 'Data source', 'cable'], ['filter', 'Filter', 'filter'], ['parsing', 'Parsing', 'braces'],
   ['model', 'Data model', 'database'], ['routing', 'Routing', 'git-branch'], ['rule', 'Rule', 'file-code-2']
 ];
 const MY_LAYER = Object.fromEntries(MY_LAYERS.map(([k, n, i]) => [k, { name: n, icon: i }]));
@@ -261,7 +261,7 @@ function myWorld() {
       decision: null, outcome: 'Approved by Ariel B. Internal deny events are kept. MSN-1004 continued on its own: the port-scan rule is in a 7-day silent test.',
       affects: { rules: [230], source: 'fortigate' },
       pivots: [['streams', 'Data Streams', 'the filter step']] },
-    { id: 'MSN-1006', card: 'gap', title: 'Impossible-travel logins are not detected: no Okta sign-in data', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', waitOn: 'MSN-1014', opened: now - 30 * H,
+    { id: 'MSN-1006', card: 'gap', title: 'Impossible-travel logins are not detected: no Okta sign-in data', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'integration', status: 'pending', waitOn: 'MSN-1014', opened: now - 30 * H,
       trigger: { kind: 'human', text: 'Ariel B. asked: “Add a rule for impossible-travel logins.”' },
       summary: 'No rule can detect impossible travel today, because Okta sign-in logs are not ingested. A Marketplace rule covers it once they are, so no new rule is needed.',
       steps: ['Looked for the data first: no Okta sign-in logs are ingested', 'Searched existing content: the Marketplace has “Okta - Impossible travel”', 'No new rule is needed. The missing piece is the Okta integration, so opened MSN-1014 for the Pipeline Engineer'],
@@ -270,11 +270,11 @@ function myWorld() {
       after: 'Closed automatically. Okta sign-in logs arrive and the Marketplace rule finished its silent test.',
       affects: { rules: [], source: 'okta' },
       pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
-    { id: 'MSN-1014', card: 'integration', title: 'Missing integration: Okta sign-in logs are not connected', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', unblocks: 'MSN-1006', opened: now - 30 * H + 15 * 60000,
+    { id: 'MSN-1014', card: 'integration', title: 'Missing integration: Okta sign-in logs are not connected', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'integration', status: 'pending', unblocks: 'MSN-1006', opened: now - 30 * H + 15 * 60000,
       trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1006: is there identity sign-in data for an impossible-travel rule?' },
       summary: 'Okta is the identity provider for the workforce and it is not connected to XSIAM. 9 Marketplace detections need its sign-in logs, including impossible travel. Connecting it needs an API token from the identity team.',
       steps: ['Checked what is ingested: Entra ID and Active Directory sign-ins arrive, Okta does not', 'Checked the Marketplace: the Okta pack brings the parser, the data model and 9 detections, with no custom work', 'Estimated the volume: about 2 GB a day', 'An API token is needed, and an agent cannot create credentials, so this needs the identity team'],
-      diagnosis: 'A data source that detections need is not connected.',
+      diagnosis: 'An integration that detections need is missing. Nothing is wrong with the rules or the pipeline: the data never enters XSIAM.',
       current: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Not connected'], ['Detections that need it', '0 of 9 working'], ['Impossible travel', 'Not detected']] },
       recommended: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Connect (API token from the identity team)'], ['Detections that need it', '9 of 9, after a 14-day silent test'], ['Impossible travel', 'Marketplace rule “Okta - Impossible travel”']] },
       validation: { rows: [['Detections unlocked', 0, 9, 9]], note: 'Expected ingestion is about 2 GB a day. The Marketplace rules run in a silent test for 14 days before they create issues.' },

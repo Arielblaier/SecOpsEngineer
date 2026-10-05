@@ -7,7 +7,7 @@ function mRuleChain(W, r) {
   /* A step counts against a rule only when an open mission says that step starves this rule. */
   const open = W.tasks.filter(t => t.status !== 'done' && (t.affects.rules || []).includes(r.id));
   const p = W.pipes.find(x => x.id === r.pipe), rv = myRuleReview(W, r);
-  const data = mPipeInst(W, p).status === 'ok' && p.dest.includes('Analytics') && !open.some(t => ['source', 'filter', 'parsing', 'routing'].includes(t.layer));
+  const data = mPipeInst(W, p).status === 'ok' && p.dest.includes('Analytics') && !open.some(t => ['integration', 'source', 'filter', 'parsing', 'routing'].includes(t.layer));
   const mapped = !open.some(t => t.layer === 'model');
   const tested = W.tasks.some(t => (t.affects.rules || []).includes(r.id) && t.validation && (t.status === 'progress' || ['approved', 'edited'].includes(t.end)));
   return { data, mapped, enabled: r.status === 'Enabled', healthy: rv.v === 'Healthy', tested, rv };

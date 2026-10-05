@@ -7,8 +7,7 @@
 const M_TABS = [['all', 'All'], ['pending', 'Pending'], ['progress', 'In progress'], ['done', 'Done']];
 function mWorkList() {
   const W = M.W, order = { pending: 0, progress: 1, done: 2 }, q = M.q.trim().toLowerCase();
-  /* A mission that just started stays visible in Pending while its agent runs, so a new trigger is never missed. */
-  const list = W.tasks.filter(t => M.tab === 'all' || t.status === M.tab || (M.tab === 'pending' && mRunning(t)))
+  const list = W.tasks.filter(t => M.tab === 'all' || t.status === M.tab)
     .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || ''].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
   /* A mission that waits on another sits right under it, so the pair reads as one story. */
@@ -88,7 +87,7 @@ function mWork() {
           <button onclick="mOpenPanel()" class="lg:hidden p-2 rounded-lg bg-sunk text-ink2" title="SecOps">${ic('sparkles', 'w-4 h-4 c-cx')}</button>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
-          <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>
+          <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]} ${k === 'progress' && W.tasks.some(mRunning) ? 'animate-pulse' : ''}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${k === 'progress' && W.tasks.some(mRunning) && M.tab !== k ? 'c-blue font-bold' : M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>
           <div class="relative flex-1 min-w-[180px] max-w-[280px]"><span class="absolute left-2.5 top-[8px] text-ink4">${ic('search', 'w-3.5 h-3.5')}</span><input type="text" id="m-search" data-keep value="${esc(M.q)}" placeholder="Search missions, IDs" oninput="M.q=this.value;mRender()" class="w-full text-[12.5px] pl-8 pr-3 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink4 focus:outline-none focus:border-cx"></div>
         </div>
         ${mWidgets()}

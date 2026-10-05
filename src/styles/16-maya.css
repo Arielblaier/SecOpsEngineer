@@ -1,6 +1,7 @@
   /* SECOPS ENGINEERING screens */
   /* The missions table keeps its full width. Columns that do not fit are reached by scrolling sideways. */
-  .m-table { min-width: 1080px; }
+  .m-table { width: max-content; min-width: 100%; }
+  .m-table > .mcols { min-width: 1250px; }
   .mcols { display: grid; grid-template-columns: 138px 112px minmax(330px, 1fr) 96px 78px 44px 116px 170px; column-gap: 14px; }
   .mcols > * { min-width: 0; }
   .m-vert { writing-mode: vertical-rl; transform: rotate(180deg); }

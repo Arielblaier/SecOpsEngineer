@@ -7,7 +7,9 @@ function mStageStats(W) {
   /* Counted over the pipelines that at least one enabled rule reads. A source nobody depends on is not a detection problem. */
   const used = W.pipes.filter(p => W.rules.some(r => r.pipe === p.id && r.status === 'Enabled'));
   const filters = used.filter(p => p.filter), models = used.filter(p => p.model), st = myStats(W);
+  const missing = W.tasks.filter(t => t.layer === 'integration' && t.card === 'integration' && t.status !== 'done' && !t.handedDone).length;
   return {
+    integration: [W.sources.length, W.sources.length + missing, 'integrations that detections need are connected'],
     source: [used.filter(p => mPipeInst(W, p).status === 'ok').length, used.length, 'sources that rules need are connected'],
     filter: [filters.filter(p => p.filter.ok).length, filters.length, 'filters safe for rules'],
     parsing: [used.length, used.length, 'parsing rules working'],
@@ -23,7 +25,7 @@ function mHome() {
   const auto = W.tasks.filter(t => t.status === 'done');
   const chain = MY_LAYERS.map(([k, n, i], idx) => { const [ok, total, label] = ss[k], open = myLayerOpen(W, k), bad = open.some(t => t.status === 'pending');
     return `${idx ? `<div class="hidden md:flex items-center text-ink4 m-flow">${ic('chevron-right', 'w-4 h-4')}</div>` : ''}
-      <button onclick="mStageClick('${k}')" class="flex-1 min-w-[128px] text-left rounded-2xl border p-3 transition ${bad ? 'border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10' : 'border-line bg-panel hover:border-line2'}">
+      <button onclick="mStageClick('${k}')" class="flex-1 min-w-[112px] text-left rounded-2xl border p-3 transition ${bad ? 'border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10' : 'border-line bg-panel hover:border-line2'}">
         <div class="flex items-center justify-between"><span class="${bad ? 'c-amber' : 'c-cx'}">${ic(i, 'w-4 h-4')}</span>${open.length ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold c-amber">${mAv(k === 'rule' ? 'det' : 'pipe', 16)}${open.length}</span>` : `<span class="c-cx">${ic('check', 'w-3.5 h-3.5')}</span>`}</div>
         <div class="mt-2 text-[13px] font-bold text-ink">${n}</div>
         <div class="text-[20px] leading-6 font-bold font-mono ${ok === total ? 'text-ink' : 'c-amber'}">${ok}<span class="text-ink4 text-[13px]"> / ${total}</span></div>

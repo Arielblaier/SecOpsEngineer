@@ -251,7 +251,7 @@ function mReturnBar() {
 }
 /* Decisions that touch what the current screen shows. */
 function mHere() {
-  const pend = myPendingTasks(M.W), v = M.view, f = v === 'rules' ? t => (t.affects.rules || []).length || t.affects.suggested : v === 'iocs' ? t => (t.affects.iocs || []).length : v === 'streams' ? t => !!t.affects.node : v === 'sources' ? t => t.layer === 'source' : null;
+  const pend = myPendingTasks(M.W), v = M.view, f = v === 'rules' ? t => (t.affects.rules || []).length || t.affects.suggested : v === 'iocs' ? t => (t.affects.iocs || []).length : v === 'streams' ? t => !!t.affects.node : v === 'sources' ? t => t.layer === 'source' || t.layer === 'integration' : null;
   if (v === 'mitre') { const ids = new Set(mTechs().flatMap(c => c.techs).filter(t => t.task).map(t => t.task.id)); return pend.filter(t => ids.has(t.id) || ids.has(t.unblocks)); }
   return f ? pend.filter(f) : pend;
 }
