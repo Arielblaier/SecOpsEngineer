@@ -75,7 +75,7 @@ function myWorld() {
       parsing: { name: 'sentinelone_xdr', origin: 'Marketplace', text: '[INGEST:vendor="SentinelOne", product="XDR",\n target_dataset="sentinelone_xdr_raw", no_hit=keep]' },
       model: { name: 'SentinelOne model', origin: 'User defined', ok: false }, dest: ['Analytics', 'Data lake'] },
     { id: 'p-fg', src: 'fortigate', product: 'FortiGate traffic',
-      filter: { name: 'Drop firewall deny (cost saving)', by: 'Dana L.', on: filterDay, ok: false },
+      filter: { name: 'Drop internet-side firewall deny', by: 'Dana L.', on: filterDay, ok: true },
       parsing: { name: 'fortinet_fortigate', origin: 'Default', text: '[INGEST:vendor="Fortinet", product="FortiGate",\n target_dataset="fortinet_fortigate_raw", no_hit=drop]' },
       model: { name: 'Fortinet model', origin: 'Default', ok: true }, dest: ['Analytics', 'Data lake'] },
     { id: 'p-aws', src: 's3', inst: 's3-audit', product: 'AWS audit logs', filter: null,
@@ -136,24 +136,85 @@ function myWorld() {
     R(235, 'Check Point - Malicious file verdict', { pipe: 'p-cp', source: U('Ariel B.'), issues7d: 14, mod: 'Apr 2nd 2026', tactic: 'TA0002 - Execution', tech: 'T1204.002 - User Execution', cat: 'Malware', desc: 'Passes through malicious verdicts from Check Point Threat Emulation',
       xql: 'datamodel dataset = check_point_threat_emulation_raw\n| filter xdm.alert.name = "malicious"\n| fields *' }),
     R(236, 'M365 - Mail forwarding rule to external domain', { pipe: 'p-m365', source: U('Dana L.'), issues7d: 6, mod: 'Jun 18th 2026', tactic: 'TA0009 - Collection', tech: 'T1114.003 - Email Forwarding Rule', cat: 'Collection', desc: 'Inbox rule that forwards mail outside the company',
-      xql: 'datamodel dataset = msft_o365_general_raw\n| filter xdm.event.operation = "New-InboxRule" and xdm.target.domain != "bankus.example"\n| fields *' }),
+      xql: 'datamodel dataset = msft_o365_general_raw\n| filter xdm.event.operation = "New-InboxRule" and xdm.target.domain != "corp.example"\n| fields *' }),
     R(237, 'M365 - Mass download from SharePoint', { pipe: 'p-m365', source: U('Dana L.'), issues7d: 25, mod: 'Jun 18th 2026', tactic: 'TA0010 - Exfiltration', tech: 'T1567 - Exfiltration Over Web Service', cat: 'Exfiltration', desc: 'One user downloads more than 500 files in 10 minutes',
       xql: 'datamodel dataset = msft_o365_general_raw\n| filter xdm.event.operation = "FileDownloaded"\n| comp count() as files by xdm.source.user.username\n| filter files > 500' }),
     R(238, 'DNS - Tunneling to rare TLD', { pipe: 'p-dns', source: U('Ariel B.'), issues7d: 2, mod: 'Sep 30th 2026', tactic: 'TA0011 - Command and Control', tech: 'T1071.004 - DNS', cat: 'Command and Control', desc: 'Steady stream of long DNS queries to a rarely seen top-level domain',
       xql: 'datamodel dataset = infoblox_dns_raw\n| filter length(xdm.network.dns.dns_question.name) > 60\n| comp count() as q by xdm.source.ipv4, tld\n| filter q > 200' })
   ];
 
+  /* ---------- The rest of the tenant ----------
+     A real tenant has dozens of sources and well over a hundred correlation rules. The story above happens
+     inside that. Everything below is generated from one fixed seed, so every load shows the same tenant. */
+  let seed = 20261005; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296, pick = a => a[Math.floor(rnd() * a.length)];
+  const KIT = {
+    identity: [['Brute force followed by a successful login', 'TA0006 - Credential Access', 'T1110 - Brute Force'], ['MFA method removed for a user', 'TA0003 - Persistence', 'T1556 - Modify Authentication Process'], ['Login from a country not seen in 90 days', 'TA0001 - Initial Access', 'T1078 - Valid Accounts'], ['Admin role granted outside change window', 'TA0004 - Privilege Escalation', 'T1098 - Account Manipulation'], ['Dormant account became active', 'TA0001 - Initial Access', 'T1078 - Valid Accounts']],
+    network: [['Outbound session to a known C2 address', 'TA0011 - Command and Control', 'T1071 - Application Layer Protocol'], ['Large upload to a rare destination', 'TA0010 - Exfiltration', 'T1048 - Exfiltration Over Alternative Protocol'], ['Internal host scanning many ports', 'TA0007 - Discovery', 'T1046 - Network Service Discovery'], ['Traffic over a non-standard port', 'TA0011 - Command and Control', 'T1571 - Non-Standard Port'], ['Remote access tool traffic', 'TA0011 - Command and Control', 'T1219 - Remote Access Software']],
+    cloud: [['Storage made public', 'TA0010 - Exfiltration', 'T1530 - Data from Cloud Storage'], ['Security group opened to the internet', 'TA0005 - Defense Evasion', 'T1562.007 - Disable or Modify Cloud Firewall'], ['Audit logging disabled', 'TA0005 - Defense Evasion', 'T1562.008 - Disable Cloud Logs'], ['Access key created for another user', 'TA0003 - Persistence', 'T1098.001 - Additional Cloud Credentials'], ['Unusual instance type launched', 'TA0040 - Impact', 'T1496 - Resource Hijacking']],
+    endpoint: [['Credential dumping tool executed', 'TA0006 - Credential Access', 'T1003 - OS Credential Dumping'], ['Shadow copies deleted', 'TA0040 - Impact', 'T1490 - Inhibit System Recovery'], ['Unsigned driver loaded', 'TA0004 - Privilege Escalation', 'T1068 - Exploitation for Privilege Escalation'], ['Scheduled task created by a script', 'TA0003 - Persistence', 'T1053.005 - Scheduled Task'], ['Security tool stopped', 'TA0005 - Defense Evasion', 'T1562.001 - Disable or Modify Tools']],
+    email: [['Mail from a look-alike domain', 'TA0001 - Initial Access', 'T1566.002 - Spearphishing Link'], ['Attachment with a macro delivered', 'TA0001 - Initial Access', 'T1566.001 - Spearphishing Attachment'], ['Many users clicked the same link', 'TA0002 - Execution', 'T1204.001 - Malicious Link']],
+    saas: [['Mass download by one user', 'TA0009 - Collection', 'T1530 - Data from Cloud Storage'], ['Sensitive file shared outside the company', 'TA0010 - Exfiltration', 'T1567 - Exfiltration Over Web Service'], ['API token created', 'TA0003 - Persistence', 'T1098.001 - Additional Cloud Credentials'], ['Admin impersonated a user', 'TA0004 - Privilege Escalation', 'T1078 - Valid Accounts']],
+    infra: [['Privileged command on a production host', 'TA0002 - Execution', 'T1059 - Command and Scripting Interpreter'], ['New privileged container', 'TA0004 - Privilege Escalation', 'T1611 - Escape to Host'], ['Secret read by an unusual identity', 'TA0006 - Credential Access', 'T1552 - Unsecured Credentials'], ['Configuration changed outside change window', 'TA0005 - Defense Evasion', 'T1562 - Impair Defenses']]
+  };
+  /* name, vendor, category, kit, instances, GB a day, number of correlation rules */
+  const MORE = [
+    ['Palo Alto Networks NGFW', 'Palo Alto Networks', 'Network Security', 'network', 6, 410, 5], ['Prisma Access', 'Palo Alto Networks', 'Network Security', 'network', 2, 180, 3], ['Cortex XDR Agent', 'Palo Alto Networks', 'Endpoint', 'endpoint', 1, 620, 5],
+    ['Microsoft Entra ID', 'Microsoft', 'Identity', 'identity', 2, 38, 5], ['Microsoft Defender for Endpoint', 'Microsoft', 'Endpoint', 'endpoint', 1, 95, 4], ['Azure Activity Logs', 'Microsoft', 'Cloud Services', 'cloud', 3, 44, 4], ['Azure Flow Logs', 'Microsoft', 'Cloud Services', 'network', 3, 260, 2], ['Microsoft Intune', 'Microsoft', 'Endpoint', 'infra', 1, 4, 2],
+    ['Windows Event Collector', 'Microsoft', 'Endpoint', 'endpoint', 4, 340, 5], ['Active Directory', 'Microsoft', 'Identity', 'identity', 2, 52, 5],
+    ['Google Workspace', 'Google', 'Email', 'saas', 2, 21, 4], ['Google Cloud Audit Logs', 'Google', 'Cloud Services', 'cloud', 2, 36, 4], ['Google Cloud VPC Flow', 'Google', 'Cloud Services', 'network', 2, 150, 2],
+    ['AWS GuardDuty', 'Amazon', 'Cloud Services', 'cloud', 1, 2, 3], ['AWS VPC Flow Logs', 'Amazon', 'Cloud Services', 'network', 4, 390, 3], ['AWS WAF', 'Amazon', 'Network Security', 'network', 2, 85, 2],
+    ['Cloudflare', 'Cloudflare', 'Network Security', 'network', 1, 120, 3], ['Akamai WAF', 'Akamai', 'Network Security', 'network', 1, 64, 2], ['Imperva WAF', 'Imperva', 'Network Security', 'network', 1, 30, 0],
+    ['Zscaler Internet Access', 'Zscaler', 'Network Security', 'network', 2, 280, 4], ['Zscaler Private Access', 'Zscaler', 'Network Security', 'network', 1, 40, 2], ['Netskope', 'Netskope', 'Network Security', 'saas', 1, 58, 3],
+    ['Cisco ASA', 'Cisco', 'Network Security', 'network', 3, 140, 3], ['Cisco Umbrella', 'Cisco', 'Network Security', 'network', 1, 76, 2], ['Cisco ISE', 'Cisco', 'Identity', 'identity', 1, 12, 2], ['Cisco Duo', 'Cisco', 'Identity', 'identity', 1, 3, 3],
+    ['F5 BIG-IP', 'F5', 'Network Security', 'network', 2, 48, 2], ['Citrix NetScaler', 'Citrix', 'Network Security', 'network', 2, 26, 2], ['Corelight', 'Corelight', 'Network Security', 'network', 2, 310, 4], ['Darktrace', 'Darktrace', 'Network Security', 'network', 1, 6, 0],
+    ['Proofpoint TAP', 'Proofpoint', 'Email', 'email', 1, 9, 3], ['Mimecast', 'Mimecast', 'Email', 'email', 1, 14, 3],
+    ['Linux auditd', 'Linux', 'Endpoint', 'infra', 5, 210, 4], ['Kubernetes Audit Logs', 'CNCF', 'Cloud Services', 'infra', 3, 88, 4], ['VMware vCenter', 'VMware', 'Cloud Services', 'infra', 1, 7, 2], ['Jamf Pro', 'Jamf', 'Endpoint', 'endpoint', 1, 5, 2],
+    ['GitHub Audit Log', 'GitHub', 'Applications', 'saas', 1, 3, 4], ['GitLab Audit Events', 'GitLab', 'Applications', 'saas', 1, 2, 2], ['Slack Audit Logs', 'Slack', 'Applications', 'saas', 1, 2, 2], ['Salesforce', 'Salesforce', 'Applications', 'saas', 1, 11, 3],
+    ['ServiceNow', 'ServiceNow', 'Applications', 'saas', 1, 4, 0], ['Workday', 'Workday', 'Applications', 'saas', 1, 1, 2], ['Box', 'Box', 'Applications', 'saas', 1, 6, 2], ['Atlassian Cloud', 'Atlassian', 'Applications', 'saas', 1, 3, 0],
+    ['CyberArk PAM', 'CyberArk', 'Identity', 'identity', 1, 2, 4], ['HashiCorp Vault', 'HashiCorp', 'Identity', 'infra', 1, 1, 2], ['Ping Identity', 'Ping Identity', 'Identity', 'identity', 1, 8, 0],
+    ['Tenable Vulnerability Management', 'Tenable', 'Vulnerability Management', 'infra', 1, 5, 0], ['Wiz', 'Wiz', 'Cloud Services', 'cloud', 1, 3, 2], ['Snowflake', 'Snowflake', 'Applications', 'saas', 1, 17, 2], ['Oracle Database Audit', 'Oracle', 'Applications', 'infra', 2, 72, 0], ['Microsoft SQL Server Audit', 'Microsoft', 'Applications', 'infra', 3, 45, 2]
+  ];
+  const WHO = ['Dana L.', 'Omer A.', 'Ariel B.', 'Noa S.', 'Yuval K.'], SITES = ['US East', 'US West', 'EMEA', 'APAC', 'Israel', 'India'], MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+  [['s3', 12], ['fortigate', 18], ['crowdstrike', 54], ['unit42', 1], ['chrome', 3], ['sentinelone', 8], ['m365', 6], ['mitre', 1], ['checkpoint', 1], ['dns', 9]].forEach(([id, gb]) => { sources.find(x => x.id === id).gb = gb; });
+  let rid = 300;
+  MORE.forEach(([name, vendor, cat, kit, n, gb, nr]) => {
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), ds = id.replace(/-/g, '_');
+    const per = Math.round(gb * 1.6e6 / n);
+    sources.push({ id, name, vendor, cat, pack: '', gb, instances: Array.from({ length: n }, (_, k) => ({ id: `${id}-${k + 1}`, name: n === 1 ? name : `${name} · ${SITES[k]}`, status: 'ok', count: Math.round(per * (.7 + rnd() * .6)), last: now - Math.round(20000 + rnd() * 240000) })) });
+    const origin = pick(['Default', 'Default', 'Marketplace']);
+    pipes.push({ id: 'p-' + id, src: id, product: name, filter: rnd() < .22 ? { name: 'Drop health-check events', by: pick(WHO), on: `${pick(MONTHS)} ${1 + Math.floor(rnd() * 27)}`, ok: true } : null,
+      parsing: { name: ds, origin, text: `[INGEST:vendor="${vendor}", product="${name}",\n target_dataset="${ds}_raw", no_hit=keep]` },
+      model: nr ? { name: `${name} model`, origin, ok: true } : null, dest: nr ? ['Analytics', 'Data lake'] : ['Data lake'] });
+    const short = name.replace(/^(Microsoft|Google|Palo Alto Networks|AWS|Cisco) /, '').replace(/ (Audit Logs?|Audit Events|Vulnerability Management)$/, '');
+    KIT[kit].slice().sort(() => rnd() - .5).slice(0, nr).forEach(([what, tactic, tech]) => {
+      const iss = rnd() < .3 ? 0 : Math.round(Math.pow(rnd(), 2.2) * 160) + 1;
+      rules.push(R(rid++, `${short} - ${what}`, { pipe: 'p-' + id, source: rnd() < .35 ? P(vendor) : U(pick(WHO)), issues7d: iss, nshare: +(.12 + rnd() * .5).toFixed(2), mod: `${pick(MONTHS)} ${1 + Math.floor(rnd() * 27)}th 2026`, tactic, tech, cat: tactic.split(' - ')[1], desc: `${what}, seen in ${name} data`,
+        type: rnd() < .25 ? 'SCHEDULED' : 'REAL_TIME', xql: `datamodel dataset = ${ds}_raw\n| filter xdm.event.type != null\n| comp count() as hits by xdm.source.user.username\n| filter hits > 0` }));
+    });
+  });
+  /* How much of what each story rule creates ends with no action. Read from analyst and Investigation Agent verdicts. */
+  [[224, .92], [231, .81], [237, .88], [222, .95], [215, .34], [217, .41], [220, .22], [221, .3], [223, .11], [225, .36], [232, .45], [235, .07], [236, .17], [238, .5]].forEach(([id, n]) => { rules.find(r => r.id === id).nshare = n; });
+
   /* ---------- Missions ---------- */
   const tasks = [
-    { id: 'MSN-1001', card: 'pipeline', title: 'SentinelOne severity arrives empty: 3 rules create issues with no severity', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', opened: now - 5 * H,
-      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent opened 38 SentinelOne cases in 2 days with no severity, so they were triaged late.' },
-      summary: 'A change in the SentinelOne pack renamed the field that carries severity. Three rules read it through the data model, so one mapping line breaks all three.',
-      steps: ['Read the 38 cases the Investigation Agent handed over: all came from three rules and all had an empty severity', 'Checked the three rules: the queries are valid and still fire', 'Followed the field the rules read, xdm.alert.severity, down to the data model', `Found that the SentinelOne pack update on ${packDay} stopped sending threatInfo_severity`, 'Wrote a corrected mapping and replayed 7 days of events through it'],
-      diagnosis: 'The rules are fine. The data model maps xdm.alert.severity from a field the source no longer sends.',
-      current: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_severity,', 'del'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
-      recommended: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = coalesce(threatInfo_confidenceLevel, threatInfo_severity),', 'add'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
-      validation: { rows: [['Issues with a severity (7 days)', 0, 1204, 1204]], note: 'Backtest on 7 days of stored events. The three rules themselves do not change.' },
-      decision: { q: 'Approve the mapping fix?', approve: 'Approve fix', effect: 'The data model rule is updated. Severity is filled on new issues from all three rules.', risk: 'Medium. A mapping feeds every rule that reads the field, so all three were backtested.', reversible: true },
+    { id: 'MSN-1001', card: 'broken', title: '3 SentinelOne rules went silent after a pack update', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', waitOn: 'MSN-1012', opened: now - 5 * H,
+      trigger: { kind: 'change', text: `The SentinelOne pack was updated on ${packDay}. Three rules have created no issue since then.` },
+      summary: 'Three rules that created 1,204 issues a week stopped firing two days ago. The rules did not change. The field they filter on now arrives empty.',
+      steps: ['Saw three enabled SentinelOne rules with no issue since the pack update', 'Checked the rules: valid queries, nothing was edited', 'Checked the data: events still arrive, 12.1K a day', 'Followed the field the rules filter on, xdm.event.type: it is empty on every new event', 'The cause is below the rule, so opened MSN-1012 for the Pipeline Engineer'],
+      diagnosis: 'The rules are fine. They filter on xdm.event.type, and the data model no longer fills it.',
+      validation: null, decision: null,
+      after: 'Closed automatically. After MSN-1012 was approved, the last 2 days were replayed: the three rules fire again and the 344 missed issues were created.',
+      affects: { rules: [215, 217, 220], source: 'sentinelone' },
+      pivots: [['rules', 'Correlation Rules', 'the 3 rules']] },
+    { id: 'MSN-1012', card: 'pipeline', title: 'SentinelOne data model reads a field the pack renamed', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', unblocks: 'MSN-1001', opened: now - 5 * H + 12 * 60000,
+      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1001: why is xdm.event.type empty on SentinelOne events?' },
+      summary: 'The pack update renamed the raw field eventType to event_type. The user-defined data model still maps the old name, so xdm.event.type arrives empty and three rules match nothing.',
+      steps: ['Compared raw events before and after the pack update: eventType is gone, event_type is new', 'Read the data model rule: it maps xdm.event.type from eventType', 'Listed what reads xdm.event.type from this dataset: 3 correlation rules', 'Wrote a mapping that reads the new name and falls back to the old one', 'Replayed the 2 days since the update through it'],
+      diagnosis: 'The data model maps xdm.event.type from a raw field that the source no longer sends.',
+      current: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,', 'del'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_confidenceLevel,'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
+      recommended: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = coalesce(event_type, eventType),', 'add'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_confidenceLevel,'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
+      validation: { rows: [['Issues from the three rules (2-day replay)', 0, 344, 344]], note: 'Replayed the 2 days since the update through the corrected mapping. The three rules themselves do not change.' },
+      decision: { q: 'Approve the mapping fix?', approve: 'Approve fix', effect: 'The data model rule is updated and the three rules read the field again. MSN-1001 then continues on its own.', risk: 'Medium. A mapping feeds every rule that reads the field, so all three were replayed.', reversible: true },
       affects: { rules: [215, 217, 220], node: { pipe: 'p-s1', stage: 'model' }, source: 'sentinelone' },
       pivots: [['streams', 'Data Streams', 'the data model step'], ['rules', 'Correlation Rules', 'the 3 rules']] },
 
@@ -181,18 +242,25 @@ function myWorld() {
       affects: { rules: [224], source: 'chrome' },
       pivots: [['rules', 'Correlation Rules', 'the rule']] },
 
-    { id: 'MSN-1004', card: 'pipeline', title: 'A cost-saving filter drops the events a port-scan rule needs', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'pending', opened: now - 26 * H,
+    { id: 'MSN-1004', card: 'broken', title: 'Port-scan rule was silent for 23 days: data is back, silent test running', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'progress', progressNote: 'Silent test · day 1 of 7', unblockedBy: 'MSN-0999', opened: now - 26 * H,
       trigger: { kind: 'sweep', text: 'Weekly sweep: an enabled rule has not fired for 23 days, while its source is healthy.' },
-      summary: `A filter added on ${filterDay} drops every firewall “deny” event. The port-scan rule only reads “deny” events, so it has been silent since that day.`,
-      steps: [`Saw the rule “FortiGate - Port scan from internal host” silent since ${filterDay}`, 'Checked the source: connected, 1.9M events a day', 'Read what the rule needs: deny events between internal hosts', `Found the filter “Drop firewall deny (cost saving)”, added ${filterDay} by Dana L.`, 'Wrote a narrower filter that keeps internal deny events'],
-      diagnosis: 'The source is healthy and the rule is valid. A filter in between removes the rule’s events before it sees them.',
+      summary: `The port-scan rule only reads firewall “deny” events, and a filter added on ${filterDay} dropped all of them. The filter was fixed in MSN-0999. The dropped events were never stored, so the rule is now proven with a silent test.`,
+      steps: [`Saw the rule “FortiGate - Port scan from internal host” silent since ${filterDay}`, 'Checked the rule: valid, nothing was edited', 'Checked the source: connected, 1.9M events a day', 'The rule’s events were missing before the rule, so opened MSN-0999 for the Pipeline Engineer', 'MSN-0999 was approved by Ariel B: internal deny events are kept again', 'Started a 7-day silent test, because no backtest is possible'],
+      diagnosis: 'The rule is valid. Its events were removed by a filter before the rule saw them.',
+      validation: null, decision: null,
+      affects: { rules: [230], source: 'fortigate' },
+      pivots: [['rules', 'Correlation Rules', 'the rule']] },
+    { id: 'MSN-0999', card: 'pipeline', title: 'A cost-saving filter drops the events a port-scan rule needs', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'done', end: 'approved', by: 'Ariel B', unblocks: 'MSN-1004', opened: now - 25 * H, closed: now - 20 * H,
+      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1004: the port-scan rule gets no deny events, while the firewall sends 1.9M events a day.' },
+      summary: `A filter added on ${filterDay} dropped every firewall “deny” event to save ingestion. The port-scan rule reads only “deny” events between internal hosts.`,
+      steps: ['Counted deny events before and after the filter step: 38,000 a day go in, none come out', `Found the filter “Drop firewall deny (cost saving)”, added ${filterDay} by Dana L.`, 'Read what the rule needs: deny events between internal hosts', 'Wrote a narrower filter that keeps internal deny events and still drops internet-side ones'],
+      diagnosis: 'The source is healthy. A filter removes events that a rule needs.',
       current: { kind: 'code', label: 'Filter rule · Drop firewall deny (cost saving)', lines: [['[FILTER: dataset = fortinet_fortigate_raw]'], ['drop where action = "deny"', 'del']] },
-      recommended: { kind: 'code', label: 'Filter rule · Drop firewall deny (cost saving)', lines: [['[FILTER: dataset = fortinet_fortigate_raw]'], ['drop where action = "deny" and srcintfrole = "wan"', 'add']] },
-      validation: { rows: [['Deny events kept per day', 0, 38000, 38000]], note: 'No backtest is possible: the events were dropped and are not stored. That is why confidence is medium. A silent test runs for 7 days after the change. Ingestion grows by about 3.2 GB a day.' },
-      decision: { q: 'Approve the narrower filter?', approve: 'Approve filter change', effect: 'The filter keeps deny events from internal interfaces. Internet-side deny events are still dropped.', risk: 'Low for security. It adds about 3.2 GB of ingestion a day.', reversible: true },
-      affects: { rules: [230], node: { pipe: 'p-fg', stage: 'filter' }, source: 'fortigate' },
-      pivots: [['streams', 'Data Streams', 'the filter step'], ['rules', 'Correlation Rules', 'the rule']] },
-
+      recommended: { kind: 'code', label: 'Filter rule · Drop internet-side firewall deny', lines: [['[FILTER: dataset = fortinet_fortigate_raw]'], ['drop where action = "deny" and srcintfrole = "wan"', 'add']] },
+      validation: { rows: [['Deny events kept per day', 0, 38000, 38000]], note: 'No backtest is possible: the events were dropped and are not stored. Ingestion grows by about 3.2 GB a day.' },
+      decision: null, outcome: 'Approved by Ariel B. Internal deny events are kept. MSN-1004 continued on its own: the port-scan rule is in a 7-day silent test.',
+      affects: { rules: [230], source: 'fortigate' },
+      pivots: [['streams', 'Data Streams', 'the filter step']] },
     { id: 'MSN-1006', card: 'content', title: 'Impossible-travel logins: connect Okta and adopt the Marketplace rule', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'source', status: 'pending', opened: now - 30 * H,
       trigger: { kind: 'human', text: 'Ariel B. asked: “Add a rule for impossible-travel logins.”' },
       summary: 'The identity provider is not connected. A Marketplace rule covers impossible travel once it is, so no new rule is needed.',
@@ -292,7 +360,7 @@ function myWorld() {
     { id: 7, mod: 'Dec 2nd 2025 03:49:29', ind: 'dnscat2.exe, dnscat2-client.exe, dnscat2-win32.exe, 8f3b4db351b8a50e…', type: 'File Name', sev: 'High', issues: 0, issues7d: 0, source: 'Ariel B.', exp: 'Never', status: 'Enabled', rep: 'Bad', rel: 'B - Usually reliable' },
     { id: 3, mod: 'Dec 22nd 2022 21:27:25', ind: '73.213.32.45', type: 'IP', sev: 'High', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Suspicious', rel: 'C - Fairly reliable' },
     { id: 2, mod: 'Dec 22nd 2022 21:26:45', ind: 'myexternalip.com', type: 'Domain Name', sev: 'Medium', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Suspicious', rel: 'C - Fairly reliable' },
-    { id: 1, mod: 'Dec 22nd 2022 21:25:52', ind: '51ff4a033018d9343049305061dcde77cb5f26f5ec48d1be42669f368b1f5705', type: 'Hash', sev: 'High', issues: 1241, issues7d: 290, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Bad', rel: 'B - Usually reliable' },
+    { id: 1, mod: 'Dec 22nd 2022 21:25:52', ind: '51ff4a033018d9343049305061dcde77cb5f26f5ec48d1be42669f368b1f5705', type: 'Hash', sev: 'High', issues: 1241, issues7d: 290, nshare: .97, source: 'Dana L.', exp: 'Never', status: 'Enabled', rep: 'Bad', rel: 'B - Usually reliable' },
     { id: 5, mod: 'Mar 4th 2024 10:12:03', ind: 'update-check.example.net', type: 'Domain Name', sev: 'Low', issues: 0, issues7d: 0, source: 'Omer A.', exp: 'Expired', status: 'Disabled', rep: 'Unknown', rel: 'F - Cannot be judged' },
     { id: 4, mod: 'Jan 9th 2023 08:40:11', ind: '198.51.100.23', type: 'IP', sev: 'Medium', issues: 0, issues7d: 0, source: 'Dana L.', exp: 'Expired', status: 'Disabled', rep: 'Unknown', rel: 'F - Cannot be judged' }
   ];
@@ -301,14 +369,11 @@ function myWorld() {
   const suggested = [R(241, 'SentinelOne - Office application launching a script host', { pipe: 'p-s1', source: { kind: 'agent', name: 'Detection Engineer' }, mod: 'Today', tactic: 'TA0005 - Defense Evasion', tech: 'T1218.005 - Mshta', cat: 'Defense Evasion', desc: 'An Office application starts mshta, wscript or cscript', task: 'MSN-1008',
     xql: 'datamodel dataset = sentinelone_xdr_raw\n| filter xdm.source.process.name in ("winword.exe", "excel.exe", "powerpnt.exe")\n| filter xdm.target.process.name in ("mshta.exe", "wscript.exe", "cscript.exe")\n| fields *' })];
 
-  /* ---------- Who works on what, and what the two agents said to each other ---------- */
+  /* ---------- Which agent owns each mission, and what it suggests ---------- */
   const TEAM = {
-    'MSN-1001': { sug: 'Fix', agent: 'det', fixer: 'pipe', collab: [['det', 'Three rules read xdm.alert.severity and all three get it empty. The rules are valid, so I asked the Pipeline Engineer to check the mapping.'], ['pipe', 'The pack update stopped sending threatInfo_severity. I wrote a corrected mapping and replayed 7 days through it.']] },
-    'MSN-1003': { sug: 'Fix', agent: 'pipe', collab: [['pipe', 'The audit-log instance is in error: the access key expired. I asked the Detection Engineer what depends on it.'], ['det', 'Two enabled rules read this dataset. Both have had no data since the instance stopped.']] },
-    'MSN-1002': { sug: 'Tune', agent: 'det' },
-    'MSN-1004': { sug: 'Fix', agent: 'det', fixer: 'pipe', collab: [['det', 'The port-scan rule is enabled and has been silent for 23 days. Its source is healthy, so I asked the Pipeline Engineer to check what happens in between.'], ['pipe', 'A filter added that day drops every deny event. I wrote a narrower filter that keeps deny events between internal hosts.']] },
-    'MSN-1006': { sug: 'Connect', agent: 'det', collab: [['det', 'A rule for impossible travel was requested. I asked the Pipeline Engineer whether identity sign-in data exists.'], ['pipe', 'Okta is not connected. Once it is, the Marketplace parser and data model cover it with no custom work.']] },
-    'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
+    'MSN-1001': { sug: 'Fix', agent: 'det' }, 'MSN-1012': { sug: 'Fix', agent: 'pipe' }, 'MSN-1003': { sug: 'Fix', agent: 'pipe' },
+    'MSN-1002': { sug: 'Tune', agent: 'det' }, 'MSN-1004': { sug: 'Fix', agent: 'det' }, 'MSN-0999': { sug: 'Fix', agent: 'pipe' },
+    'MSN-1006': { sug: 'Connect', agent: 'det' }, 'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
     'MSN-0998': { sug: 'Tune', agent: 'det' }, 'MSN-0996': { sug: 'Watch', agent: 'det' }, 'MSN-0994': { sug: 'Tune', agent: 'det' },
     'MSN-0991': { sug: 'Keep', agent: 'pipe' }, 'MSN-0988': { sug: 'Hand over', agent: 'det' }
   };
@@ -316,18 +381,24 @@ function myWorld() {
 
   /* ---------- Missions that arrive while the screen is open ---------- */
   const incoming = [
-    { id: 'MSN-1009', card: 'pipeline', title: 'Check Point verdicts for archive files are dropped at parsing', verdict: 'Mismatch', sug: 'Fix', agent: 'det', fixer: 'pipe', conf: 'High', impact: 'Medium', layer: 'parsing', progressNote: 'Waiting for the Pipeline Engineer',
+    { id: 'MSN-1009', card: 'broken', title: 'Check Point: 5 of 14 verdicts never reach the rule', verdict: 'Mismatch', sug: 'Fix', agent: 'det', conf: 'High', impact: 'Medium', layer: 'parsing', progressNote: 'Comparing the product with XSIAM',
       trigger: { kind: 'change', text: 'The Check Point Threat Emulation pack was updated 20 minutes ago.' },
-      summary: 'After a pack update the parsing rule drops a new event type, so 5 of 14 Check Point verdicts never reach the rule.',
-      steps: ['Compared the product with XSIAM after the update: the product reports 14 verdicts, XSIAM shows 9', 'Checked the rule: valid, and it fired on all 9', 'Asked the Pipeline Engineer to trace the 5 missing events', 'Found the cause: the update added the event type “archive verdict”, and the parsing rule drops what it does not know', 'Replayed the last 24 hours through the changed parsing rule'],
-      diagnosis: 'The product and XSIAM disagree. The parsing rule drops an event type that the pack update added.',
-      current: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=drop]', 'del']] },
-      recommended: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=keep]', 'add']] },
-      validation: { rows: [['Verdicts reaching the rule (24 hours)', 9, 14, 14]], note: 'Replayed the last 24 hours through the changed rule.' },
-      decision: { q: 'Approve the parsing change?', approve: 'Approve fix', effect: 'Event types the parsing rule does not know are kept. The rule sees every Check Point verdict.', risk: 'Low. It adds a small number of events.', reversible: true },
-      affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['streams', 'Data Streams', 'the parsing step'], ['rules', 'Correlation Rules', 'the rule']],
-      collab: [['det', 'After the pack update the product reports 14 verdicts and XSIAM shows 9. The rule is valid. I asked the Pipeline Engineer to trace the 5 missing events.']],
-      answer: ['pipe', 'The update added the event type “archive verdict”. The parsing rule has no_hit=drop, so those events are dropped. The change is attached.'] },
+      summary: 'After a pack update the product reports 14 verdicts and XSIAM shows 9. The rule is valid and fired on all 9, so 5 events are lost before the rule.',
+      steps: ['Compared the product with XSIAM after the update: the product reports 14 verdicts, XSIAM shows 9', 'Checked the rule: valid, and it fired on all 9', 'Checked the source: connected, events arrive', 'The 5 missing events are lost before the rule, so opened MSN-1013 for the Pipeline Engineer'],
+      diagnosis: 'The product and XSIAM disagree. The rule is fine. Events are lost between the source and the rule.',
+      validation: null, decision: null,
+      after: 'Closed automatically. After MSN-1013 was approved, the product and XSIAM were compared again: 14 of 14 verdicts match.',
+      affects: { rules: [235], source: 'checkpoint' }, pivots: [['rules', 'Correlation Rules', 'the rule']],
+      spawn: { id: 'MSN-1013', card: 'pipeline', title: 'Check Point parsing rule drops a new event type', verdict: 'Broken', sug: 'Fix', agent: 'pipe', conf: 'High', impact: 'Medium', layer: 'parsing', status: 'pending', unblocks: 'MSN-1009',
+        trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1009: where are 5 of 14 Check Point verdicts lost?' },
+        summary: 'The pack update added the event type “archive verdict”. The user-defined parsing rule drops every event type it does not know.',
+        steps: ['Counted events before and after each step: 14 arrive, 9 leave the parsing step', 'Read the 5 dropped events: all have the new event type “archive verdict”', 'Read the parsing rule: no_hit=drop removes what it does not know', 'Replayed the last 24 hours through the changed rule'],
+        diagnosis: 'The parsing rule drops an event type that the pack update added.',
+        current: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=drop]', 'del']] },
+        recommended: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=keep]', 'add']] },
+        validation: { rows: [['Verdicts reaching the rule (24 hours)', 9, 14, 14]], note: 'Replayed the last 24 hours through the changed rule.' },
+        decision: { q: 'Approve the parsing change?', approve: 'Approve fix', effect: 'Event types the parsing rule does not know are kept. MSN-1009 then continues on its own.', risk: 'Low. It adds a small number of events.', reversible: true },
+        affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['streams', 'Data Streams', 'the parsing step']] } },
     { id: 'MSN-1010', card: 'noisy', title: 'SharePoint mass-download rule fires on the nightly backup account', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Low', layer: 'rule', noise: 'Benign true positive', progressNote: 'Detection Engineer is diagnosing',
       trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 22 cases from this rule as benign in 7 days. All came from one service account.' },
       summary: 'The backup service account downloads thousands of files every night. The rule is correct for people and wrong for this account.',
@@ -351,29 +422,36 @@ function myWorld() {
   ];
 
   /* Issues per week before today. The last point of the trend is always computed from the rules and indicators. */
-  const history = [2105, 2140, 2168, 2190, 2214, 2231, 2246];
+  const W0 = { rules, iocs };
+  const history = [.936, .951, .963, .972, .983, .991, .997].map(f => Math.round(myIssuesNow(W0) * f));
+  const noiseHistory = [.06, .05, .045, .035, .02, .015, .005].map(d => +(myNoise(W0).share - d).toFixed(3));
 
   /* ---------- Agent activity, newest first ---------- */
   const log = [
     [now - 6 * 60000, 'sweep', `Hourly data-health sweep: ${sources.flatMap(x => x.instances).length} instances checked, ${sources.flatMap(x => x.instances).filter(i => i.status === 'err').length} in error`],
     [now - 41 * 60000, 'check', 'Compared Check Point verdicts with XSIAM: 14 of 14 match'],
     [now - 3 * H, 'task', 'Opened MSN-1003: AWS audit logs stopped'],
-    [now - 5 * H, 'handoff', 'The Investigation Agent handed over 38 SentinelOne cases with no severity'],
-    [now - 5 * H + 9 * 60000, 'task', 'Opened MSN-1001: one mapping line behind 3 rules'],
+    [now - 5 * H, 'sweep', 'Change event: the SentinelOne pack was updated and 3 rules went silent'],
+    [now - 5 * H + 9 * 60000, 'task', 'Opened MSN-1001: 3 SentinelOne rules went silent'],
+    [now - 5 * H + 12 * 60000, 'task', 'Opened MSN-1012 for the Pipeline Engineer: MSN-1001 waits on it'],
+    [now - 20 * H, 'done', 'Ariel B approved MSN-0999: the firewall filter keeps internal deny events'],
+    [now - 20 * H + 60000, 'test', 'MSN-1004 continued: 7-day silent test started on the port-scan rule'],
     [now - 9 * H, 'test', 'Silent test finished for the Chrome extension rule: 14 days'],
     [now - 9 * H + 60000, 'task', 'Opened MSN-1002 with the test result'],
     [now - 26 * H, 'sweep', `Weekly sweep: ${rules.length} rules reviewed, 2 candidates`],
     [now - 30 * H, 'done', 'Ariel B. approved MSN-0994: ATT&CK mapping on 2 rules']
   ].map(([t, kind, text]) => ({ t, kind, text }));
 
-  return { sources, pipes, rules, tasks, iocs, suggested, incoming, history, log, facts: [], dates: { packDay, filterDay, reviewDay } };
+  return { sources, pipes, rules, tasks, iocs, suggested, incoming, history, noiseHistory, log, facts: [], dates: { packDay, filterDay, reviewDay } };
 }
 
 /* ---------- Derived values: never typed twice ---------- */
 const myOpen = W => W.tasks.filter(t => t.status !== 'done');
 /* One order everywhere: most impact first, then the one that has waited longest. */
 const myRank = (a, b) => ({ High: 0, Medium: 1, Low: 2 })[a.impact] - ({ High: 0, Medium: 1, Low: 2 })[b.impact] || a.opened - b.opened;
-const myPendingTasks = W => W.tasks.filter(t => t.status === 'pending').sort(myRank);
+/* Decisions that wait for a person. A mission that waits on another mission is pending too, but not on a person. */
+const myPendingTasks = W => W.tasks.filter(t => t.status === 'pending' && !t.waitOn).sort(myRank);
+const myWaiting = W => W.tasks.filter(t => t.status === 'pending' && t.waitOn);
 /* v is the health of the rule. sug is what the agent suggests, which is what the user sees. */
 function myRuleReview(W, r) {
   if (r.retired) return { v: 'Retired', sug: '', conf: '', task: W.tasks.find(t => (t.affects.rules || []).includes(r.id) && t.card === 'retire') };
@@ -403,6 +481,23 @@ function myIocReview(W, i) {
   return { sug: 'Keep', conf: 'High', task: null };
 }
 const myIssuesNow = W => W.rules.reduce((a, r) => a + r.issues7d, 0) + W.iocs.reduce((a, i) => a + i.issues7d, 0);
+/* Noise: issues that ended with no action, by the verdicts of analysts and the Investigation Agent. */
+function myNoise(W) {
+  const rows = W.rules.map(r => ({ name: r.name, id: r.id, n: Math.round(r.issues7d * (r.nshare || 0)) })).concat(W.iocs.map(i => ({ name: 'IOC rule ' + i.id, ioc: i.id, n: Math.round(i.issues7d * (i.nshare || 0)) }))).sort((a, b) => b.n - a.n);
+  const noise = rows.reduce((a, r) => a + r.n, 0), total = myIssuesNow(W), top = rows.slice(0, 5);
+  return { noise, total, share: total ? noise / total : 0, top, topShare: noise ? top.reduce((a, r) => a + r.n, 0) / noise : 0 };
+}
+/* Detections that cannot fire now, and detections that fire mostly on nothing. */
+function myDetections(W) {
+  const en = W.rules.filter(r => r.status === 'Enabled').map(r => ({ r, rv: myRuleReview(W, r) })), open = x => x.rv.task && x.rv.task.status !== 'done' && !(x.rv.task.live && x.rv.task.status === 'progress');
+  const blind = en.filter(x => open(x) && ['Fix', 'Connect'].includes(x.rv.sug)), noisy = en.filter(x => open(x) && ['Tune', 'Drop'].includes(x.rv.sug));
+  return { enabled: en.length, blind: blind.length, noisy: noisy.length, ok: en.length - blind.length - noisy.length };
+}
+/* Sources that are ingested and that no correlation rule reads. */
+function myUnused(W) {
+  const xs = W.sources.filter(s => !/Threat Intelligence/.test(s.cat) && !W.rules.some(r => r.status === 'Enabled' && (W.pipes.find(p => p.id === r.pipe) || {}).src === s.id));
+  return { n: xs.length, gb: xs.reduce((a, s) => a + (s.gb || 0), 0), list: xs };
+}
 function myStats(W) {
   const enabled = W.rules.filter(r => r.status === 'Enabled');
   const rev = enabled.map(r => myRuleReview(W, r).v);
@@ -412,7 +507,7 @@ function myStats(W) {
   const removed = W.tasks.filter(t => t.status === 'done' && ['approved', 'edited'].includes(t.end) && t.weekly).reduce((a, t) => a + t.weekly, 0);
   return {
     rules: W.rules.length, enabled: enabled.length, healthy, share: Math.round(healthy / enabled.length * 100),
-    pending: myPendingTasks(W).length, progress: W.tasks.filter(t => t.status === 'progress').length, done: W.tasks.filter(t => t.status === 'done').length,
+    pending: myPendingTasks(W).length, waiting: myWaiting(W).length, progress: W.tasks.filter(t => t.status === 'progress').length, done: W.tasks.filter(t => t.status === 'done').length,
     inst: inst.length, instOk: inst.filter(i => i.status === 'ok').length, instErr: inst.filter(i => i.status === 'err').length,
     sources: W.sources.length, byVerdict, removed, iocs: W.iocs.length, issuesNow: myIssuesNow(W)
   };
@@ -430,12 +525,12 @@ function myApply(W, t, choice, whoName) {
   const who = whoName.replace(/\.$/, '');
   const now = Date.now(), rule = id => W.rules.find(r => r.id === id);
   const close = (end, outcome) => { t.status = 'done'; t.end = end; t.closed = now; t.by = who; t.outcome = outcome; };
-  if (choice === 'reject') return close('rejected', `Rejected by ${who}. Nothing changed. The suggestion stays visible on the affected objects.`);
-  if (choice === 'dismiss') return close('dismissed', `Dismissed by ${who}. Nothing changed, and this is not raised again unless it gets worse.`);
+  if (choice === 'reject') { close('rejected', `Declined by ${who}. Nothing changed. The suggestion stays visible on the affected objects.`); return myUnblock(W, t); }
+  if (choice === 'dismiss') { close('dismissed', `Dismissed by ${who}. Nothing changed, and this is not raised again unless it gets worse.`); return myUnblock(W, t); }
   const edited = choice === 'edit', end = edited ? 'edited' : 'approved', verb = edited ? 'Approved with edits' : 'Approved';
-  if (t.id === 'MSN-1001') {
+  if (t.id === 'MSN-1012') {
     W.pipes.find(p => p.id === 'p-s1').model.ok = true;
-    close(end, `${verb} by ${who}. Severity is filled on new issues from all three rules. The Pipeline Engineer watches for 7 days and reopens the mission if the field goes empty again.`);
+    close(end, `${verb} by ${who}. The data model reads the renamed field. The Pipeline Engineer watches for 7 days and reopens the mission if the field goes empty again.`);
   } else if (t.id === 'MSN-1002') {
     const r = rule(224); r.supp = { dur: '24 hours', fields: 'user, extension ID' }; r.issues7d = 23; t.weekly = 267;
     W.facts.push({ text: '9 browser extensions approved by IT', review: W.dates.reviewDay, by: who });
@@ -444,9 +539,6 @@ function myApply(W, t, choice, whoName) {
     t.status = 'progress'; t.by = who; t.progressNote = 'Waiting for the cloud team'; t.decision = null; t.handed = true;
     W.log.unshift({ t: now, kind: 'handoff', text: 'MSN-1003 handed to the cloud team: replace the expired access key' });
     return;
-  } else if (t.id === 'MSN-1004') {
-    W.pipes.find(p => p.id === 'p-fg').filter.ok = true; W.pipes.find(p => p.id === 'p-fg').filter.name = 'Drop internet-side firewall deny';
-    close(end, `${verb} by ${who}. Internal deny events are kept. A 7-day silent test started on the port-scan rule, because no backtest was possible.`);
   } else if (t.id === 'MSN-1005') {
     rule(222).status = 'Disabled'; rule(222).retired = true; rule(222).issues7d = 0; rule(216).retired = true; rule(218).retired = true; t.weekly = 61;
     close(end, `${verb} by ${who}. Rule 222 is disabled and rules 216 and 218 are retired. All three can be restored.`);
@@ -461,7 +553,7 @@ function myApply(W, t, choice, whoName) {
   } else if (t.id === 'MSN-1008') {
     const r = W.suggested.find(x => x.id === 241); if (r) { W.suggested = W.suggested.filter(x => x !== r); r.task = null; if (edited) r.xql = t.recommended.lines.map(l => l[0]).join('\n'); W.rules.unshift(r); t.affects.rules = [241]; }
     close(end, `${verb} by ${who}. The rule is enabled in Correlation Rules, with the Detection Engineer as its source.`);
-  } else if (t.id === 'MSN-1009') {
+  } else if (t.id === 'MSN-1013') {
     const p = W.pipes.find(x => x.id === 'p-cp'); p.parsing.text = p.parsing.text.replace('no_hit=drop', 'no_hit=keep');
     close(end, `${verb} by ${who}. The parsing rule keeps unknown event types. All Check Point verdicts reach the rule.`);
   } else if (t.id === 'MSN-1010') {
@@ -472,6 +564,23 @@ function myApply(W, t, choice, whoName) {
     close(end, `${verb} by ${who}. Both indicators are disabled and expired.`);
   }
   W.log.unshift({ t: now, kind: 'done', text: `${who} ${edited ? 'approved an edited version of' : 'approved'} ${t.id}` });
+  /* An approved noise fix leaves the rule with little noise. */
+  if (t.verdict === 'Noisy') (t.affects.rules || []).forEach(id => { const r = rule(id); if (r) r.nshare = .1; });
+  myUnblock(W, t);
+}
+/* A mission that waited on this one continues on its own. If the fix was declined, it closes with nothing changed. */
+function myUnblock(W, p) {
+  const d = W.tasks.find(x => x.waitOn === p.id); if (!d) return;
+  d.waitOn = null;
+  if (['approved', 'edited'].includes(p.end)) { d.status = 'progress'; d.progressNote = `${p.id} approved · checking that the detection works again`; d.unblockedBy = p.id; d.resume = true;
+    W.log.unshift({ t: Date.now(), kind: 'step', text: `${d.id}: continued after ${p.id} was approved` }); }
+  else { d.status = 'done'; d.end = 'dismissed'; d.closed = Date.now(); d.outcome = `Closed with nothing changed. The fix in ${p.id} was declined, so the detection stays as it is. The suggestion stays visible on the affected rules.`; }
+}
+/* The check after an unblock is done: the mission closes itself. */
+function myResolve(W, d) {
+  if (!d || d.status !== 'progress' || !d.resume) return;
+  d.resume = false; d.status = 'done'; d.end = 'auto'; d.closed = Date.now(); d.fresh = Date.now(); d.outcome = d.after || 'Closed automatically. The detection works again.';
+  W.log.unshift({ t: Date.now(), kind: 'done', text: `${d.id} closed automatically: the detection works again` });
 }
 /* A person fixes the source in the native screen. The mission notices and closes itself. */
 function myReconnect(W, instId, whoName) {
@@ -496,8 +605,13 @@ function myArrive(W, n) {
 }
 /* The agent finishes: the mission now waits for a person. */
 function myReady(W, t) {
-  if (!t || t.status !== 'progress' || !t.decision) return;
-  t.status = 'pending'; t.fresh = Date.now(); t.progressNote = '';
-  if (t.answer) { t.collab = (t.collab || []).concat([t.answer]); t.answer = null; }
+  if (!t || t.status !== 'progress' || !t.live) return;
+  t.live = false; t.fresh = Date.now(); t.progressNote = '';
+  /* The cause is in the pipeline: a mission is opened for the Pipeline Engineer and this one waits on it. */
+  if (t.spawn) { const p = t.spawn; t.spawn = null; p.opened = Date.now(); p.fresh = Date.now(); W.tasks.unshift(p); t.status = 'pending'; t.waitOn = p.id;
+    W.log.unshift({ t: Date.now(), kind: 'task', text: `Opened ${p.id} for the Pipeline Engineer: ${t.id} waits on it` });
+    W.log.unshift({ t: Date.now(), kind: 'task', text: `${p.id} is ready for a decision` }); return p; }
+  if (!t.decision) return;
+  t.status = 'pending';
   W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id} is ready for a decision` });
 }

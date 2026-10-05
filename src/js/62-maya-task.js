@@ -65,14 +65,14 @@ function mChatHtml(key) {
 }
 
 /* ---------- the mission card ---------- */
+const mLink = id => { const x = mTask(id); return x ? `<button data-link="${id}" onclick="mOpenTask('${id}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sunk border border-line2 hover:bg-hov text-[12.5px] text-ink text-left"><span class="font-mono font-semibold">${id}</span>${mAv(x.agent, 16)}<span class="text-ink2 truncate max-w-[340px]">${esc(x.title)}</span>${mStatus(x)}</button>` : ''; };
 function mHow(t) {
-  const [trName, trIcon] = MY_TRIGGER[t.trigger.kind], from = t.trigger.from && M_FROM[t.trigger.from], ags = mTaskAgents(t);
+  const [trName, trIcon] = MY_TRIGGER[t.trigger.kind], from = t.trigger.from && M_FROM[t.trigger.from];
   const trig = `<div class="flex gap-2.5 text-[13px] text-ink2"><span class="w-5 h-5 rounded-full bg-sunk border border-line flex items-center justify-center shrink-0 text-ink3">${ic(trIcon, 'w-3 h-3')}</span><span><b class="text-ink">${trName}${from ? ' from the ' + M_AG[from].name : ''}.</b> ${esc(t.trigger.text)}</span></div>`;
   const steps = t.steps.map((x, i) => `<div class="flex gap-2.5 text-[13px] text-ink2"><span class="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-indigo-500">${i + 1}</span>${esc(x)}</div>`).join('');
-  const talk = (t.collab || []).length ? `<div class="mt-1 pt-3 border-t border-line space-y-2"><div class="text-[11.5px] text-ink3">Passed between two agents</div>${t.collab.map(([k, x]) => `<div class="flex gap-2.5 text-[13px] text-ink2">${mAv(k, 20)}<span><b style="color:${M_AG[k].hex}">${M_AG[k].name}:</b> ${esc(x)}</span></div>`).join('')}</div>` : '';
-  return `<div>${mLabel('How it got there', `<span class="text-[12.5px] text-ink3 inline-flex items-center gap-2">${mAvs(t, 18)}${t.steps.length} steps${ags.length > 1 ? ' · 2 agents' : ''}</span>`)}
+  return `<div>${mLabel('How it got there', `<span class="text-[12.5px] text-ink3 inline-flex items-center gap-2">${mAv(t.agent, 18)}${M_AG[t.agent].name} · ${t.steps.length} steps</span>`)}
     <div class="mt-2 h-1.5 rounded-full bg-sunk overflow-hidden"><div class="h-full rounded-full" style="width:100%;background:linear-gradient(90deg,#5eead4,#818cf8)"></div></div>
-    <div class="mt-2">${mFold(t, 'steps', `Show the steps (${t.steps.length})`, `<div class="space-y-2">${trig}${steps}${talk}</div>`)}</div></div>`;
+    <div class="mt-2">${mFold(t, 'steps', `Show the steps (${t.steps.length})`, `<div class="space-y-2">${trig}${steps}</div>`)}</div></div>`;
 }
 function mCard(t) {
   const d = t.decision, both = t.current && t.recommended, done = t.status === 'done';
@@ -86,15 +86,21 @@ function mCard(t) {
     <div class="mt-4 flex items-center gap-3 flex-wrap"><span class="text-[11px] font-black tracking-[.14em] text-ink3 uppercase">AI suggestion</span>${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12.5px] text-ink3">confidence</span><span class="text-ink4">·</span>${mImpact(t.impact)}<span class="text-[12.5px] text-ink3">impact</span></div>
     <div class="mt-4">${mLabel('Where the problem starts')}<div class="mt-2">${mChain(t.layer, t.sug)}</div><p class="text-[13.5px] text-ink mt-2.5 leading-relaxed">${esc(t.diagnosis)}${t.noise ? ` <span class="text-ink3">Noise type: ${esc(t.noise)}.</span>` : ''}</p></div>
     <div class="mt-4 pt-4 border-t border-line">${mHow(t)}</div>`;
-  const box = t.status === 'pending' && d ? `<section class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
+  const links = (t.unblocks && mTask(t.unblocks) ? `<div class="flex items-center gap-2 flex-wrap text-[12.5px] text-ink3"><span>${t.status === 'done' ? 'Unblocked' : 'Unblocks'}</span>${mLink(t.unblocks)}</div>` : '') + (t.unblockedBy ? `<div class="flex items-center gap-2 flex-wrap text-[12.5px] text-ink3"><span>Unblocked by</span>${mLink(t.unblockedBy)}</div>` : '');
+  const box = t.status === 'pending' && t.waitOn ? `<section class="rounded-2xl border border-indigo-500/40 bg-indigo-500/5 p-4 space-y-3">
+      ${mLabel('<span class="c-indigo">Pending · waits on another mission</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)}</span>`)}
+      <p class="text-[13.5px] text-ink2 leading-relaxed"><b class="text-ink">Nothing to decide here.</b> The cause is in the data pipeline, so the fix belongs to the mission below. When it is approved, this mission continues on its own and checks that the detection works again.</p>
+      <div>${mLink(t.waitOn)}</div></section>`
+    : t.status === 'pending' && d ? `<section class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
       ${mLabel('<span style="color:#fbbf24">Needs your decision</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)} waiting</span>`)}
       <div><h3 class="text-[16.5px] font-bold text-ink leading-snug">${esc(d.q)}</h3><p class="text-[13.5px] text-ink2 leading-relaxed mt-1">${esc(d.effect)}</p>
         <p class="text-[12.5px] text-ink3 leading-relaxed mt-1"><b class="text-ink2">Risk:</b> ${esc(d.risk)}${d.reversible ? ' It can be reversed.' : ''}${d.selfFix ? ' ' + esc(d.selfFix) : ''}</p></div>
       ${change ? `<div>${mLabel('What changes')}<div class="mt-2">${change}</div></div>` : ''}
       ${v ? `<div class="rounded-xl border border-line px-3.5 py-3">${mFold(t, 'why', 'Show the evidence', mValidation(v), vHint)}</div>` : ''}
+      ${links}
     </section>`
-    : t.status === 'progress' ? `<section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-4 flex items-center gap-2.5 text-[13.5px] text-ink2"><span class="c-blue">${ic('loader', 'w-4 h-4 animate-spin')}</span><span><b class="text-ink">No decision needed now.</b> ${esc(t.progressNote || '')}${t.handed ? '. The mission closes on its own when the data arrives.' : '.'}</span></section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changes')}<div class="mt-2">${change}</div></section>` : ''}`
-    : `<section class="rounded-2xl border p-4 ${['rejected', 'dismissed'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p></section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
+    : t.status === 'progress' ? `<section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-4 flex items-center gap-2.5 text-[13.5px] text-ink2"><span class="c-blue">${ic('loader', 'w-4 h-4 animate-spin')}</span><span class="min-w-0"><b class="text-ink">No decision needed now.</b> ${esc(t.progressNote || '')}${t.handed ? '. The mission closes on its own when the data arrives.' : '.'}${links ? `<span class="block mt-2">${links}</span>` : ''}</span></section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changes')}<div class="mt-2">${change}</div></section>` : ''}`
+    : `<section class="rounded-2xl border p-4 ${['rejected', 'dismissed'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${links ? `<div class="mt-2.5">${links}</div>` : ''}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
   const objs = mAffected(t);
   return `<div class="space-y-4"><section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">${top}</section>${box}
     <div class="px-1 space-y-2.5">${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${done || t.status === 'pending' ? mFold(t, 'fb', 'Give feedback', `<div class="space-y-2">${mFb(t, 'diag', 'Is the diagnosis right?')}${t.recommended ? mFb(t, 'rec', 'Is the suggested change right?') : ''}</div>`) : ''}</div>
@@ -108,7 +114,7 @@ function mWorking(t) {
     <h2 class="text-[19px] font-bold text-ink leading-snug mt-1.5">${esc(t.title)}</h2>
     <p class="text-[13.5px] text-ink3 mt-2"><b class="text-ink2">${MY_TRIGGER[t.trigger.kind][0]}.</b> ${esc(t.trigger.text)}</p>
     <ol class="space-y-2 mt-4">${t.steps.slice(0, n).map((x, i) => `<li class="flex gap-2.5 text-[13.5px] ${i === n - 1 ? 'text-ink' : 'text-ink2'}"><span class="w-5 h-5 shrink-0 flex items-center justify-center ${i === n - 1 ? 'c-blue' : 'c-cx'}">${ic(i === n - 1 ? 'loader' : 'check', 'w-4 h-4' + (i === n - 1 ? ' animate-spin' : ''))}</span>${esc(x)}</li>`).join('')}</ol>
-    ${t.answer ? `<div class="mt-4 pt-3 border-t border-line flex items-center gap-2.5 text-[13px] c-blue">${mAv(t.answer[0], 20)}Waiting for the ${M_AG[t.answer[0]].name} to return its answer</div>` : ''}
+    <div class="mt-4 text-[13px] c-blue">${esc(t.progressNote || 'Working')}…</div>
   </section>${mChatHtml(t.id)}</div>`;
 }
 
@@ -123,6 +129,7 @@ function mObjCard(o) {
       <p class="text-[13.5px] text-ink2 leading-relaxed mt-2.5">${rv.sug === 'Keep' ? (rv.task ? `The last mission on this rule is closed (${rv.task.id}). It is working and useful, so there is nothing to change.` : 'Checked in the last sweep. The data arrives, the fields are mapped and the rule fires at a useful rate. Nothing to change.') : 'This rule is disabled and has not been reviewed.'}</p>
       <button onclick="mAskReview(${r.id})" class="mt-3 px-3.5 py-2 rounded-xl border border-line2 text-[13px] font-semibold text-ink hover:bg-hov inline-flex items-center gap-1.5">${ic('scan-search', 'w-4 h-4')}Review this rule now</button>
     </section>${mRuleBody(r)}${mChatHtml('rule:' + r.id)}</div>`; }
+  if (o.kind === 'tech') return mTechCard(o.id);
   const i = W.iocs.find(x => x.id === o.id), rv = myIocReview(W, i), kv = (k, v) => `<div class="flex gap-3 text-[13.5px] py-1"><span class="w-40 shrink-0 text-ink3">${k}</span><span class="text-ink min-w-0 break-all">${v}</span></div>`;
   return `<div class="space-y-4"><section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">
     <div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">IOC rule · ID ${i.id}</div>
@@ -135,7 +142,7 @@ function mObjCard(o) {
 /* ---------- standing by: clean, ready to talk ---------- */
 function mStandby() {
   const W = M.W, st = myStats(W), run = W.tasks.find(mRunning), chat = mChatHtml('_');
-  const label = run ? `Working on ${run.id}` : 'Standing by', sub = run ? esc(run.title) : `${st.progress} mission${st.progress === 1 ? '' : 's'} in progress · ${st.rules} detections under watch`;
+  const label = run ? `Working on ${run.id}` : 'Standing by', sub = run ? esc(run.title) : `${st.progress} mission${st.progress === 1 ? '' : 's'} in progress · ${st.rules} rules and ${st.sources} data sources under watch`;
   const cta = st.pending ? `<button data-act="review" onclick="mReviewAll()" class="mt-4 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[15px] font-bold inline-flex items-center justify-center gap-2.5 shadow-lg shadow-amber-500/25">${ic('bell-ring', 'w-4 h-4')}Review ${st.pending} decision${st.pending === 1 ? '' : 's'}${ic('arrow-right', 'w-4 h-4')}</button>` : '';
   if (chat) return `<div class="space-y-4"><div class="flex items-center gap-3 pb-3 border-b border-line">${mAv('sec', 44, true)}<div class="min-w-0 flex-1"><div class="text-[15px] font-bold text-ink">SecOps <span class="font-normal text-ink3">· ${label}</span></div><div class="text-[12.5px] text-ink3 truncate">${sub}</div></div></div>${chat}</div>`;
   return `<div class="min-h-full flex flex-col items-center justify-center text-center px-4 py-6">
@@ -159,7 +166,7 @@ function mPanelRender() {
         <div id="m-dots" class="flex items-center gap-1">${M.deck.map((id, k) => { const s = mTask(id).status; return `<button onclick="mOpenTask('${id}')" title="${id}" class="h-1.5 rounded-full transition-all ${k === i ? 'w-6 bg-amber-500' : s !== 'pending' ? 'w-1.5 bg-cx' : 'w-1.5 bg-line2 hover:bg-ink3'}"></button>`; }).join('')}</div>
         <button onclick="mDeckMove(1)" class="w-7 h-7 rounded-lg hover:bg-hov text-ink2 flex items-center justify-center" title="Next (→)">${ic('chevron-right', 'w-4 h-4')}</button>${x('mPanelHome()')}</div>`;
   } else if (t || o) {
-    head.innerHTML = `<div class="flex items-center gap-1.5 min-w-0"><button onclick="mPanelHome()" class="p-1.5 -ml-1.5 rounded-lg hover:bg-hov text-ink2" title="Back (Esc)">${ic('arrow-left', 'w-4 h-4')}</button><span class="text-[13.5px] font-bold text-ink whitespace-nowrap">${t ? t.id : o.kind === 'rule' ? 'Correlation rule ' + o.id : 'IOC rule ' + o.id}</span>${t ? `<span class="text-[12px] text-ink3 truncate">· ${esc(mStatusTxt(t))}</span>` : ''}</div><div class="shrink-0">${native ? x('mClosePanel()') : ''}</div>`;
+    head.innerHTML = `<div class="flex items-center gap-1.5 min-w-0"><button onclick="mPanelHome()" class="p-1.5 -ml-1.5 rounded-lg hover:bg-hov text-ink2" title="Back (Esc)">${ic('arrow-left', 'w-4 h-4')}</button><span class="text-[13.5px] font-bold text-ink whitespace-nowrap">${t ? t.id : o.kind === 'rule' ? 'Correlation rule ' + o.id : o.kind === 'tech' ? 'Technique ' + o.id : 'IOC rule ' + o.id}</span>${t ? `<span class="text-[12px] text-ink3 truncate">· ${esc(mStatusTxt(t))}</span>` : ''}</div><div class="shrink-0">${native ? x('mClosePanel()') : ''}</div>`;
   } else {
     head.innerHTML = `<div class="flex items-center gap-2 text-[13px] min-w-0"><span class="font-bold text-ink tracking-wide">SecOps</span><span class="text-[12px] text-ink3 truncate">${W.tasks.some(mRunning) ? 'Working' : 'Standing by'}</span></div>
       <div class="flex items-center gap-1 shrink-0"><button data-act="bell" onclick="mReviewAll()" class="relative p-2 rounded-xl hover:bg-hov text-ink2" title="Decisions (C)">${ic('bell', 'w-[18px] h-[18px]')}${pend.length ? `<span class="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold font-mono flex items-center justify-center">${pend.length}</span>` : ''}</button>${native ? x('mClosePanel()') : ''}</div>`;
@@ -177,7 +184,7 @@ function mPanelRender() {
   else if (t && t.status !== 'pending' && pend.length) foot.innerHTML = `<div class="flex items-center justify-between gap-3"><span class="text-[13px] text-ink2 truncate">${esc(M.lastDecision && M.lastDecision.id === t.id ? M.lastDecision.text : `${pend.length} decision${pend.length === 1 ? '' : 's'} waiting.`)}</span><button data-act="next" onclick="mOpenTask('${pend[0].id}')" class="px-4 py-2.5 rounded-2xl bg-ink text-panel text-[13.5px] font-bold inline-flex items-center gap-1.5 whitespace-nowrap">Next decision${ic('arrow-right', 'w-4 h-4')}</button></div>`;
   else if (!t && !o) foot.innerHTML = `<div class="flex flex-wrap gap-1.5 justify-center">${[['Brief me', "mSend('Brief me')"], ['Why did SentinelOne break?', "mSend('Why did SentinelOne break?')"], ['Are we covered for impossible travel?', "mSend('Are we covered for impossible travel?')"]].map(([l, f]) => `<button onclick="${f}" class="px-3 py-1.5 rounded-full border border-line2 text-[12.5px] text-ink2 hover:text-ink hover:bg-hov">${esc(l)}</button>`).join('')}</div>`;
   else foot.innerHTML = '';
-  $('m-panel-ctx').textContent = t ? t.id : o ? (o.kind === 'rule' ? 'Rule ' : 'IOC ') + o.id : 'All missions';
+  $('m-panel-ctx').textContent = t ? t.id : o ? (o.kind === 'rule' ? 'Rule ' : o.kind === 'tech' ? '' : 'IOC ') + o.id : 'All missions';
   $('m-cmd').placeholder = pending ? 'Ask before deciding…' : t && mRunning(t) ? 'Ask what is being checked…' : 'Give a command…';
   const later = $('m-later'), showLater = !!(pending && mDeckOn(t) && M.deck.length > 1); later.classList.toggle('hidden', !showLater); later.classList.toggle('inline-flex', showLater);
 }
@@ -193,7 +200,7 @@ function mDeckMove(dir) {
 function mDecide(id, choice) {
   const t = mTask(id); if (!t || t.status !== 'pending') return;
   if (choice === 'edit') { const ta = $('m-edit'); if (ta && t.recommended.kind === 'code') t.recommended.lines = ta.value.split('\n').map(l => [l, 'add']); t.editedBy = M_USER; }
-  myApply(M.W, t, choice, M_USER);
+  myApply(M.W, t, choice, M_USER); mResume();
   M.editing = null;
   const left = myPendingTasks(M.W).length;
   const said = choice === 'reject' ? 'Declined. Nothing changed.' : choice === 'dismiss' ? 'Dismissed.' : t.status === 'progress' ? 'Sent. ' + (t.progressNote || '') + '.' : choice === 'edit' ? 'Your version is applied.' : 'Approved and applied.';
@@ -215,7 +222,7 @@ function mSend(q) {
   const el = $('m-cmd'); q = (q || el.value || '').trim(); if (!q) return; el.value = '';
   const t = M.panelTask && mTask(M.panelTask), o = !t && M.panelObj, key = t ? t.id : o ? o.kind + ':' + o.id : '_';
   (M.chats[key] = M.chats[key] || []).push({ role: 'user', text: q });
-  const a = t ? mTaskAnswer(t, q) : mAnswer(q);
+  const a = t ? mTaskAnswer(t, q) : o && o.kind === 'tech' && /review/i.test(q) ? { text: 'Checked. The data this technique needs is already ingested, and no built-in or Marketplace content covers it. A correlation rule can be written for it. Say **open a mission** and the Detection Engineer will draft one and test it silently before it asks you.' } : mAnswer(q);
   M.typing = { key }; mPanelRender(); icons(); mPanelBottom();
   setTimeout(() => {
     M.typing = null; M.chats[key].push({ role: 'agent', text: a.text, task: a.task });
@@ -231,11 +238,12 @@ function mTaskAnswer(t, q) {
   if (t.status === 'pending' && /^(approve|yes|go ahead|do it|adopt|apply)\b/.test(l)) return { text: 'Done. Applied as suggested.', act: 'approve' };
   if (t.status === 'pending' && /^(reject|no\b|decline)/.test(l)) return { text: 'Understood. Nothing changes.', act: 'reject' };
   if (/risk|safe|revers|undo|roll/.test(l)) return { text: d ? `**Risk: ${d.risk}**${d.reversible ? '\nThe change can be reversed.' : ''}${t.validation ? `\n${t.validation.note}` : ''}` : `This mission is ${mStatusTxt(t).toLowerCase()}. No change is waiting.` };
+  if (/agent|who|pipeline|worked|escalat|wait|block/.test(l) && (t.waitOn || t.unblocks || t.unblockedBy)) { const o = mTask(t.waitOn || t.unblocks || t.unblockedBy);
+    return { text: t.waitOn ? `This mission belongs to the ${M_AG[t.agent].name}. The cause is in the pipeline, so it waits on **${o.id}** (${M_AG[o.agent].name}): ${o.title}. Approve that one and this mission continues on its own.` : `This mission belongs to the ${M_AG[t.agent].name}. ${t.unblocks ? `It ${o.status === 'done' || t.status === 'done' ? 'unblocked' : 'unblocks'} **${o.id}**: ${o.title}.` : `It was unblocked by **${o.id}**: ${o.title}.`}` }; }
+  if (/agent|who|pipeline|worked/.test(l)) return { text: `This mission belongs to the ${M_AG[t.agent].name}. The root cause is at the ${MY_LAYER[t.layer].name.toLowerCase()} step.` };
   if (/wait|later|nothing|ignore|not now/.test(l)) { const n = rules.length;
     const cost = { Fix: `the problem stays: ${n ? `${n} rule${n === 1 ? '' : 's'} keep${n === 1 ? 's' : ''} working on missing or wrong data` : 'the data stays missing'}`, Tune: 'the noise stays at the same level', Drop: 'the unused detection logic stays enabled', Adopt: 'the gap stays open', Connect: 'the detections that need this source stay unavailable', Watch: 'nothing is lost, the checks continue' }[t.sug] || 'nothing changes';
     return { text: `Nothing changes until you decide, so ${cost}. The mission stays in Pending, ranked by impact (**${t.impact}**).` }; }
-  if (/agent|who|pipeline|worked|escalat/.test(l)) { const ks = mTaskAgents(t);
-    return { text: ks.length > 1 ? `Two agents worked on this.\n${(t.collab || []).map(([k, x]) => `• **${M_AG[k].name}:** ${x}`).join('\n')}` : `Only the ${M_AG[t.agent].name} worked on this. The root cause is at the ${MY_LAYER[t.layer].name.toLowerCase()} step, so nothing had to be passed on.` }; }
   if (/rule|affect|object|which|what.*chang/.test(l)) return { text: rules.length ? `It affects **${rules.length} rule${rules.length === 1 ? '' : 's'}**:\n${rules.map(r => `• ${r.name} (ID ${r.id})`).join('\n')}${d ? `\n\n${d.effect}` : ''}` : (d ? d.effect : t.summary) };
   if (/why|how|explain|evidence|proof|sure|confiden/.test(l)) return { text: `${t.diagnosis}\n\nHow it was found:\n${t.steps.map(x => `• ${x}`).join('\n')}\n\nConfidence: **${t.conf}**.` };
   if (/option|alternativ|else|other/.test(l)) return { text: `You can approve the change as it is${t.current && t.recommended && !t.affects.instance ? ', edit it and approve your version' : ''}, or decline it. Declining changes nothing and keeps the suggestion visible on the affected objects.` };

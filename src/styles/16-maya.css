@@ -59,3 +59,13 @@
   .m-wire-off { background: repeating-linear-gradient(90deg, rgb(var(--line2)) 0 4px, transparent 4px 8px); }
   .m-mark { position: absolute; top: -9px; right: -7px; border-radius: 9999px; box-shadow: 0 0 0 2px rgb(var(--panel)), 0 0 0 4px rgb(245 158 11 / .8); animation: mMark 1.8s ease-in-out infinite; }
   @keyframes mMark { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+
+  /* MITRE ATT&CK coverage */
+  .m-tech { display: block; width: 100%; min-height: 92px; text-align: left; padding: 9px 10px; border-radius: 6px; background: rgb(var(--card)); border: 1px solid transparent; box-shadow: inset 3px 0 0 transparent; transition: border-color .15s, opacity .2s; }
+  .m-tech:hover { border-color: rgb(var(--line2)); }
+  .m-tech-degraded { box-shadow: inset 3px 0 0 #f43f5e; background: rgb(244 63 94 / .08); }
+  .m-tech-gap { box-shadow: inset 3px 0 0 #818cf8; background: rgb(99 102 241 / .08); border-style: dashed; border-color: rgb(99 102 241 / .4); }
+  .m-tech-suggest { box-shadow: inset 3px 0 0 #00c389; background: rgb(0 195 137 / .07); }
+  .m-tech-noisy { box-shadow: inset 3px 0 0 #f59e0b; background: rgb(245 158 11 / .07); }
+  .m-tech-sel { border-color: #00c389 !important; }
+

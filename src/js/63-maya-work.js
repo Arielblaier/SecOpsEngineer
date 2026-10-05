@@ -9,8 +9,8 @@ function mWorkList() {
   const W = M.W, order = { pending: 0, progress: 1, done: 2 }, q = M.q.trim().toLowerCase();
   /* A mission that just started stays visible in Pending while its agent runs, so a new trigger is never missed. */
   return W.tasks.filter(t => M.tab === 'all' || t.status === M.tab || (M.tab === 'pending' && mRunning(t)))
-    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, mAgentNames(t)].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
+    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || ''].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.waitOn ? 1 : 0) - (b.waitOn ? 1 : 0) || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
 }
 /* ---------- widgets ---------- */
 function mRing(pct, col, label, size = 62) {
@@ -24,17 +24,25 @@ function mSpark(vals, col) {
   return `<svg viewBox="0 0 ${w} ${h}" class="w-full h-[38px] overflow-visible" preserveAspectRatio="none"><defs><linearGradient id="m-sp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><path d="${line} L${w},${h} L0,${h} Z" fill="url(#m-sp)"/><path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${col}"/></svg>`;
 }
 function mWidgets() {
-  const W = M.W, st = myStats(W), total = W.tasks.length || 1, last = W.history[W.history.length - 1], delta = st.issuesNow - last;
-  const inst = W.sources.flatMap(s => s.instances), running = W.tasks.filter(mRunning).length;
+  const W = M.W, st = myStats(W), total = W.tasks.length || 1, dt = myDetections(W), nz = myNoise(W), un = myUnused(W);
+  const running = W.tasks.filter(mRunning).length, pend = st.pending + st.waiting, pct = Math.round(nz.share * 100), was = Math.round(W.noiseHistory[W.noiseHistory.length - 1] * 100), dn = pct - was;
   const seg = (k, n, cls, lbl, tone) => `<button onclick="M.tab='${k}';mRender()" class="text-left min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-hov ${M.tab === k ? 'bg-hov' : ''}"><div class="text-[24px] leading-7 font-black font-mono ${tone}">${n}</div><div class="text-[11.5px] text-ink3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${cls}"></span>${lbl}</div></button>`;
-  const card = (body, extra = '') => `<div class="m-wid rounded-2xl border border-line px-3 py-2.5 min-w-0 ${extra}">${body}</div>`;
+  const card = (body, oc = '') => `<div class="m-wid rounded-2xl border border-line px-3 py-2.5 min-w-0 ${oc ? 'cursor-pointer hover:border-line2' : ''}" ${oc ? `onclick="${oc}"` : ''}>${body}</div>`;
+  const head = (t, tip, right = '') => `<div class="flex items-center justify-between gap-2 text-[11.5px] text-ink3 mb-1.5"><span class="font-semibold inline-flex items-center gap-1.5">${t} ${mInfo(tip)}</span>${right}</div>`;
+  const okInst = st.instOk / st.inst * 100, errInst = st.instErr / st.inst * 100;
   return `<div class="m-wwrap"><div class="m-wgrid">
-    ${card(`<div class="flex items-center justify-between text-[11.5px] text-ink3 mb-1.5"><span class="font-semibold flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Queue flow</span><span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : `${W.tasks.length} missions`}</span></div>
-      <div class="grid grid-cols-3 gap-2">${seg('pending', st.pending, 'bg-amber-500', 'Pending', 'c-amber')}${seg('progress', st.progress, 'bg-blue-500', 'In progress', 'c-blue')}${seg('done', st.done, 'bg-cx', 'Done', 'c-cx')}</div>
-      <div class="mt-2 h-2.5 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="m-bar h-full bg-amber-500" data-anim="b-pend" data-to="${st.pending / total * 100}%"></div><div class="m-bar h-full bg-blue-500 seg-live" data-anim="b-prog" data-to="${st.progress / total * 100}%"></div><div class="m-bar h-full bg-cx" data-anim="b-done" data-to="${st.done / total * 100}%"></div></div>`, 'm-wide')}
-    ${card(`<div class="text-[11.5px] text-ink3 font-semibold mb-1.5">Detections working</div><div class="flex items-center gap-2.5">${mRing(st.share, st.share >= 70 ? '#00c389' : '#f59e0b', st.share + '%', 56)}<div class="min-w-0"><div class="text-[20px] leading-6 font-black font-mono text-ink">${st.healthy}<span class="text-ink4 text-[13px] font-bold"> / ${st.enabled}</span></div><div class="text-[11.5px] text-ink3 leading-snug">rules healthy</div></div></div>`)}
-    ${card(`<div class="flex items-center justify-between text-[11.5px] text-ink3 font-semibold"><span>Issues per week</span><span class="font-mono ${delta < 0 ? 'c-cx' : delta > 0 ? 'c-amber' : 'text-ink4'}">${delta < 0 ? '▼ ' + Math.abs(delta).toLocaleString() : delta > 0 ? '▲ ' + delta.toLocaleString() : 'no change'}</span></div><div class="text-[20px] leading-6 font-black font-mono text-ink mt-1">${st.issuesNow.toLocaleString()}</div><div class="mt-1">${mSpark(W.history.concat([st.issuesNow]), delta < 0 ? '#00c389' : '#818cf8')}</div><div class="text-[11.5px] text-ink3 whitespace-nowrap truncate">${st.removed ? `<span class="c-cx">${st.removed.toLocaleString()} removed by you</span>` : 'vs last week'}</div>`)}
-    ${card(`<div class="text-[11.5px] text-ink3 font-semibold mb-1">Data instances</div><div class="text-[20px] leading-6 font-black font-mono ${st.instErr ? 'c-rose' : 'c-cx'}">${st.instOk}<span class="text-ink4 text-[13px] font-bold"> / ${st.inst}</span></div><div class="mt-1.5 flex flex-wrap gap-1">${inst.map(i => `<span class="w-2.5 h-2.5 rounded-[3px] ${{ ok: 'bg-cx', err: 'bg-rose-500 animate-pulse', warn: 'bg-amber-500', off: 'bg-slate-500/50' }[i.status]}" title="${esc(i.name)}: ${M_INST[i.status][2]}"></span>`).join('')}</div><div class="text-[11.5px] text-ink3 mt-1">${st.instErr ? `${st.instErr} in error` : 'none in error'}</div>`)}
+    ${card(`${head('<span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Queue flow', 'Missions by state. Pending includes missions that wait on another mission and not on you. Click a number to filter the list.', `<span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : st.waiting ? `${st.pending} need you · ${st.waiting} wait${st.waiting === 1 ? 's' : ''} on a mission` : `${st.pending} need you`}</span>`)}
+      <div class="grid grid-cols-3 gap-2">${seg('pending', pend, 'bg-amber-500', 'Pending', 'c-amber')}${seg('progress', st.progress, 'bg-blue-500', 'In progress', 'c-blue')}${seg('done', st.done, 'bg-cx', 'Done', 'c-cx')}</div>
+      <div class="mt-2 h-2.5 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="m-bar h-full bg-amber-500" data-anim="b-pend" data-to="${pend / total * 100}%"></div><div class="m-bar h-full bg-blue-500 seg-live" data-anim="b-prog" data-to="${st.progress / total * 100}%"></div><div class="m-bar h-full bg-cx" data-anim="b-done" data-to="${st.done / total * 100}%"></div></div>`)}
+    ${card(`${head('Detections that cannot fire', 'Enabled correlation rules that look fine and cannot fire right now: their data stopped, a filter drops their events, or a field they read arrives empty. Noisy rules fire, but mostly on nothing.')}
+      <div class="flex items-center gap-2.5">${mRing(dt.ok / dt.enabled * 100, dt.blind ? '#f43f5e' : '#00c389', dt.blind, 56)}<div class="min-w-0"><div class="text-[13px] text-ink leading-snug">of <b class="font-mono">${dt.enabled}</b> enabled rules</div><div class="text-[11.5px] text-ink3 leading-snug">${dt.noisy ? `<span class="c-amber">${dt.noisy} more are noisy</span>` : 'none are noisy'}</div></div></div>`, "M.onlyOpen=true;mNav('rules')")}
+    ${card(`${head('Noise', 'Share of issues in the last 7 days that ended with no action, by the verdicts of analysts and the Investigation Agent. A few rules usually make most of it.', `<span class="font-mono ${dn < 0 ? 'c-cx' : dn > 0 ? 'c-amber' : 'text-ink4'}">${dn < 0 ? '▼ ' + Math.abs(dn) : dn > 0 ? '▲ ' + dn : '±0'} pts</span>`)}
+      <div class="flex items-end gap-3"><div class="shrink-0"><div class="text-[24px] leading-7 font-black font-mono ${pct >= 40 ? 'c-amber' : 'c-cx'}">${pct}%</div></div><div class="flex-1 min-w-0">${mSpark(W.noiseHistory.concat([nz.share]).map(x => x * 100), dn < 0 ? '#00c389' : '#f59e0b')}</div></div>
+      <div class="text-[11.5px] text-ink3 leading-snug mt-1 truncate">${nz.noise.toLocaleString()} of ${nz.total.toLocaleString()} issues · 5 rules make ${Math.round(nz.topShare * 100)}%</div>`)}
+    ${card(`${head('Data behind the detections', 'Data sources and their instances. A stopped instance leaves rules without data. Sources that no enabled correlation rule reads are candidates for new detections, or for cheaper storage. Built-in analytics may still use some of them.')}
+      <div class="flex items-baseline gap-2"><span class="text-[24px] leading-7 font-black font-mono text-ink">${st.sources}</span><span class="text-[12px] text-ink3">sources · ${st.inst} instances</span></div>
+      <div class="mt-1.5 h-2 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="h-full bg-cx" style="width:${okInst}%"></div><div class="h-full bg-rose-500" style="width:${Math.max(errInst, st.instErr ? 2 : 0)}%"></div><div class="h-full bg-slate-500/50 flex-1"></div></div>
+      <div class="text-[11.5px] text-ink3 leading-snug mt-1.5 truncate">${st.instErr ? `<span class="c-rose font-semibold">${st.instErr} stopped</span>` : '<span class="c-cx">none stopped</span>'} · ${un.n} sources no rule reads (${un.gb} GB a day)</div>`, "mNav('sources')")}
   </div></div>`;
 }
 /* ---------- the activity log: a thin strip between the list and the panel ---------- */
@@ -62,12 +70,12 @@ function mWork() {
   const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
     return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : t.status === 'pending' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
       <span>${mStatus(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
-      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : esc(MY_CARD[t.card])}</span></span>
+      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn} · ${M_AG[(mTask(t.waitOn) || t).agent].name}</span>` : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : esc(MY_CARD[t.card])}</span></span>
       <span>${run ? '<span class="text-ink4">—</span>' : mConf(t.conf)}</span>
       <span>${mImpact(t.impact)}</span>
       <span class="text-[12.5px] text-ink3">${myAge(Date.now() - t.opened)}</span>
       <span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 min-w-0">${ic(MY_LAYER[t.layer].icon, 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${MY_LAYER[t.layer].name}</span></span>
-      <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAvs(t, 20)}<span class="truncate">${mTaskAgents(t).length > 1 ? 'Detection + Pipeline' : M_AG[t.agent].name.replace(' Engineer', '')}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'pending' ? 'No open decisions.' : 'Nothing here right now.'}</div>`;
+      <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(t.agent, 20)}<span class="truncate">${M_AG[t.agent].name}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'pending' ? 'No open decisions.' : 'Nothing here right now.'}</div>`;
 
   $('mv-work').innerHTML = `<div class="flex-1 min-w-0 flex">
     <div class="flex-1 min-w-0 flex flex-col bg-panel">
@@ -84,7 +92,7 @@ function mWork() {
       </div>
       <div data-scroll class="flex-1 min-h-0 overflow-auto border-t border-line">
         <div class="m-table">
-          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Impact</span><span>Age</span><span>Root cause</span><span>Worked by</span></div>
+          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Impact</span><span>Age</span><span>Root cause</span><span>Owner</span></div>
           ${rows}
         </div>
       </div>

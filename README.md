@@ -117,7 +117,18 @@ What the mode shows:
 | IOC Rules | The native table, plus the same two columns |
 | Data Streams | Each pipeline as source, filter, parsing, data model, destination. A marker sits on the failing step |
 | Data Sources & Integrations | The native table and its instance panel. Fixing an instance here closes the mission on its own |
+| MITRE ATT&CK Coverage | The native dashboard, plus a layer that says whether the mapped detections can work: looks covered but cannot fire, no detection, coverage available, noisy |
 | Insights | Value regained, and an ATT&CK status per technique instead of one percentage |
+
+Each mission has one owner. When a detection problem starts in the pipeline,
+the Detection Engineer opens a second mission for the Pipeline Engineer and
+its own mission shows as Pending with a link ("waits on MSN-1012"). Approving
+the pipeline mission lets the first one continue, check the detection and
+close itself.
+
+The tenant is sized like a real one: 62 data sources, about 100 instances and
+about 150 correlation rules. The story rules are hand-written; the rest is
+generated from a fixed seed in `60-maya-data.js`.
 
 The AI suggestion is what is proposed: Fix, Tune, Adopt, Connect, Drop, Watch,
 Hand over or Keep. Clicking a suggestion or a row on a native screen opens the
@@ -144,6 +155,7 @@ src/js/66-maya-streams.js   Data Streams
 src/js/67-maya-sources.js   Data Sources & Integrations
 src/js/68-maya-insights.js  Insights
 src/js/69-maya-iocs.js      IOC Rules
+src/js/70-maya-mitre.js     MITRE ATT&CK Coverage
 src/styles/16-maya.css      Styles for all of the above
 ```
 

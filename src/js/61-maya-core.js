@@ -5,11 +5,11 @@
    the decisions dock.
    ====================================================================== */
 let M = null;
-const M_VIEWS = ['home', 'work', 'rules', 'iocs', 'streams', 'sources', 'insights'];
-const M_NATIVE = { rules: 'Correlation Rules', iocs: 'IOC Rules', streams: 'Data Streams', sources: 'Data Sources & Integrations' };
+const M_VIEWS = ['home', 'work', 'rules', 'iocs', 'streams', 'sources', 'mitre', 'insights'];
+const M_NATIVE = { rules: 'Correlation Rules', iocs: 'IOC Rules', streams: 'Data Streams', sources: 'Data Sources & Integrations', mitre: 'MITRE ATT&CK Coverage' };
 const M_NAV = [
   ['home', 'house', 'Home', 'Home'], ['work', 'sparkles', 'Missions', 'Missions'], null,
-  ['rules', 'file-code-2', 'Correlation Rules', 'Rules'], ['iocs', 'fingerprint', 'IOC Rules', 'IOCs'], ['streams', 'workflow', 'Data Streams', 'Streams'], ['sources', 'cable', 'Data Sources & Integrations', 'Sources'], null,
+  ['rules', 'file-code-2', 'Correlation Rules', 'Rules'], ['iocs', 'fingerprint', 'IOC Rules', 'IOCs'], ['streams', 'workflow', 'Data Streams', 'Streams'], ['sources', 'cable', 'Data Sources & Integrations', 'Sources'], ['mitre', 'grid-3x3', 'MITRE ATT&CK Coverage', 'ATT&CK'], null,
   ['insights', 'gauge', 'Insights', 'Insights']
 ];
 const M_USER = 'Ariel B.';
@@ -24,15 +24,14 @@ const M_AG = {
   inv: { name: 'Investigation Agent', role: 'Triage and investigation', c: ['#3b82f6', '#7dd3fc', '#93c5fd'], hex: '#3b82f6' },
   hunt: { name: 'Threat Hunter agent', role: 'Hunts and findings', c: ['#f97316', '#fdba74', '#fdba74'], hex: '#f97316' }
 };
-const M_FROM = { analyst: 'inv', hunter: 'hunt' };
+const M_FROM = { analyst: 'inv', hunter: 'hunt', det: 'det', pipe: 'pipe' };
 function mAv(k, size = 24, live = false) {
   const a = M_AG[k] || M_AG.det, d = Math.max(6, Math.round(size * .2));
   return `<span class="relative inline-flex shrink-0" style="width:${size}px;height:${size}px" title="${esc(a.name)}">${robotSVG(size, a.c[0], a.c[1], a.c[2])}${live ? `<span class="absolute rounded-full" style="width:${d}px;height:${d}px;right:${Math.round(size * .02)}px;bottom:${Math.round(size * .08)}px;background:#4DFFA6;box-shadow:0 0 0 2px rgb(var(--panel)), 0 0 8px #4DFFA6"></span>` : ''}</span>`;
 }
-/* The agents on a task: the owner, and the one it escalated to. */
-const mTaskAgents = t => [t.agent || 'det'].concat(t.fixer && t.fixer !== t.agent ? [t.fixer] : (t.collab || []).map(c => c[0]).filter((k, i, a) => k !== (t.agent || 'det') && a.indexOf(k) === i));
-const mAvs = (t, size = 22) => `<span class="inline-flex items-center">${mTaskAgents(t).map((k, i) => `<span class="${i ? '-ml-2' : ''} rounded-full" style="box-shadow:0 0 0 2px rgb(var(--panel))">${mAv(k, size)}</span>`).join('')}</span>`;
-const mAgentNames = t => mTaskAgents(t).map(k => M_AG[k].name).join(' with the ');
+/* One agent owns a mission. When the cause is in the other agent's area, a second mission is opened and the first waits on it. */
+const mTaskAgents = t => [t.agent || 'det'];
+const mAvs = (t, size = 22) => mAv(t.agent || 'det', size);
 
 const mTask = id => M.W.tasks.find(t => t.id === id);
 const mRule = id => M.W.rules.find(r => r.id === id) || M.W.suggested.find(r => r.id === id);
@@ -55,9 +54,9 @@ function mSug(s, o = {}) {
 const mConf = c => { if (!c) return '<span class="text-ink4">—</span>'; const n = { High: 3, Medium: 2, Low: 1 }[c];
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2" title="Confidence: ${c}"><span class="inline-flex items-end gap-[2px] h-3">${[1, 2, 3].map(i => `<span class="w-[3px] rounded-sm ${i <= n ? 'bg-cx' : 'bg-line2'}" style="height:${4 + i * 3}px"></span>`).join('')}</span>${c}</span>`; };
 const mImpact = i => `<span class="inline-flex px-2 py-0.5 rounded-md tn tn-${{ High: 'rose', Medium: 'amber', Low: 'blue' }[i]} text-[12px] font-semibold">${i}</span>`;
-const mStatusTxt = t => t.status === 'pending' ? 'Pending' : t.status === 'progress' ? 'In progress' : { approved: 'Approved', edited: 'Approved with edits', rejected: 'Rejected', dismissed: 'Dismissed', auto: 'Closed automatically', handed: 'Handed over', watch: 'Watching' }[t.end] || 'Done';
-const mStatus = t => { const tone = t.status === 'pending' ? 'amber' : t.status === 'progress' ? 'blue' : ['rejected', 'dismissed'].includes(t.end) ? 'slate' : 'cx';
-  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}"><span class="w-1.5 h-1.5 rounded-full ${tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>${mStatusTxt(t)}</span>`; };
+const mStatusTxt = t => t.status === 'pending' ? (t.waitOn ? 'Pending · waits on ' + t.waitOn : 'Pending') : t.status === 'progress' ? 'In progress' : { approved: 'Approved', edited: 'Approved with edits', rejected: 'Rejected', dismissed: 'Dismissed', auto: 'Closed automatically', handed: 'Handed over', watch: 'Watching' }[t.end] || 'Done';
+const mStatus = t => { const wait = t.status === 'pending' && t.waitOn, tone = wait ? 'indigo' : t.status === 'pending' ? 'amber' : t.status === 'progress' ? 'blue' : ['rejected', 'dismissed'].includes(t.end) ? 'slate' : 'cx';
+  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${wait ? ic('link-2', 'w-3.5 h-3.5') : `<span class="w-1.5 h-1.5 rounded-full ${tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>`}${wait ? 'Pending' : mStatusTxt(t)}</span>`; };
 /* Help that belongs to the product: a small info icon with a tooltip. */
 const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
 const M_SUG_HELP = Object.entries(MY_SUGGEST).map(([k, v]) => `${k}: ${v[1]}.`).join(' ');
@@ -94,7 +93,7 @@ function mBoot() {
     <button id="m-dock" onclick="mOpenPanel()" class="hidden fixed right-5 bottom-5 z-[42] items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-panel border border-line2 shadow-2xl hover:border-amber-500/60"></button>`);
   const rail = document.querySelector('#app aside nav');
   if (rail) rail.id = 'm-rail';
-  const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(7,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
+  const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(8,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
   mPatchDemoMenu();
   /* The signed-in user, and a reset button that is always in reach. */
   const me = document.querySelector('#app aside [title^="Guy"]');
@@ -124,10 +123,15 @@ function mArrive(n) {
   const iv = setInterval(() => {
     t.shown++;
     if (t.shown <= t.steps.length) M.W.log.unshift({ t: Date.now(), kind: 'step', text: `${t.id}: ${t.steps[t.shown - 1]}` });
-    if (t.shown >= t.steps.length) { clearInterval(iv); myReady(M.W, t); toast(`${t.id} is ready for your decision`, 'bell-ring'); }
+    if (t.shown >= t.steps.length) { clearInterval(iv); const sp = myReady(M.W, t); toast(`${(sp || t).id} is ready for your decision`, 'bell-ring'); }
     mRender();
   }, stepMs);
   M.timers.push(iv);
+}
+/* A mission that was unblocked checks its detection, then closes itself. */
+function mResume() {
+  M.W.tasks.filter(t => t.resume && !t.resumeTimer).forEach(t => { t.resumeTimer = true;
+    M.timers.push(setTimeout(() => { myResolve(M.W, t); toast(`${t.id} closed automatically: the detection works again`, 'circle-check'); mRender(); }, 7000)); });
 }
 function mArriveNext() { const n = M.W.incoming.findIndex(t => !M.W.tasks.includes(t)); if (n < 0) return toast('No more triggers in this demo', 'check'); mArrive(n); }
 
@@ -152,7 +156,7 @@ function mRender() {
   const sec = $('mv-' + M.view), sc = sec.querySelector('[data-scroll]'), top = sec.dataset.top ? 0 : sc ? sc.scrollTop : 0, left = sc ? sc.scrollLeft : 0;
   delete sec.dataset.top;
   const keep = [...document.querySelectorAll('[data-keep]')].map(el => [el.id, el.value, document.activeElement === el, el.selectionStart]);
-  ({ home: mHome, work: mWork, rules: mRules, iocs: mIocs, streams: mStreams, sources: mSources, insights: mInsights })[M.view]();
+  ({ home: mHome, work: mWork, rules: mRules, iocs: mIocs, streams: mStreams, sources: mSources, mitre: mMitre, insights: mInsights })[M.view]();
   mRail(); mReturnBar(); mPanelRender(); mDock();
   if (M.sheet) mSheetRender();
   const sc2 = sec.querySelector('[data-scroll]'); if (sc2) { sc2.scrollTop = top; sc2.scrollLeft = left; }
@@ -186,7 +190,7 @@ function mOpenTask(id) {
   const t = mTask(id); if (!t) return;
   if (M.lastDecision && M.lastDecision.id !== id) M.lastDecision = null;
   /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
-  if (t.status === 'pending' && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
+  if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
   M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
@@ -195,6 +199,7 @@ function mOpenTask(id) {
 }
 /* A native object opens in the same panel: its mission if it has one, otherwise what is known about it. */
 function mOpenObj(kind, id) {
+  if (kind === 'tech') { M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null; mRender(); return $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' }); }
   const W = M.W, rv = kind === 'rule' ? myRuleReview(W, mRule(id)) : myIocReview(W, W.iocs.find(x => x.id === id));
   const sg = kind === 'rule' && W.suggested.find(r => r.id === id);
   if (sg) return mOpenTask(sg.task);
@@ -287,5 +292,5 @@ function mKey(e) {
   if (k === '/') { const el = $('m-cmd'); if (el && mPanelOn()) { e.preventDefault(); el.focus(); } return; }
   if (M.panelTask && mPanelOn() && !M.sheet) { const t = mTask(M.panelTask);
     if (e.key === 'ArrowRight') return mDeckMove(1); if (e.key === 'ArrowLeft') return mDeckMove(-1);
-    if (t && t.status === 'pending' && !M.editing) { if (k === 'a') return mDecide(t.id, 'approve'); if (k === 'd') return mDecide(t.id, 'reject'); } }
+    if (t && t.status === 'pending' && t.decision && !M.editing) { if (k === 'a') return mDecide(t.id, 'approve'); if (k === 'd') return mDecide(t.id, 'reject'); } }
 }
