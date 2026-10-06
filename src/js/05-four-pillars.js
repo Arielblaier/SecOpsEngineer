@@ -8,10 +8,14 @@ const PILLARS = {
   intel:    { name: 'Avi', title: 'Intel Analyst', role: 'Feeds · Campaigns · Exposure', icon: 'radar', col: '#06b6d4', c2: '#67e8f9', dark: '#155e75', noun: 'assessments', task: 'Assessment', base: 21 }
 };
 const PILLAR_KEYS = ['analyst', 'engineer', 'hunter', 'intel'];
-const AGENT_MODE = (() => { try { return localStorage.getItem('cortex-agent-mode') || 'maya'; } catch (e) { return 'maya'; } })();
+/* The key is per branch, so a mode saved by another build of this demo does not decide what opens here. */
+const AGENT_MODE_KEY = 'cortex-agent-mode-hunter';
+const AGENT_MODE = (() => { try { return localStorage.getItem(AGENT_MODE_KEY) || 'hunt'; } catch (e) { return 'hunt'; } })();
+/* HUNT: the demo told from the Threat Hunter's side. See src/js/80-hunt-*.js */
+const HUNT = AGENT_MODE === 'hunt';
 /* MAYA: the demo told from the SecOps Engineer's side. See src/js/60-maya-*.js */
 const MAYA = AGENT_MODE === 'maya';
 const SINGLE = AGENT_MODE === 'single';
 if (SINGLE) PILLAR_KEYS.splice(1);
-function setAgentMode(m, inApp) { if (m === AGENT_MODE) return; try { localStorage.setItem('cortex-agent-mode', m); if (inApp) sessionStorage.setItem('cortex-skip-landing', '1'); } catch (e) {} location.reload(); }
-function agentModeToggle(cls) { return `<div class="inline-flex items-center rounded-full border border-white/15 p-1 bg-white/[.04] ${cls || ''}">${[['maya', 'SecOps Engineering'], ['single', 'Josh · Analyst'], ['multi', 'Workforce']].map(([k, l]) => `<button onclick="setAgentMode('${k}')" class="px-3.5 py-1.5 rounded-full text-[13px] whitespace-nowrap ${AGENT_MODE === k ? 'bg-white text-slate-950 font-bold' : 'text-white/70 hover:text-white'}">${l}</button>`).join('')}</div>`; }
+function setAgentMode(m, inApp) { if (m === AGENT_MODE) return; try { localStorage.setItem(AGENT_MODE_KEY, m); if (inApp) sessionStorage.setItem('cortex-skip-landing', '1'); } catch (e) {} location.reload(); }
+function agentModeToggle(cls) { return `<div class="inline-flex items-center rounded-full border border-white/15 p-1 bg-white/[.04] ${cls || ''}">${[['hunt', 'Threat Hunting'], ['maya', 'SecOps Engineering'], ['single', 'Josh · Analyst'], ['multi', 'Workforce']].map(([k, l]) => `<button onclick="setAgentMode('${k}')" class="px-3.5 py-1.5 rounded-full text-[13px] whitespace-nowrap ${AGENT_MODE === k ? 'bg-white text-slate-950 font-bold' : 'text-white/70 hover:text-white'}">${l}</button>`).join('')}</div>`; }

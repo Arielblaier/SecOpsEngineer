@@ -1,0 +1,36 @@
+  /* THREAT HUNTING screens */
+  .h-row-run { background: rgb(59 130 246 / .06); box-shadow: inset 3px 0 0 #3b82f6; }
+
+  /* the hunt page: large, calm text, like a document */
+  .h-h2 { font-size: 23px; line-height: 1.25; font-weight: 900; color: rgb(var(--ink)); margin: 34px 0 10px; scroll-margin-top: 8px; }
+  .h-h2:first-child, .h-step + .h-h2 { margin-top: 0; }
+  article > .h-h2:first-of-type { margin-top: 18px; }
+  .h-p { font-size: 17px; line-height: 1.6; color: rgb(var(--ink2)); margin: 0 0 12px; }
+  .h-ul { margin: 0 0 12px; padding-left: 22px; list-style: disc; font-size: 17px; line-height: 1.6; color: rgb(var(--ink2)); }
+  .h-ul li { margin-bottom: 7px; }
+  .h-code { padding: 1px 6px; border-radius: 5px; background: rgb(var(--code)); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .82em; color: rgb(var(--cx-fg)); word-break: break-all; }
+  .h-pre { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: rgb(var(--code)); border: 1px solid rgb(var(--line)); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; color: rgb(var(--ink2)); overflow-x: auto; white-space: pre; }
+  .h-xql { color: rgb(var(--blue-fg)); margin-left: 48px; }
+  .h-note { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 700; margin: 0 0 12px; }
+
+  /* the verdict: the one thing that must be read first */
+  .h-verdict { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 26px 0 0; padding: 24px 30px; border-radius: 6px; font-size: 34px; line-height: 1.15; font-weight: 900; letter-spacing: .01em; }
+  .h-verdict-bad { background: rgb(244 63 94 / .16); border: 1px solid rgb(244 63 94 / .32); box-shadow: inset 8px 0 0 #e5484d; color: #e5484d; }
+  .h-verdict-ok { background: rgb(0 195 137 / .12); border: 1px solid rgb(0 195 137 / .3); box-shadow: inset 8px 0 0 #00c389; color: rgb(var(--cx-fg)); }
+  .h-verdict-side { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 400; letter-spacing: 0; }
+
+  /* the path of a hunt through the product */
+  .h-step { flex: 1 1 0; min-width: 170px; padding: 9px 13px; border-radius: 12px; border: 1px solid rgb(var(--line)); background: rgb(var(--panel)); color: rgb(var(--ink2)); transition: border-color .15s; }
+  button.h-step:hover { border-color: rgb(var(--ink4)); }
+  .h-step-on { color: rgb(var(--ink)); }
+  .h-step-off { border-style: dashed; background: transparent; color: rgb(var(--ink4)); }
+  .h-step-live { border-color: rgb(59 130 246 / .6); background: rgb(59 130 246 / .08); color: rgb(var(--blue-fg)); }
+  .h-step-bad { border-color: rgb(244 63 94 / .5); background: rgb(244 63 94 / .10); color: rgb(var(--rose-fg)); }
+  .h-step-wait { border-color: rgb(245 158 11 / .6); background: rgb(245 158 11 / .10); color: rgb(var(--amber-fg)); }
+  .h-step-ok { border-color: rgb(0 195 137 / .45); background: rgb(0 195 137 / .08); color: rgb(var(--cx-fg)); }
+
+  /* one question and its query */
+  .h-q { padding: 16px 0; }
+  .h-q:first-child { padding-top: 2px; }
+  .h-q:last-child { padding-bottom: 2px; }
+  @media (max-width: 640px) { .h-xql { margin-left: 0; } .h-verdict { font-size: 26px; padding: 18px 20px; } .h-p, .h-ul { font-size: 16px; } }

@@ -177,6 +177,68 @@ Rule names, table columns and screen layouts follow the real product screens.
 Volumes, people and failures are invented. The Data Streams screen follows a
 design mockup, not a shipped screen.
 
+## The `hunter` branch: Threat Hunting
+
+`hunter` adds a fourth mode, told from the Threat Hunter's side. It is the
+default mode on this branch. The other modes still work: switch from the demo
+menu (the lightning icon) under "Agents".
+
+One object model, the same on every screen:
+
+```
+Hunt (one agent task)  ->  Hunt report (one per hunt, never edited)
+   -> Threat found     ->  Issue, type Threat Hunting (one per report)
+                       ->  Case, through the existing grouping engine
+   -> No threat found  ->  stays in the Hunts list as history
+```
+
+| Screen | What it is for |
+|---|---|
+| Hunts | Every hunt, running first. Verdict, confidence, technique, trigger, the issue and case it led to, the detection it created. Four widgets on top |
+| Hunt · Summary | Executive summary, verdict, hypothesis, cases, detection |
+| Hunt · Report | The long text. One per hunt, immutable, with a table of contents |
+| Hunt · Hunt | What the agent asked: stage, hypotheses, every question with its query and what came back, the hunt graph, data sources queried and unavailable |
+| Issue (side sheet) | AI summary, findings, evidence, recommended next steps (an analyst runs them), and the case |
+
+The five boxes under the title of a hunt (02 Hunt, 03 Report, 04 Issue,
+05 Case) are that hunt's place in the model above.
+
+Things to try:
+
+- Open `HNT-20260814-001`. It is the full, hand-written example.
+- The top row is running. It logs a query every 12 seconds, then writes its
+  report. Add `?live=3` to make a step take 3 seconds, or use "Finish the
+  running hunt now" in the demo menu.
+- "On Threat found" (top right of Hunts) switches between opening the issue
+  automatically and waiting for an analyst. Switch it off before the running
+  hunt ends to see the "Open issue" button.
+- "New hunt" starts one of three hunts. A hunt with no threat has
+  "Escalate manually" on its Summary.
+- `?hunt=hero` opens the full example directly.
+
+Keys: 1 / 2 / 3 switch tabs, Esc goes back, / searches, T theme, R reset.
+
+Where the code is:
+
+```
+src/js/80-hunt-data.js   The world: the two written hunts, the rotation, the counts. The ONLY place numbers live
+src/js/81-hunt-core.js   State, navigation, the clock of a running hunt, the issue sheet, keys
+src/js/82-hunt-list.js   The Hunts list and its widgets
+src/js/83-hunt-page.js   One hunt: Summary, Report, Hunt
+src/styles/17-hunt.css   Styles for all of the above
+```
+
+The same two rules as the SecOps mode apply. Numbers are computed from
+`80-hunt-data.js` (the report's totals are summed from the same rows the Hunt
+tab shows). And these files run after the original boot: the existing files
+that were touched (`05`, `49`, `54`, `57`) only add the mode switch and hand
+over to `hBoot()`.
+
+The executive summary, hypothesis, finding and detection id of the full
+example are given text. Everything around them (cluster counts per pass, host
+names, the report body, the queries) is invented to fit that text. Query field
+names follow XQL style and were not run against a tenant.
+
 ## Changing a library or font
 
 Edit the version in `package.json`, run `npm install`, then `npm run vendor`.
