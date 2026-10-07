@@ -195,12 +195,19 @@ handoffs, every version of the proposal, decisions and comments are seen by
 everyone in the mission. A question a person asks the agent is private to that
 person, with the answer, until they press "Share with the mission". Anything
 that changes the mission (approve, decline, edit, "also check...") is always
-shared, even when it was typed as private. "View as the team" shows the
-conversation without the private messages. "What is shared?" next to the
-composer lists the rules.
+shared, even when it was typed as private. The chip inside the input says who
+will see the next message, and a click changes it. The avatars in the panel
+head open the list of who is in the mission, the team view (the conversation
+without the private messages) and the rules.
 
-**Who is in it, and who it waits on.** The bar under the panel head shows the
-agents and people in the mission and who is viewing now. The mission waits on
+**Kept quiet on purpose.** The conversation is plain text. Only two things are
+tinted or framed: a private question with its answer, and a new version that
+needs to be seen. The mission has no frames, two buttons (Approve, Decline)
+and a "more" menu. In the side panel the mission is a short card on top of
+the conversation and opens in place.
+
+**Who is in it, and who it waits on.** The avatars in the panel head show the
+agents and people in the mission, with a green dot on who is viewing now. The mission waits on
 an agent or on "a human", never on one named person.
 
 **Versions.** A material change is a new version. If the mission is on screen

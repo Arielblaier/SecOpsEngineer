@@ -16,7 +16,13 @@
   .m-panel-work { position: absolute; inset: 0; width: auto; z-index: 20; border-left: 0; animation: mWsIn .3s cubic-bezier(.2,.8,.2,1); }
   @keyframes mWsIn { from { transform: translateX(36px); opacity: 0; } to { transform: none; opacity: 1; } }
   /* private to one person: a question to the agent, its answer, and the composer while "Only you" is selected */
-  .m-priv { border: 1.5px dashed rgb(99 102 241 / .7); background: rgb(99 102 241 / .10); }
+  .m-priv { background: rgb(99 102 241 / .14); }
+  /* the mission inside the panel: no frames. Sections are separated by space and one hairline. Only a banner that asks for an action keeps its frame. */
+  .m-flat section { border-width: 0; background: transparent; padding: 0; border-radius: 0; box-shadow: none; }
+  .m-flat section + section { border-top: 1px solid rgb(var(--line)); padding-top: 18px; }
+  .m-flat section[class*="border-2"] { border-width: 1px; border-radius: 14px; padding: 14px 16px; }
+  .m-flat section[class*="border-2"] + section { border-top: 0; padding-top: 0; }
+  .m-flat .m-pulse { animation: none; }
   /* the demo scenario bar is not part of the product */
   .m-scnbar { border-bottom: 1px dashed rgb(245 158 11 / .6); background: repeating-linear-gradient(135deg, rgb(245 158 11 / .07) 0 10px, transparent 10px 20px), rgb(var(--panel)); position: relative; z-index: 6; }
   @media (max-width: 1023px) { .m-panel, .m-panel-side, .m-panel-work { position: fixed; inset: 0; width: auto; min-width: 0; z-index: 43; border-left: 0; } }

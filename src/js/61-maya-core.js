@@ -78,9 +78,9 @@ function mBoot() {
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
-      <div id="m-ws-rail" class="hidden w-[272px] shrink-0 flex-col border-r border-line bg-panel2 overflow-hidden"></div>
+      <div id="m-ws-rail" class="hidden w-[264px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0 border-b border-line"></div>
+        <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
         <div id="m-people" class="hidden shrink-0 border-b border-line"></div>
         <div class="flex-1 min-h-0 flex overflow-hidden">
           <div id="m-conv" class="flex-1 min-w-0 flex flex-col overflow-hidden">
@@ -98,9 +98,9 @@ function mBoot() {
               </div>
             </div>
           </div>
-          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line bg-panel2 overflow-hidden">
-            <div id="m-art-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
-            <div id="m-art-acts" class="px-4 pb-4 pt-3 shrink-0 empty:hidden border-t border-line"></div>
+          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden">
+            <div id="m-art-scroll" class="flex-1 overflow-y-auto px-6 sm:px-8 py-5"></div>
+            <div id="m-art-acts" class="px-6 sm:px-8 pb-5 pt-3 shrink-0 empty:hidden"></div>
           </div>
         </div>
       </div>
@@ -211,7 +211,7 @@ const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
 function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
 function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), work = mSize() === 'work'; el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); el.classList.toggle('m-panel-work', work); el.classList.toggle('m-panel-side', !work); }
 function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
-function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.legend = false; M.people = false; mRender(); }
+function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.legend = false; M.people = false; M.menu = false; mRender(); }
 /* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
 function mOpenTask(id) {
   const t = mTask(id); if (!t) return;
@@ -219,7 +219,7 @@ function mOpenTask(id) {
   /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
   if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
-  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.asTeam = false; M.legend = false; M.people = false;
+  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.asTeam = false; M.legend = false; M.people = false; M.menu = false;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();
   if (changed) mScrollInit();
@@ -327,7 +327,7 @@ function mKey(e) {
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.legend || M.people) { M.legend = false; M.people = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.legend || M.people || M.menu) { M.legend = false; M.people = false; M.menu = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
   if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();
