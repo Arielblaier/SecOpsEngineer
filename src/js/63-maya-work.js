@@ -53,7 +53,7 @@ function mNowLine() { const W = M.W, run = W.tasks.find(mRunning); return run ? 
 function mLog() {
   const W = M.W, n = myPendingTasks(W).length, now = mNowLine();
   if (!M.logOpen) return `<div id="m-log" class="hidden lg:flex w-11 shrink-0 flex-col items-center border-l border-line bg-panel2 cursor-pointer hover:bg-hov/60" onclick="M.logOpen=true;mRender()" title="Open the activity log (L)">
-      <span class="mt-3 text-ink2">${ic('chevrons-right', 'w-4 h-4')}</span><span class="mt-3 w-2 h-2 rounded-full bg-cx animate-pulse"></span>
+      <span class="${mPanelOn() ? 'mt-3' : 'mt-12'} text-ink2">${ic('chevrons-right', 'w-4 h-4')}</span><span class="mt-3 w-2 h-2 rounded-full bg-cx animate-pulse"></span>
       ${n ? `<span class="mt-3 min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold font-mono flex items-center justify-center">${n}</span>` : ''}
       <div class="m-vert mt-4 text-[12px] text-ink3 whitespace-nowrap"><span>${esc(now.length > 58 ? now.slice(0, 58) : now)}…</span><b class="text-ink ml-3">Activity log</b></div></div>`;
   const rows = W.log.slice(0, 40).map(l => { const kind = l.kind === 'task' && /ready for a decision/.test(l.text) ? 'ready' : l.kind, k = M_LOGK[kind] || M_LOGK.sweep, id = (l.text.match(/MSN-\d+/) || [])[0], d = new Date(l.t);
@@ -61,7 +61,7 @@ function mLog() {
       <div class="flex items-center gap-2 text-[11.5px]"><span class="${k[1]} shrink-0">${ic(k[2], 'w-3.5 h-3.5')}</span><span class="font-semibold ${k[1]}">${k[0]}</span><span class="font-mono text-ink4">${d.toTimeString().slice(0, 8)}</span>${id ? `<span class="ml-auto font-mono text-ink4">${id}</span>` : ''}</div>
       <div class="mt-1 text-[13px] text-ink2 leading-snug">${esc(l.text.replace(/^MSN-\d+: /, ''))}</div></div>`; }).join('');
   return `<div id="m-log" class="hidden lg:flex w-[300px] 2xl:w-[340px] shrink-0 min-h-0 flex-col border-l border-line bg-panel2 overflow-hidden">
-    <div class="px-4 h-12 flex items-center justify-between shrink-0 border-b border-line"><div class="flex items-center gap-2 text-[13.5px]"><span class="w-2 h-2 rounded-full bg-cx animate-pulse"></span><b class="text-ink">Activity log</b><span class="text-[11.5px] c-cx">Live</span></div><button onclick="M.logOpen=false;mRender()" class="p-1.5 rounded-lg hover:bg-hov text-ink2" title="Collapse (L)">${ic('chevrons-left', 'w-4 h-4')}</button></div>
+    <div class="pl-4 pr-12 h-12 flex items-center justify-between shrink-0 border-b border-line"><div class="flex items-center gap-2 text-[13.5px]"><span class="w-2 h-2 rounded-full bg-cx animate-pulse"></span><b class="text-ink">Activity log</b><span class="text-[11.5px] c-cx">Live</span></div><button onclick="M.logOpen=false;mRender()" class="p-1.5 rounded-lg hover:bg-hov text-ink2" title="Collapse (L)">${ic('chevrons-left', 'w-4 h-4')}</button></div>
     <div class="px-4 py-3 border-b border-line flex gap-3 shrink-0"><span class="w-7 h-7 rounded-lg tn tn-cx flex items-center justify-center shrink-0">${ic('activity', 'w-3.5 h-3.5')}</span><div class="min-w-0"><div class="text-[11.5px] text-ink3">Working on now</div><div class="text-[13px] text-ink leading-snug">${esc(now)}…</div></div></div>
     <div class="flex-1 overflow-y-auto">${rows}</div></div>`;
 }
@@ -84,7 +84,7 @@ function mWork() {
       <div class="px-5 pt-4 pb-3 shrink-0 space-y-3">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="min-w-0"><h1 class="text-[18px] font-bold text-ink leading-tight">Missions</h1><p class="text-[12.5px] text-ink3">SecOps</p></div>
-          <button onclick="mOpenPanel()" class="lg:hidden p-2 rounded-lg bg-sunk text-ink2" title="SecOps">${ic('sparkles', 'w-4 h-4 c-cx')}</button>
+          <button onclick="mOpenPanel()" class="lg:hidden mr-10 p-2 rounded-lg bg-sunk text-ink2" title="SecOps">${ic('sparkles', 'w-4 h-4 c-cx')}</button>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]} ${k === 'progress' && W.tasks.some(mRunning) ? 'animate-pulse' : ''}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${k === 'progress' && W.tasks.some(mRunning) && M.tab !== k ? 'c-blue font-bold' : M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>

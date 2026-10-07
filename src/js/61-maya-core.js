@@ -38,7 +38,10 @@ const mRule = id => M.W.rules.find(r => r.id === id) || M.W.suggested.find(r => 
 
 function mInit() {
   if (M) mLiveStop();
-  M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {} };
+  M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
+    /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
+    size: { work: 'work', native: 'side' }, say: 'private', asTeam: false, chatKey: '_', sw: null, legend: false, railOff: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
+  mWsSeed();
   mLiveStart();
 }
 
@@ -59,7 +62,7 @@ const mStatus = t => { const wait = t.status === 'pending' && t.waitOn, tone = w
   const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${wait ? 'bg-indigo-400' : tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>`;
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${dot}${wait ? 'Pending' : mStatusTxt(t)}</span>`; };
 /* Who a pending mission is pending on: a person, or the agent that owns the mission it waits on. */
-const mPendingOn = t => { if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on you</span>`; };
+const mPendingOn = t => { if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on a human</span>`; };
 /* Help that belongs to the product: a small info icon with a tooltip. */
 const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
 const M_SUG_HELP = Object.entries(MY_SUGGEST).map(([k, v]) => `${k}: ${v[1]}.`).join(' ');
@@ -74,36 +77,51 @@ function mBoot() {
   ['wf-offer', 'intro', 'landing'].forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.classList.remove('flex'); } });
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
-    <aside id="m-panel" class="hidden m-panel shrink-0 flex-col border-l border-line overflow-hidden">
-      <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
-      <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
-      <div class="px-4 pb-4 pt-3 shrink-0 space-y-2.5">
-        <div id="m-panel-acts"></div>
-        <div class="flex items-center gap-2">
-          <div class="flex-1 min-w-0 flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
-            <span id="m-panel-ctx" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2"></span>
-            <input type="text" id="m-cmd" autocomplete="off" placeholder="Give a command…" onkeydown="if(event.key==='Enter')mSend()" class="flex-1 min-w-0 bg-transparent text-[13.5px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
-            <button onclick="mSend()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send">${ic('arrow-up', 'w-4 h-4')}</button>
+    <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
+      <div id="m-ws-rail" class="hidden w-[272px] shrink-0 flex-col border-r border-line bg-panel2 overflow-hidden"></div>
+      <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0 border-b border-line"></div>
+        <div id="m-people" class="hidden shrink-0 border-b border-line"></div>
+        <div class="flex-1 min-h-0 flex overflow-hidden">
+          <div id="m-conv" class="flex-1 min-w-0 flex flex-col overflow-hidden">
+            <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
+            <div id="m-foot" class="px-4 pb-4 pt-3 shrink-0 space-y-2.5">
+              <div id="m-panel-acts"></div>
+              <div id="m-say"></div>
+              <div class="flex items-center gap-2">
+                <div id="m-cmd-box" class="flex-1 min-w-0 flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
+                  <span id="m-panel-ctx" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2"></span>
+                  <input type="text" id="m-cmd" autocomplete="off" placeholder="Give a command…" onkeydown="if(event.key==='Enter')mSend()" class="flex-1 min-w-0 bg-transparent text-[13.5px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
+                  <button onclick="mSend()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send">${ic('arrow-up', 'w-4 h-4')}</button>
+                </div>
+                <button id="m-later" onclick="mMove(1)" class="hidden shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-ink2 hover:text-ink" title="Skip to the next mission (→)">Later ${ic('chevron-right', 'w-4 h-4')}</button>
+              </div>
+            </div>
           </div>
-          <button id="m-later" onclick="mDeckMove(1)" class="hidden shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-ink2 hover:text-ink" title="Skip to the next decision (→)">Later ${ic('chevron-right', 'w-4 h-4')}</button>
+          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line bg-panel2 overflow-hidden">
+            <div id="m-art-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
+            <div id="m-art-acts" class="px-4 pb-4 pt-3 shrink-0 empty:hidden border-t border-line"></div>
+          </div>
         </div>
       </div>
     </aside>`);
-  main.parentElement.insertAdjacentHTML('afterbegin', `<div id="m-return" class="hidden shrink-0"></div>`);
+  main.parentElement.insertAdjacentHTML('afterbegin', `<div id="m-scn" class="hidden shrink-0"></div><div id="m-return" class="hidden shrink-0"></div>`);
   document.body.insertAdjacentHTML('beforeend', `
     <div id="m-sheet-bg" class="hidden fixed inset-0 z-[44] bg-black/50" onclick="mCloseSheet()"></div>
     <aside id="m-sheet" class="hidden fixed inset-y-0 right-0 z-[45] w-[min(780px,100vw)] bg-panel border-l border-line2 shadow-2xl flex-col m-sheet-in"></aside>
     <button id="m-dock" onclick="mDockGo()" class="hidden fixed right-5 bottom-5 z-[42] items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-panel border border-line2 shadow-2xl hover:border-amber-500/60"></button>
+    <div id="m-sw" class="hidden fixed inset-0 z-[60]"></div>
     <button id="m-agx" onclick="mAgxGo()" class="hidden fixed top-1 right-1 z-[46] w-8 h-8 rounded-full items-center justify-center bg-bg hover:bg-hov" title="AgentiX"></button>`);
   const rail = document.querySelector('#app aside nav');
   if (rail) rail.id = 'm-rail';
   const mt = $('mobile-tabs'); if (mt) { mt.style.gridTemplateColumns = 'repeat(8,minmax(0,1fr))'; mt.innerHTML = M_NAV.filter(Boolean).map(([v, i, l, sh]) => `<button data-mtab="${v}" onclick="mNav('${v}')" class="py-2 flex flex-col items-center gap-0.5 text-ink3">${ic(i, 'w-4 h-4')}${sh}</button>`).join(''); }
-  mPatchDemoMenu();
+  mPatchDemoMenu(); mScnMenu();
   /* The signed-in user, and a reset button that is always in reach. */
   const me = document.querySelector('#app aside [title^="Guy"]');
   if (me) { me.title = 'Ariel B. (SecOps Lead)'; me.textContent = 'AB'; me.insertAdjacentHTML('beforebegin', `<button id="m-reset" onclick="location.reload()" class="w-10 h-10 rounded-xl hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Reset the demo (R)">${ic('rotate-ccw', 'w-4 h-4')}</button>`); }
   window.addEventListener('resize', () => { if (M) mPanelShow(); });
   mNav('home');
+  mScnFromUrl();
 }
 function mPatchDemoMenu() {
   const menu = $('demo-menu'); if (!menu) return;
@@ -152,7 +170,7 @@ function mNav(view, opts = {}) {
   M_VIEWS.forEach(v => { const el = $('mv-' + v); el.classList.toggle('hidden', v !== view); el.classList.toggle('flex', v === view); });
   const sec = $('mv-' + view); if (sec && !opts.keepScroll) sec.dataset.top = '1';
   mRender();
-  if (dropTask) $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
+  if (dropTask) mScrollInit();
   if (M.pivot && M_NATIVE[view]) setTimeout(() => { const f = document.querySelector('#mv-' + view + ' [data-focus="1"]'); if (f) f.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60);
 }
 /* Every render keeps what the user is typing and where they have scrolled. New triggers re-render at any moment. */
@@ -183,12 +201,17 @@ function mRail() {
   document.querySelectorAll('#mobile-tabs [data-mtab]').forEach(b => b.className = `py-2 flex flex-col items-center gap-0.5 ${b.dataset.mtab === M.view ? 'c-cx font-semibold' : 'text-ink3'}`);
 }
 
-/* ---------- the agent panel: docked, never an overlay on a wide screen ---------- */
+/* ---------- the agent panel: one panel, three sizes ----------
+   Closed: the screen and its dashboards. Side: a narrow panel next to a native screen, where the working object is in the table.
+   Workspace: the panel covers the screen, because the working object (the mission) lives in the panel. */
 const mWide = () => window.innerWidth >= 1024;
-const mPanelOn = () => M.view !== 'home' && (M.panelOpen || (M.view === 'work' && mWide()));
-function mPanelShow() { const el = $('m-panel'), on = mPanelOn(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); }
-function mOpenPanel() { M.panelOpen = true; mRender(); }
-function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; mRender(); }
+const mPanelOn = () => M.view !== 'home' && M.panelOpen;
+const mSizeKey = () => M.view === 'work' ? 'work' : 'native';
+const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
+function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
+function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), work = mSize() === 'work'; el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); el.classList.toggle('m-panel-work', work); el.classList.toggle('m-panel-side', !work); }
+function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
+function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.legend = false; M.people = false; mRender(); }
 /* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
 function mOpenTask(id) {
   const t = mTask(id); if (!t) return;
@@ -196,10 +219,10 @@ function mOpenTask(id) {
   /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
   if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
-  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null;
+  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.asTeam = false; M.legend = false; M.people = false;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();
-  if (changed) $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
+  if (changed) mScrollInit();
 }
 /* A native object opens in the same panel: its mission if it has one, otherwise what is known about it. */
 function mOpenObj(kind, id) {
@@ -211,12 +234,12 @@ function mOpenObj(kind, id) {
   M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null;
   mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
 }
-function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' }); }
+function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; M.legend = false; M.people = false; mRender(); mScrollInit(); }
 
 /* ---------- pivot out, and the way back ---------- */
 function mPivot(taskId, view) {
   M.pivot = { task: taskId, view };
-  M.panelTask = taskId; M.panelObj = null; M.panelOpen = mWide();
+  M.panelTask = taskId; M.panelObj = null; M.panelOpen = mWide(); M.size.native = 'side';
   M.sheet = null; mSheetShow(false);
   mNav(view, { keepPivot: true });
 }
@@ -229,7 +252,7 @@ function mPivotFocus(kind, key) {
   if (kind === 'instance') return t.affects.instance === key;
   return false;
 }
-function mBackToTask() { const id = M.pivot && M.pivot.task; if (id) M.panelTask = id; mNav('work'); }
+function mBackToTask() { const id = M.pivot && M.pivot.task; if (id) { M.panelTask = id; M.panelOpen = true; } mNav('work'); mScrollInit(); }
 function mToDecisions() { M.tab = 'pending'; mCloseSheet(); mNav('work'); }
 function mReturnBar() {
   const el = $('m-return'); if (!el) return;
@@ -265,6 +288,7 @@ function mDock() {
   /* Home is already the conversation, so the icon is not needed there. */
   const icon = closed && !home; ax.classList.toggle('hidden', !icon); ax.classList.toggle('flex', icon);
   if (icon) ax.innerHTML = `<svg viewBox="0 0 24 24" class="w-6 h-6"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#2dd4bf" stroke-width="1.6"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="#5eead4" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#99f6e4"/></svg>${n ? `<span class="absolute -bottom-0.5 -left-1 min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-slate-950 text-[10.5px] font-bold font-mono flex items-center justify-center ring-2 ring-[rgb(var(--bg))]">${n}</span>` : ''}`;
+  ax.style.top = M.scnBar ? '44px' : '';
   ax.title = n ? `AgentiX · ${n} decision${n === 1 ? '' : 's'} waiting` : 'AgentiX';
 }
 function mDockGo() { if (M.view === 'home') return mReviewAll(); const h = mHere(); if (h.length) { M.deck = h.map(t => t.id); mOpenTask(h[0].id); } else mOpenPanel(); }
@@ -298,16 +322,20 @@ function mSheetNote(t, extra = '') {
 
 /* ---------- keyboard ---------- */
 function mKey(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); return mSwOpen(); }
+  if (M.sw) return mSwKey(e);
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.legend || M.people) { M.legend = false; M.people = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
   if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();
+  if (k === 's') { e.preventDefault(); return mSwOpen(); }
+  if (k === 'f' && mPanelOn() && mWide()) return mSizeToggle();
   if (k === 'l' && M.view === 'work') { M.logOpen = !M.logOpen; return mRender(); }
   if (k === '/') { const el = $('m-cmd'); if (el && mPanelOn()) { e.preventDefault(); el.focus(); } return; }
   if (M.panelTask && mPanelOn() && !M.sheet) { const t = mTask(M.panelTask);
-    if (e.key === 'ArrowRight') return mDeckMove(1); if (e.key === 'ArrowLeft') return mDeckMove(-1);
+    if (e.key === 'ArrowRight' || k === 'j') return mMove(1); if (e.key === 'ArrowLeft' || k === 'k') return mMove(-1);
     if (t && t.status === 'pending' && t.decision && !M.editing) { if (k === 'a') return mDecide(t.id, 'approve'); if (k === 'd') return mDecide(t.id, 'reject'); } }
 }

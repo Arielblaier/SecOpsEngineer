@@ -177,6 +177,59 @@ Rule names, table columns and screen layouts follow the real product screens.
 Volumes, people and failures are invented. The Data Streams screen follows a
 design mockup, not a shipped screen.
 
+## The `workspace` branch: the panel as the place to work
+
+Branched from `dev`. It tries one idea: on the Missions screen the AgentiX
+panel is closed by default, and when it opens it covers the screen and becomes
+the place to work. Everything is in `src/js/71-maya-workspace.js`, with small
+edits in `61`, `62`, `63`, `60` and `16-maya.css`.
+
+**One panel, three sizes.** Closed: the screen and its widgets. Side: 30% next
+to a native screen, where the working object is in the table. Workspace: the
+panel covers the screen, because the working object (the mission) lives in the
+panel. The size follows the kind of screen, and `F` or the button in the panel
+head switches it.
+
+**A mission has one conversation, and it is shared.** What the agents did,
+handoffs, every version of the proposal, decisions and comments are seen by
+everyone in the mission. A question a person asks the agent is private to that
+person, with the answer, until they press "Share with the mission". Anything
+that changes the mission (approve, decline, edit, "also check...") is always
+shared, even when it was typed as private. "View as the team" shows the
+conversation without the private messages. "What is shared?" next to the
+composer lists the rules.
+
+**Who is in it, and who it waits on.** The bar under the panel head shows the
+agents and people in the mission and who is viewing now. The mission waits on
+an agent or on "a human", never on one named person.
+
+**Versions.** A material change is a new version. If the mission is on screen
+the old version stays there with a banner, and Approve is locked until the new
+version is shown. A small change is applied in place. A decision is recorded
+with its version. If another person decides first, the mission locks at once.
+
+**Several recommendations.** Recommendations that do not depend on each other
+get their own Approve and keep a status after the decision (Applying,
+Verifying, Done, Failed). A failed step brings the mission back with Retry and
+Skip. Steps that depend on each other are one plan with one Approve.
+
+**Moving between missions.** The queue is on the left of the workspace,
+ordered by impact and then waiting time. `J` and `K` (or the arrows) step
+through it. `Ctrl K` or `S` opens the quick switcher. After a decision the
+next mission comes up on its own.
+
+**Chats.** The left side also lists the private chats. A chat about a mission
+carries its tag. Missions are not listed as history: they are in the queue and
+on the Missions screen.
+
+**Scenarios.** The striped bar at the top is demo chrome, not product. It
+opens 17 situations, each from a fresh world. `?scn=7` in the address opens
+scenario 7 directly. The bar can be closed, and comes back from the demo menu.
+
+Not built: real multi-user sync (other people are scripted), versions on any
+mission other than MSN-1012, several recommendations on any mission other
+than MSN-1005, and the audit question for private messages.
+
 ## Changing a library or font
 
 Edit the version in `package.json`, run `npm install`, then `npm run vendor`.
