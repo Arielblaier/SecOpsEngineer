@@ -577,23 +577,6 @@ function myApply(W, t, choice, whoName) {
   if (t.verdict === 'Noisy') (t.affects.rules || []).forEach(id => { const r = rule(id); if (r) r.nshare = .1; });
   myUnblock(W, t);
 }
-/* One mission can hold several recommendations that do not depend on each other. Each one is applied on its own. */
-function myApplyPart(W, t, ruleId) {
-  const r = W.rules.find(x => x.id === ruleId), row = t.recommended.rows.find(([n]) => n.includes(`(ID ${ruleId})`)); if (!r || !row) return;
-  if (row[1] === 'Disable') { r.status = 'Disabled'; r.issues7d = 0; t.weekly = t.validation.rows[0][1]; }
-  r.retired = true;
-  if (t.verdict === 'Noisy') r.nshare = .1;
-}
-/* All recommendations of a mission have an answer: the mission closes with what was applied and what was not. */
-function myClosePart(W, t, whoName, applied, declined) {
-  const who = whoName.replace(/\.$/, ''), now = Date.now(), list = ids => ids.map(id => 'rule ' + id).join(', ');
-  t.status = 'done'; t.closed = now; t.by = who; t.end = applied.length ? 'approved' : 'rejected';
-  t.outcome = !applied.length ? `Declined by ${who}. Nothing changed. The suggestion stays visible on the affected objects.`
-    : declined.length ? `Approved in part by ${who}. Applied: ${list(applied)}. Declined: ${list(declined)}. Everything can be restored.`
-    : `Approved by ${who}. Applied: ${list(applied)}. Everything can be restored.`;
-  W.log.unshift({ t: now, kind: 'done', text: `${who} ${applied.length ? (declined.length ? 'approved part of' : 'approved') : 'declined'} ${t.id}` });
-  myUnblock(W, t);
-}
 /* A mission that waited on this one continues on its own. If the fix was declined, it closes with nothing changed. */
 function myUnblock(W, p) {
   const d = W.tasks.find(x => x.waitOn === p.id); if (!d) return;

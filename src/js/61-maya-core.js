@@ -40,7 +40,7 @@ function mInit() {
   if (M) mLiveStop();
   M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
     /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
-    size: { work: 'work', native: 'side' }, say: 'private', asTeam: false, chatKey: '_', sw: null, legend: false, railOff: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
+    size: { work: 'work', native: 'side' }, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
   mWsSeed();
   mLiveStart();
 }
@@ -87,15 +87,15 @@ function mBoot() {
             <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
             <div id="m-foot" class="px-4 pb-4 pt-3 shrink-0 space-y-2.5">
               <div id="m-panel-acts"></div>
-              <div id="m-say"></div>
+              <div id="m-say" class="relative"></div>
               <div class="flex items-center gap-2">
                 <div id="m-cmd-box" class="flex-1 min-w-0 flex items-center rounded-2xl bg-sunk border border-line focus-within:border-cx transition">
-                  <span id="m-panel-ctx" class="ml-2 shrink-0 px-2 py-0.5 rounded-lg bg-panel border border-line text-[11px] font-mono text-ink2"></span>
+                  <button id="m-to" type="button" onclick="M.sel=!M.sel;M.menu=false;mPanelRender();icons()" class="ml-1.5 shrink-0 pl-1.5 pr-2 py-1 rounded-xl inline-flex items-center gap-1.5 text-[12.5px] text-ink2 hover:bg-hov" title="Who answers"></button>
                   <input type="text" id="m-cmd" autocomplete="off" placeholder="Give a command…" onkeydown="if(event.key==='Enter')mSend()" class="flex-1 min-w-0 bg-transparent text-[13.5px] px-2.5 py-3 text-ink placeholder:text-ink4 focus:outline-none">
                   <button onclick="mSend()" class="mr-1.5 p-2 rounded-xl text-ink3 hover:text-slate-950 hover:bg-cx" title="Send">${ic('arrow-up', 'w-4 h-4')}</button>
                 </div>
-                <button id="m-later" onclick="mMove(1)" class="hidden shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-ink2 hover:text-ink" title="Skip to the next mission (→)">Later ${ic('chevron-right', 'w-4 h-4')}</button>
               </div>
+              <div id="m-hint" class="text-[11.5px] text-ink4 px-1 empty:hidden"></div>
             </div>
           </div>
           <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden">
@@ -110,7 +110,6 @@ function mBoot() {
     <div id="m-sheet-bg" class="hidden fixed inset-0 z-[44] bg-black/50" onclick="mCloseSheet()"></div>
     <aside id="m-sheet" class="hidden fixed inset-y-0 right-0 z-[45] w-[min(780px,100vw)] bg-panel border-l border-line2 shadow-2xl flex-col m-sheet-in"></aside>
     <button id="m-dock" onclick="mDockGo()" class="hidden fixed right-5 bottom-5 z-[42] items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-panel border border-line2 shadow-2xl hover:border-amber-500/60"></button>
-    <div id="m-sw" class="hidden fixed inset-0 z-[60]"></div>
     <button id="m-agx" onclick="mAgxGo()" class="hidden fixed top-1 right-1 z-[46] w-8 h-8 rounded-full items-center justify-center bg-bg hover:bg-hov" title="AgentiX"></button>`);
   const rail = document.querySelector('#app aside nav');
   if (rail) rail.id = 'm-rail';
@@ -211,7 +210,7 @@ const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
 function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
 function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), work = mSize() === 'work'; el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); el.classList.toggle('m-panel-work', work); el.classList.toggle('m-panel-side', !work); }
 function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
-function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.legend = false; M.people = false; M.menu = false; mRender(); }
+function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
 /* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
 function mOpenTask(id) {
   const t = mTask(id); if (!t) return;
@@ -219,7 +218,7 @@ function mOpenTask(id) {
   /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
   if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
-  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.asTeam = false; M.legend = false; M.people = false; M.menu = false;
+  M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.sel = false; M.people = false; M.menu = false; M.to = t.agent;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();
   if (changed) mScrollInit();
@@ -234,7 +233,7 @@ function mOpenObj(kind, id) {
   M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null;
   mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
 }
-function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; M.legend = false; M.people = false; mRender(); mScrollInit(); }
+function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; M.sel = false; M.people = false; M.menu = false; M.to = 'sec'; mRender(); mScrollInit(); }
 
 /* ---------- pivot out, and the way back ---------- */
 function mPivot(taskId, view) {
@@ -322,16 +321,13 @@ function mSheetNote(t, extra = '') {
 
 /* ---------- keyboard ---------- */
 function mKey(e) {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); return mSwOpen(); }
-  if (M.sw) return mSwKey(e);
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.legend || M.people || M.menu) { M.legend = false; M.people = false; M.menu = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.sel || M.people || M.menu) { M.sel = false; M.people = false; M.menu = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
   if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();
-  if (k === 's') { e.preventDefault(); return mSwOpen(); }
   if (k === 'f' && mPanelOn() && mWide()) return mSizeToggle();
   if (k === 'l' && M.view === 'work') { M.logOpen = !M.logOpen; return mRender(); }
   if (k === '/') { const el = $('m-cmd'); if (el && mPanelOn()) { e.preventDefault(); el.focus(); } return; }

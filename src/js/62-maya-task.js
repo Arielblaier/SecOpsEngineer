@@ -59,7 +59,7 @@ function mFeedback(id, key, v) { const t = mTask(id); t.fb = t.fb || {}; t.fb[ke
 const mBubble = (k, html, tail = '') => `<div class="flex gap-2.5">${mAv(k, 26)}<div class="min-w-0 flex-1"><div class="rounded-2xl rounded-tl-md px-3.5 py-2.5 bg-card border border-line text-[13.5px] text-ink2 leading-relaxed">${html}</div>${tail}</div></div>`;
 const mUserMsg = text => `<div class="flex justify-end"><div class="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2.5 bg-indigo-500/25 text-ink text-[13.5px]">${esc(text)}</div></div>`;
 function mChatHtml(key) {
-  const out = (M.chats[key] || []).map(m => m.role === 'user' ? mUserMsg(m.text) : mBubble('sec', md(m.text), m.task && m.task !== M.panelTask ? `<button onclick="mOpenTask('${m.task}')" class="mt-1.5 text-[12.5px] font-semibold c-cx inline-flex items-center gap-1">Open ${m.task}${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : ''));
+  const out = (M.chats[key] || []).map(m => m.role === 'user' ? mUserMsg(m.text) : mBubble(m.agent || 'sec', md(m.text), m.task && m.task !== M.panelTask ? `<button onclick="mOpenTask('${m.task}')" class="mt-1.5 text-[12.5px] font-semibold c-cx inline-flex items-center gap-1">Open ${m.task}${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : ''));
   if (M.typing && M.typing.key === key) out.push(mBubble('sec', `<span class="inline-flex gap-1 items-center h-4"><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.2s"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.4s"></span></span>`));
   return out.length ? `<div class="space-y-3.5">${out.join('')}</div>` : '';
 }
@@ -80,9 +80,10 @@ function mCard(t) {
   const change = both ? (M.editing === t.id
       ? `<div class="space-y-2">${mBlock(t.current, 'cur')}<div class="rounded-xl border border-cx/40 overflow-hidden"><div class="px-3 py-1.5 border-b border-line text-[11.5px] font-bold c-cx">YOUR VERSION</div><textarea id="m-edit" data-keep spellcheck="false" class="w-full h-36 bg-code text-ink font-mono text-[12px] leading-[1.7] p-3 focus:outline-none">${esc(t.recommended.kind === 'code' ? t.recommended.lines.map(l => l[0]).join('\n') : t.recommended.rows.map(r => r.join(': ')).join('\n'))}</textarea></div></div>`
       : `<div class="space-y-2">${mBlock(t.current, 'cur')}${mBlock(t.recommended, 'rec')}</div>`) : '';
-  const recs = mRecs(t), plan = mPlanBox(t);
+  const plan = mPlanBox(t);
   const top = `<div class="flex items-center justify-between gap-3"><div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">${esc(MY_CARD[t.card])} · ${t.id}</div>${mVerTag(t)}</div>
     <h2 class="text-[19px] font-bold text-ink leading-snug mt-1.5">${esc(t.title)}</h2>
+    ${mChangesTxt(t) ? `<div class="text-[12.5px] text-ink3 mt-1">Changes: <span class="text-ink2">${esc(mChangesTxt(t))}</span></div>` : ''}
     <p class="text-[14px] text-ink2 leading-relaxed mt-2">${esc(t.summary)}</p>
     <div class="mt-4 flex items-center gap-3 flex-wrap"><span class="text-[11px] font-black tracking-[.14em] text-ink3 uppercase">AI suggestion</span>${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12.5px] text-ink3">confidence</span><span class="text-ink4">·</span>${mImpact(t.impact)}<span class="text-[12.5px] text-ink3">impact</span></div>
     <div class="mt-4">${mLabel('Where the problem starts')}<div class="mt-2">${mChain(t.layer, t.sug)}</div><p class="text-[13.5px] text-ink mt-2.5 leading-relaxed">${esc(t.diagnosis)}${t.noise ? ` <span class="text-ink3">Noise type: ${esc(t.noise)}.</span>` : ''}</p></div>
@@ -97,13 +98,13 @@ function mCard(t) {
       <div><h3 class="text-[16.5px] font-bold text-ink leading-snug">${esc(d.q)}</h3><p class="text-[13.5px] text-ink2 leading-relaxed mt-1">${esc(d.effect)}</p>
         <p class="text-[12.5px] text-ink3 leading-relaxed mt-1"><b class="text-ink2">Risk:</b> ${esc(d.risk)}${d.reversible ? ' It can be reversed.' : ''}${d.selfFix ? ' ' + esc(d.selfFix) : ''}</p></div>
       ${mChangedBox(t)}
-      ${recs ? mRecsBox(t) : change ? `<div>${mLabel('What changes')}<div class="mt-2">${change}</div></div>` : ''}
+      ${change ? `<div>${mLabel('What changes')}<div class="mt-2">${change}</div></div>` : ''}
       ${plan}
       ${v ? `<div class="rounded-xl border border-line px-3.5 py-3">${mFold(t, 'why', 'Show the evidence', mValidation(v), vHint)}</div>` : ''}
       ${links}
     </section>`
-    : t.status === 'progress' ? `<section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-4 flex items-center gap-2.5 text-[13.5px] text-ink2"><span class="c-blue">${ic('loader', 'w-4 h-4 animate-spin')}</span><span class="min-w-0"><b class="text-ink">No decision needed now.</b> ${esc(t.progressNote || '')}${t.handed ? '. The mission closes on its own when the data arrives.' : '.'}${links ? `<span class="block mt-2">${links}</span>` : ''}</span></section>${recs ? `<section class="rounded-2xl border border-line bg-card p-4">${mRecsBox(t)}</section>` : change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changes')}<div class="mt-2">${change}</div></section>` : ''}`
-    : `<section class="rounded-2xl border p-4 ${['rejected', 'dismissed'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${links ? `<div class="mt-2.5">${links}</div>` : ''}${plan ? `<div class="mt-3">${plan}</div>` : ''}</section>${recs ? `<section class="rounded-2xl border border-line bg-card p-4">${mRecsBox(t)}</section>` : change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
+    : t.status === 'progress' ? `<section class="rounded-2xl border border-blue-500/40 bg-blue-500/5 p-4 flex items-center gap-2.5 text-[13.5px] text-ink2"><span class="c-blue">${ic('loader', 'w-4 h-4 animate-spin')}</span><span class="min-w-0"><b class="text-ink">No decision needed now.</b> ${esc(t.progressNote || '')}${t.handed ? '. The mission closes on its own when the data arrives.' : '.'}${links ? `<span class="block mt-2">${links}</span>` : ''}</span></section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changes')}<div class="mt-2">${change}</div></section>` : ''}`
+    : `<section class="rounded-2xl border p-4 ${['rejected', 'dismissed'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${links ? `<div class="mt-2.5">${links}</div>` : ''}${plan ? `<div class="mt-3">${plan}</div>` : ''}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
   const objs = mAffected(t);
   return `<div class="space-y-4">${mCardBanners(t)}<section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">${top}</section>${box}
     <div class="px-1 space-y-2.5">${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${done || t.status === 'pending' ? mFold(t, 'fb', 'Give feedback', `<div class="space-y-2">${mFb(t, 'diag', 'Is the diagnosis right?')}${t.recommended ? mFb(t, 'rec', 'Is the suggested change right?') : ''}</div>`) : ''}</div>
@@ -151,7 +152,6 @@ function mDecide(id, choice) {
   const t = mTask(id); if (!t || t.status !== 'pending') return;
   /* The decision is tied to the version on screen. A newer version has to be seen first. */
   if (t.next) { toast(`${t.id}: version ${(t.ver || 1) + 1} is ready. Review it before deciding`, 'triangle-alert'); return; }
-  if (mRecs(t)) return mRecAll(id, choice === 'reject' || choice === 'dismiss' ? 'decline' : 'approve');
   if (choice === 'edit') { const ta = $('m-edit'); if (ta && t.recommended.kind === 'code') t.recommended.lines = ta.value.split('\n').map(l => [l, 'add']); t.editedBy = M_USER; }
   t.decVer = t.ver || 1; t.actedAt = Date.now();
   myApply(M.W, t, choice, M_USER); mResume(); mPlanTick(t);

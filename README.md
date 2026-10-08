@@ -177,65 +177,59 @@ Rule names, table columns and screen layouts follow the real product screens.
 Volumes, people and failures are invented. The Data Streams screen follows a
 design mockup, not a shipped screen.
 
-## The `workspace` branch: the panel as the place to work
+## The `workspace` branch: the panel as the place to work (first version)
 
-Branched from `dev`. It tries one idea: on the Missions screen the AgentiX
-panel is closed by default, and when it opens it covers the screen and becomes
-the place to work. Everything is in `src/js/71-maya-workspace.js`, with small
-edits in `61`, `62`, `63`, `60` and `16-maya.css`.
+Branched from `dev`. Everything is in `src/js/71-maya-workspace.js`, with small
+edits in `61`, `62`, `63` and `16-maya.css`. It is cut to what fits a first
+release; what was left out is listed at the end.
 
-**One panel, three sizes.** Closed: the screen and its widgets. Side: 30% next
-to a native screen, where the working object is in the table. Workspace: the
-panel covers the screen, because the working object (the mission) lives in the
-panel. The size follows the kind of screen, and `F` or the button in the panel
-head switches it.
+**Mission.** A unit of work that one agent owns, and that may change something
+in the environment or goes on after you leave. It has a trigger (a sweep, a
+change, a handoff, or a person's request), a state (agent working, needs a
+human, waits on another mission, closed), a proposal with a version, and one
+conversation that everyone in it sees. Agents create missions: on their own,
+from a handoff, or when a person asks for work in a chat.
 
-**A mission has one conversation, and it is shared.** What the agents did,
-handoffs, every version of the proposal, decisions and comments are seen by
-everyone in the mission. A question a person asks the agent is private to that
-person, with the answer, until they press "Share with the mission". Anything
-that changes the mission (approve, decline, edit, "also check...") is always
-shared, even when it was typed as private. The chip inside the input says who
-will see the next message, and a click changes it. The avatars in the panel
-head open the list of who is in the mission, the team view (the conversation
-without the private messages) and the rules.
+**Chat.** Private, one person with the agents. Nothing in the environment
+changes from a chat. When a request needs work, the agent opens a mission and
+links it ("Check why Check Point verdicts are missing" opens MSN-1009). A
+private question about a mission is asked in a chat linked to it; decisions
+are only made in the mission.
 
-**Kept quiet on purpose.** The conversation is plain text. Only two things are
-tinted or framed: a private question with its answer, and a new version that
-needs to be seen. The mission has no frames, two buttons (Approve, Decline)
-and a "more" menu. In the side panel the mission is a short card on top of
-the conversation and opens in place.
+**Mission and object.** A mission changes at most a few objects (a rule, an
+indicator, a pipeline step, an instance), shown as "Changes:" under its title,
+and may reference many more (affected rules, cases as evidence). One object
+has at most one open mission that changes it. A new finding on that object
+goes into the open mission as a new version, not into a second mission. If a
+person changes the object outside the mission (for example, fixes the instance
+in Data Sources), the mission checks again and closes or posts a new version.
+A case is never wrapped in a mission: a mission only links to cases.
 
-**Who is in it, and who it waits on.** The avatars in the panel head show the
-agents and people in the mission, with a green dot on who is viewing now. The mission waits on
-an agent or on "a human", never on one named person.
+**Panel.** One panel, two sizes. Workspace on the Missions screen: the queue on
+the left, the conversation in the middle, the mission on the right. Side panel
+on a native screen: one column, the short form of the same mission card on
+top of the same conversation, Approve and Decline fixed at the bottom. "Show
+details" opens the full card in place. `F` or the expand button switches size.
+The two sizes show the same mission, the same version and the same buttons.
 
-**Versions.** A material change is a new version. If the mission is on screen
-the old version stays there with a banner, and Approve is locked until the new
-version is shown. A small change is applied in place. A decision is recorded
-with its version. If another person decides first, the mission locks at once.
+**Agents.** The selector in the prompt bar says who answers. Outside a mission
+it starts on SecOps, which picks the agent. In a mission it starts on the
+owner; the list shows the agents in the mission first, and choosing another
+one brings it in when you send. Agents address each other with a tag. A
+question stays in the conversation (MSN-1002). A change in another agent's
+area becomes a linked mission (MSN-1001 waits on MSN-1012).
 
-**Several recommendations.** Recommendations that do not depend on each other
-get their own Approve and keep a status after the decision (Applying,
-Verifying, Done, Failed). A failed step brings the mission back with Retry and
-Skip. Steps that depend on each other are one plan with one Approve.
-
-**Moving between missions.** The queue is on the left of the workspace,
-ordered by impact and then waiting time. `J` and `K` (or the arrows) step
-through it. `Ctrl K` or `S` opens the quick switcher. After a decision the
-next mission comes up on its own.
-
-**Chats.** The left side also lists the private chats. A chat about a mission
-carries its tag. Missions are not listed as history: they are in the queue and
-on the Missions screen.
+**Decisions.** A decision is tied to the version on screen. A new version
+replaces Approve with "Show version 2" until it is seen. If someone else
+decided first, the mission locks and says who.
 
 **Scenarios.** The striped bar at the top is demo chrome, not product. It
-opens 17 situations, each from a fresh world. `?scn=7` in the address opens
-scenario 7 directly. The bar can be closed, and comes back from the demo menu.
+opens 18 situations, each from a fresh world. `?scn=7` opens scenario 7.
 
-Not built: real multi-user sync (other people are scripted), versions on any
-mission other than MSN-1012, several recommendations on any mission other
-than MSN-1005, and the audit question for private messages.
+**Left for later:** private questions inside a mission, @mention typed in the
+input, several independent recommendations in one mission, live "viewing now"
+presence, the Ctrl K switcher, and a team view. Other people are scripted:
+there is no real multi-user sync.
 
 ## Changing a library or font
 
