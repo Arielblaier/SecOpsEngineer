@@ -99,3 +99,4 @@
   .m-flow { position: fixed; left: 76px; bottom: 16px; z-index: 60; width: 360px; max-width: calc(100vw - 24px); border-radius: 16px; background: rgb(var(--panel)); border: 1px dashed rgb(245 158 11 / .7); box-shadow: 0 18px 50px rgb(0 0 0 / .45); }
   .m-flow-head { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid rgb(var(--line)); cursor: grab; border-radius: 16px 16px 0 0; background: repeating-linear-gradient(135deg, rgb(245 158 11 / .08) 0 10px, transparent 10px 20px); }
   .m-flow-head:active { cursor: grabbing; }
+  .m-flow-pill { width: auto; border-style: solid; border-color: rgb(245 158 11 / .6); }

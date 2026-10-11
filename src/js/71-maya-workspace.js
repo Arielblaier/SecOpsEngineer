@@ -56,6 +56,9 @@ function mWsSeed() {
   /* ...and a change in the other agent's area becomes a linked mission (MSN-1012). */
   mNote('MSN-1001', { who: 'det', to: 'pipe', kind: 'crumb', t: t1.opened + 6 * M1, text: 'xdm.event.type is empty on every new SentinelOne event since the pack update. The rules did not change. Did the mapping change?' });
   mNote('MSN-1001', { who: 'pipe', to: 'det', kind: 'crumb', t: t1.opened + 9 * M1, text: 'Yes. The pack renamed eventType to event_type, and the data model still reads the old name. That is a change in the data model, so it gets its own mission.' });
+  /* Steering already given by people. Each was asked in someone's own conversation, confirmed, and shared as one line. */
+  (t2.history = t2.history || []).push({ t: now - 5 * H, kind: 'steer', who: 'noam', text: 'asked to keep alerts on extensions installed outside the Chrome Web Store. Accepted by the Detection Engineer: the proposal keeps them.' });
+  const t12 = mTask('MSN-1012'); (t12.history = t12.history || []).push({ t: now - 3 * H, kind: 'steer', who: 'dana', text: 'asked to replay 2 days of events, not 1, before proposing. Accepted by the Pipeline Engineer.' });
   /* A later run reached the same rule, found the same problem, and added its evidence here instead of proposing again. */
   mNote('MSN-1002', { who: 'det', kind: 'evidence', t: now - 4 * H + 3 * M1, link: 'MSN-1015', text: 'The daily noise review (MSN-1015) reached this rule, saw this mission, and added this week’s 38 issues here instead of proposing again.' });
   /* Earlier private chats. The answers are computed from the world, like every other answer. */
@@ -233,7 +236,7 @@ function mThreadItem(t, x) {
   if (x.kind === 'crumb') return quiet('corner-down-right', `${esc(M_AG[x.who].name)} ${x.who === t.agent ? 'asked' : 'answered'} the ${esc(M_AG[x.to].name)}: <span class="text-ink2">“${esc(x.text)}”</span>`);
   if (x.kind === 'context') return quiet('message-square-text', `<b class="text-ink2">${esc(M_PPL[x.who].name)}</b> added context: <span class="text-ink2">“${esc(x.text)}”</span>`);
   if (x.kind === 'evidence') return quiet('plus-circle', esc(x.text).replace(x.link, go(x.link)), 'text-ink2');
-  if (x.kind === 'steer') return quiet('git-pull-request-arrow', `<b class="text-ink2">${name(x.who)}</b> ${esc(x.text)}`, 'text-ink2');
+  if (x.kind === 'steer') return quiet('git-pull-request-arrow', `<span class="inline-flex px-1.5 py-0.5 mr-1 rounded-md tn tn-indigo text-[10.5px] font-bold uppercase tracking-wider">Steering</span><b class="text-ink2">${name(x.who)}</b> ${esc(x.text)}`, 'text-ink2');
   if (x.kind === 'feedback') return quiet('flag', `<b class="text-ink2">${name(x.who)}</b> ${esc(x.text)}`, 'text-ink2');
   if (x.kind === 'minor') return quiet('refresh-cw', `${esc(M_AG[x.who].name)} checked again. ${esc(x.text)}`);
   if (x.kind === 'outcome') return quiet('circle-check', esc(x.text), 'text-ink2');
@@ -250,7 +253,7 @@ function mThreadItem(t, x) {
 }
 const M_SHARED = ['event', 'work', 'call', 'crumb', 'context', 'evidence', 'steer', 'feedback', 'minor', 'outcome', 'decision', 'update'];
 function mThreadHtml(t) {
-  const list = mThreadItems(t), shared = list.filter(x => M_SHARED.includes(x.kind)), mine = list.filter(x => ['mine', 'reply'].includes(x.kind));
+  const list = mThreadItems(t), steerOnly = M.actF === t.id, shared = list.filter(x => M_SHARED.includes(x.kind) && (!steerOnly || ['steer', 'context', 'decision'].includes(x.kind))), mine = list.filter(x => ['mine', 'reply'].includes(x.kind)), nSteer = list.filter(x => x.kind === 'steer').length;
   /* How the mission started is one quiet line. It opens on request, and while the agent is still working. */
   const story = shared.filter(x => ['event', 'work', 'call', 'crumb'].includes(x.kind)), rest = shared.filter(x => !story.includes(x)), k = t.id + ':story', run = mRunning(t), open = !!M.more[k] || run;
   const from = t.unblocks && mTask(t.unblocks);
@@ -258,7 +261,8 @@ function mThreadHtml(t) {
   const typing = M.typing && M.typing.key === t.id ? `<div class="flex gap-2.5">${mAv(t.agent, 26)}<div class="bg-sunk rounded-2xl rounded-tl-md px-3.5 py-3"><span class="inline-flex gap-1 items-center h-4"><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.2s"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.4s"></span></span></div></div>` : '';
   const head = (icon, title, sub) => `<div class="flex items-center gap-2 text-[11px] font-black tracking-[.14em] uppercase text-ink3">${ic(icon, 'w-3.5 h-3.5')}${title}<span class="normal-case tracking-normal font-normal text-ink4">· ${sub}</span></div>`;
   return `<div class="space-y-5" id="m-thread">
-    <div class="space-y-3">${head('users', 'Activity', 'everyone in the mission sees this')}${line}${open ? `<div class="space-y-2.5 pb-1">${story.map(x => mThreadItem(t, x)).join('')}</div>` : ''}${rest.map(x => mThreadItem(t, x)).join('')}</div>
+    <div class="space-y-3"><div class="flex items-center justify-between gap-2">${head('users', 'Activity', 'everyone in the mission sees this')}<span class="flex items-center gap-0.5 text-[11.5px] shrink-0">${[['all', 'All'], ['steer', `Steering · ${nSteer}`]].map(([k, l]) => `<button data-actf="${k}" onclick="M.actF=${k === 'steer' ? `'${t.id}'` : 'null'};mPanelRender();icons()" class="px-2 py-0.5 rounded-md ${(k === 'steer') === steerOnly ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('')}</span></div>
+      ${steerOnly ? `<p class="text-[12px] text-ink3">What people told this mission: steering they confirmed, context they added, and decisions.</p>` : line}${!steerOnly && open ? `<div class="space-y-2.5 pb-1">${story.map(x => mThreadItem(t, x)).join('')}</div>` : ''}${(steerOnly ? shared : rest).map(x => mThreadItem(t, x)).join('') || (steerOnly ? '<p class="text-[12.5px] text-ink4">No steering yet. Ask the owner for a change in your conversation below, and confirm it to share it here.</p>' : '')}</div>
     <div class="space-y-3 pt-4 border-t border-line">${head('lock', `Your conversation with the ${M_AG[t.agent].name}`, 'only you see this')}
       ${mine.map(x => mThreadItem(t, x)).join('')}${typing}${!mine.length && !typing ? `<p class="text-[12.5px] text-ink4">Ask anything about this mission. Questions and answers stay yours. A change you ask for is added to the activity after you confirm it.</p>` : ''}</div></div>`;
 }
@@ -648,11 +652,11 @@ const M_FLOWS = [
       { do: 'Drag the divider between the conversation and the mission.', see: 'The mission takes 30% to 72%. The history hides with its own button.', act: () => { M.artPct = 38; mRender(); }, done: () => M.artPct !== 52 }
     ] }
 ];
-const MF = { i: null, step: 0, ok: [], pos: null, min: false, iv: null };
+const MF = { i: null, step: 0, ok: [], pos: null, min: false, iv: null, off: false };
 function mFlow(i) {
   i = (i + M_FLOWS.length) % M_FLOWS.length;
   closeDemoMenu(); mSheetShow(false); mInit(); mLiveStop();
-  Object.assign(MF, { i, step: 0, ok: [], min: false }); M.scn = i; M.scnBar = false;
+  Object.assign(MF, { i, step: 0, ok: [], min: false, off: false }); M.scn = i; M.scnBar = false;
   M_FLOWS[i].setup(); mFlowRender();
   clearInterval(MF.iv); MF.iv = setInterval(mFlowTick, 600);
 }
@@ -666,21 +670,28 @@ function mFlowTick() {
 }
 function mFlowShow() { const f = M_FLOWS[MF.i], st = f && f.steps[MF.step]; if (st) { st.act(); setTimeout(mFlowTick, 250); } }
 function mFlowRender() {
-  let el = $('m-flow'); if (MF.i === null) { if (el) el.remove(); return; }
+  let el = $('m-flow');
   if (!el) { document.body.insertAdjacentHTML('beforeend', '<div id="m-flow" class="m-flow"></div>'); el = $('m-flow'); }
-  const f = M_FLOWS[MF.i], all = MF.step >= f.steps.length;
   if (MF.pos) { el.style.left = MF.pos[0] + 'px'; el.style.top = MF.pos[1] + 'px'; el.style.bottom = 'auto'; }
+  /* closed: a small pill reopens the list */
+  if (MF.off) { el.className = 'm-flow m-flow-pill'; el.innerHTML = `<button data-act="flow-open" onclick="MF.off=false;mFlowRender()" class="px-3 py-2 inline-flex items-center gap-2 text-[12.5px] font-semibold text-ink">${ic('clapperboard', 'w-4 h-4 c-amber')}Demo flows</button>`; icons(); return; }
+  el.className = 'm-flow';
+  /* no flow chosen yet: the list of flows, each with its point */
+  if (MF.i === null) { el.innerHTML = `<div class="m-flow-head" onpointerdown="mFlowDrag(event)"><span class="px-1.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider shrink-0">DEMO FLOWS</span><span class="flex-1 text-[12.5px] text-ink2">Pick one. Each makes one point.</span>
+      <button onpointerdown="event.stopPropagation()" onclick="MF.off=true;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="Close">${ic('x', 'w-4 h-4')}</button></div>
+    <div class="p-2 max-h-[60vh] overflow-y-auto">${M_FLOWS.map((f, k) => `<button data-flow="${k + 1}" onclick="mFlow(${k})" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-hov flex gap-2.5"><span class="w-5 h-5 mt-0.5 rounded-full bg-line2 text-ink2 text-[11px] font-bold flex items-center justify-center shrink-0">${k + 1}</span><span class="min-w-0"><span class="block text-[13px] text-ink font-semibold">${esc(f.name)}</span><span class="block text-[11.5px] text-ink3 leading-snug">${esc(f.point)}</span></span></button>`).join('')}</div>`; icons(); return; }
+  const f = M_FLOWS[MF.i], all = MF.step >= f.steps.length;
   el.innerHTML = `<div class="m-flow-head" onpointerdown="mFlowDrag(event)">
       <span class="px-1.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider shrink-0">DEMO FLOW</span>
       <select onpointerdown="event.stopPropagation()" onchange="mFlow(+this.value)" class="min-w-0 flex-1 bg-sunk border border-line2 rounded-lg text-[12.5px] text-ink px-2 py-1 focus:outline-none">${M_FLOWS.map((x, k) => `<option value="${k}" ${k === MF.i ? 'selected' : ''}>${k + 1}. ${esc(x.name)}</option>`).join('')}</select>
       <button onpointerdown="event.stopPropagation()" onclick="MF.min=!MF.min;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="${MF.min ? 'Open' : 'Minimize'}">${ic(MF.min ? 'chevron-up' : 'chevron-down', 'w-4 h-4')}</button>
-      <button onpointerdown="event.stopPropagation()" onclick="clearInterval(MF.iv);MF.i=null;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="Close. Reopen it from the demo menu">${ic('x', 'w-4 h-4')}</button></div>
+      <button onpointerdown="event.stopPropagation()" onclick="clearInterval(MF.iv);MF.i=null;MF.off=true;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="Close. The Demo flows button reopens it">${ic('x', 'w-4 h-4')}</button></div>
     ${MF.min ? '' : `<div class="px-4 pt-3 pb-1 text-[12.5px] text-ink2 leading-relaxed"><b class="text-ink">The point:</b> ${esc(f.point)}</div>
     <ol class="px-3 py-2 space-y-1 max-h-[46vh] overflow-y-auto">${f.steps.map((s, k) => { const done = MF.ok[k], cur = k === MF.step;
       return `<li data-step="${k}" class="rounded-xl px-2.5 py-2 ${cur ? 'bg-hov' : ''}"><div class="flex gap-2.5"><span class="w-5 h-5 mt-0.5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold ${done ? 'bg-cx text-slate-950' : cur ? 'bg-amber-500 text-slate-950' : 'bg-line2 text-ink3'}">${done ? ic('check', 'w-3 h-3') : k + 1}</span>
         <div class="min-w-0 flex-1"><div class="text-[13px] ${cur ? 'text-ink font-semibold' : done ? 'text-ink3' : 'text-ink2'}">${esc(s.do)}</div>${cur || done ? `<div class="text-[12px] ${done ? 'text-ink4' : 'text-ink3'} mt-0.5 leading-snug">Notice: ${esc(s.see)}</div>` : ''}
         ${cur ? `<button data-act="flow-show" onclick="mFlowShow()" class="mt-1.5 px-2.5 py-1 rounded-lg border border-line2 text-[12px] text-ink2 hover:bg-panel inline-flex items-center gap-1.5">${ic('play', 'w-3 h-3')}Show me</button>` : ''}</div></div></li>`; }).join('')}</ol>
-    <div class="px-4 pb-3 pt-1 flex items-center justify-between gap-2 text-[12px]"><button onclick="mFlow(MF.i)" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('rotate-ccw', 'w-3.5 h-3.5')}Restart</button>${all ? `<span class="c-cx font-semibold">Flow done</span><button data-act="flow-next" onclick="mFlow(MF.i+1)" class="px-3 py-1.5 rounded-lg bg-ink text-panel font-bold inline-flex items-center gap-1">Next flow${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : `<span class="text-ink4">Step ${MF.step + 1} of ${f.steps.length}</span>`}</div>`}`;
+    <div class="px-4 pb-3 pt-1 flex items-center justify-between gap-2 text-[12px]"><span class="flex items-center gap-3"><button onclick="mFlow(MF.i)" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('rotate-ccw', 'w-3.5 h-3.5')}Restart</button><button data-act="flow-list" onclick="clearInterval(MF.iv);MF.i=null;mFlowRender()" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('list', 'w-3.5 h-3.5')}All flows</button></span>${all ? `<span class="c-cx font-semibold">Flow done</span><button data-act="flow-next" onclick="mFlow(MF.i+1)" class="px-3 py-1.5 rounded-lg bg-ink text-panel font-bold inline-flex items-center gap-1">Next flow${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : `<span class="text-ink4">Step ${MF.step + 1} of ${f.steps.length}</span>`}</div>`}`;
   icons();
 }
 /* The card moves by its header and stays where it is put, also across flows. */
@@ -696,7 +707,7 @@ function mScnMenu() {
   const menu = $('demo-menu'); if (!menu || $('m-scn-menu')) return;
   menu.insertAdjacentHTML('beforeend', `<button id="m-scn-menu" onclick="closeDemoMenu();mFlow(MF.i === null ? 0 : MF.i)" class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-hov flex items-center gap-2 text-ink2">${ic('clapperboard', 'w-3.5 h-3.5')} Show the demo flows</button>`);
 }
-function mScnFromUrl() { try { const u = new URLSearchParams(location.search), v = u.get('flow') || u.get('scn'); if (v) mFlow(+v - 1); } catch (e) {} }
+function mScnFromUrl() { let v = null; try { const u = new URLSearchParams(location.search); v = u.get('flow') || u.get('scn'); } catch (e) {} if (v) mFlow(+v - 1); else mFlowRender(); }
 
 /* The approval for a one-off action in a chat. */
 function mChatAct(key, i, ok) {
