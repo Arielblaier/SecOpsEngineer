@@ -8,7 +8,7 @@
 function mSourceCell(s) { return `<span class="inline-flex items-center gap-1.5 min-w-0">${s.kind === 'agent' ? mAv('det', 16) : ic(s.kind === 'pack' ? 'package' : 'user', 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${esc(s.name)}</span></span>`; }
 function mRules() {
   const W = M.W;
-  const all = W.rules.map(r => ({ r, rv: myRuleReview(W, r) }));
+  const all = W.rules.filter(r => !r.deleted).map(r => ({ r, rv: myRuleReview(W, r) }));
   const hasOpen = x => x.rv.task && x.rv.task.status !== 'done';
   const list = all.filter(x => !M.onlyOpen || hasOpen(x));
   const withTask = all.filter(hasOpen).length + W.suggested.length;
@@ -51,7 +51,7 @@ function mRules() {
       <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1440px] text-[14px] border-collapse">
         <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule Type')}${th('Last execution')}${th('Name')}${th(mSugHead())}${th('Confidence')}${th('Status')}${th('# of issues (7d)', 'text-right')}${th('Suppression')}${th('Mitre ATT&CK Tactic')}${th('Mitre ATT&CK Technique')}${th('Source')}</tr></thead>
         <tbody>${sugRows}${rows}</tbody></table></div>
-      <div class="px-5 py-2.5 border-t border-line text-[13px] text-ink3 shrink-0">Showing ${list.length} of ${W.rules.length}${W.suggested.length ? ` · ${W.suggested.length} suggested` : ''}</div>
+      <div class="px-5 py-2.5 border-t border-line text-[13px] text-ink3 shrink-0">Showing ${list.length} of ${W.rules.filter(r => !r.deleted).length}${W.suggested.length ? ` · ${W.suggested.length} suggested` : ''}</div>
     </div>`;
 }
 
@@ -65,9 +65,16 @@ function mRuleBody(r) {
 }
 /* The human-request trigger, from the screen where the user already works. */
 function mAskReview(id) {
-  const r = mRule(id), key = 'rule:' + id; (M.chats[key] = M.chats[key] || []).push({ role: 'user', text: 'Review this rule now' });
-  M.typing = { key }; mPanelRender(); icons(); mPanelBottom();
-  setTimeout(() => { M.typing = null; M.W.log.unshift({ t: Date.now(), kind: 'check', text: `Reviewed rule ${id} on request from ${M_USER.replace(/\.$/, '')}: nothing to change` });
-    M.chats[key].push({ role: 'agent', text: `Reviewed **${r.name}** again. The data arrives, the fields are mapped, and it created **${r.issues7d} issue${r.issues7d === 1 ? '' : 's'}** in the last 7 days. Nothing to change, so no mission was opened.` });
-    mRender(); mPanelBottom(); }, 1400);
+  /* "Review this rule now" starts a job, so it runs as a mission, anchored in the chat about the rule. */
+  const r = mRule(id), key = 'rule:' + id, W = M.W, now = Date.now(), mid = 'MSN-' + (1201 + W.tasks.filter(t => t.job === 'review' && t.asked).length);
+  (M.chats[key] = M.chats[key] || []).push({ role: 'user', text: 'Review this rule now' });
+  const t = { id: mid, asked: true, card: 'check', title: `Rule review on request · ${r.name}`, verdict: 'Healthy', sug: 'Keep', agent: 'det', conf: 'High', impact: 'Low', layer: 'rule', status: 'progress', live: true, shown: 1, opened: now, nothing: true,
+    trigger: { kind: 'human', text: `${M_USER} asked: “Review this rule now.”` }, summary: 'The data arrives, the fields are mapped, and the rule fires at a useful rate.',
+    steps: ['Read the rule and the version it is on', 'Checked the data: it arrives', 'Checked the fields it reads: all filled', `Counted ${r.issues7d} issue${r.issues7d === 1 ? '' : 's'} in 7 days, most acted on`], diagnosis: 'Nothing to change.', validation: null, decision: null, affects: {} };
+  MY_SPEC[mid] = ['review', `Review ${r.name} now.`, `Rule ${id}, version ${r.ver}, and its last 7 days`, [2, 6, 10]]; myShape(W, t); W.tasks.unshift(t);
+  M.chats[key].push({ role: 'agent', agent: 'det', card: mid, text: `That starts the job **Rule review on request**, so it runs as a mission: **${mid}**.` });
+  mPanelRender(); icons(); mPanelBottom();
+  M.timers.push(setTimeout(() => { t.shown = t.steps.length; t.live = false; t.status = 'done'; t.end = 'nothing'; t.closed = Date.now(); t.outcome = 'Nothing found. The rule works and is useful.';
+    r.checked = { at: Date.now(), why: 'Rule review on request', next: Date.now() + 24 * 3600000 };
+    W.log.unshift({ t: Date.now(), kind: 'check', text: `${mid}: reviewed rule ${id} on request. Nothing found` }); mRender(); }, 2600));
 }

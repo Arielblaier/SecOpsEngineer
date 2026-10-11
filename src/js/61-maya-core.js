@@ -38,9 +38,9 @@ const mRule = id => M.W.rules.find(r => r.id === id) || M.W.suggested.find(r => 
 
 function mInit() {
   if (M) mLiveStop();
-  M = { W: myWorld(), view: 'home', tab: 'pending', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
+  M = { W: myWorld(), view: 'home', tab: 'needs', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
     /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
-    size: { work: 'work', native: 'side' }, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
+    size: { work: 'work', native: 'side' }, pct: { work: 55, native: 50 }, lay: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
   mWsSeed();
   mLiveStart();
 }
@@ -51,18 +51,20 @@ function mSug(s, o = {}) {
   if (!s) return '<span class="text-ink4">—</span>';
   const m = MY_SUGGEST[s] || ['slate', ''], t = o.task;
   if (s === 'Keep' && !o.solid) return `<span class="inline-flex items-center gap-1 text-[12.5px] text-ink3 whitespace-nowrap" title="${esc(m[1])}">${ic('check', 'w-3.5 h-3.5 c-cx')}Keep</span>`;
-  const chip = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md tn tn-${m[0]} text-[12px] font-semibold whitespace-nowrap ${o.declined ? 'opacity-60' : ''}" title="${esc(o.declined ? 'You declined this suggestion' : m[1])}">${esc(s)}${o.declined ? ' · declined' : ''}${t ? ic('chevron-right', 'w-3 h-3 opacity-70') : ''}</span>`;
+  const chip = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md tn tn-${m[0]} text-[12px] font-semibold whitespace-nowrap ${o.declined ? 'opacity-60' : ''}" title="${esc(o.declined ? 'Declined' + (o.declined.reason ? ': ' + myDeclTxt(o.declined) : '') : m[1])}">${esc(s)}${o.declined ? ' · ' + (o.declined.reason ? esc(M_DECL[o.declined.reason][0].toLowerCase()) : 'declined') : ''}${t ? ic('chevron-right', 'w-3 h-3 opacity-70') : ''}</span>`;
   return t ? `<button onclick="event.stopPropagation();mOpenTask('${t.id}')" class="hover:brightness-125" data-sug="${t.id}">${chip}</button>` : chip;
 }
 const mConf = c => { if (!c) return '<span class="text-ink4">—</span>'; const n = { High: 3, Medium: 2, Low: 1 }[c];
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2" title="Confidence: ${c}"><span class="inline-flex items-end gap-[2px] h-3">${[1, 2, 3].map(i => `<span class="w-[3px] rounded-sm ${i <= n ? 'bg-cx' : 'bg-line2'}" style="height:${4 + i * 3}px"></span>`).join('')}</span>${c}</span>`; };
 const mImpact = i => `<span class="inline-flex px-2 py-0.5 rounded-md tn tn-${{ High: 'rose', Medium: 'amber', Low: 'blue' }[i]} text-[12px] font-semibold">${i}</span>`;
-const mStatusTxt = t => t.status === 'pending' ? (t.waitOn ? 'Pending · waits on ' + t.waitOn : 'Pending') : t.status === 'progress' ? 'In progress' : { approved: 'Approved', edited: 'Approved with edits', rejected: 'Rejected', dismissed: 'Dismissed', auto: 'Closed automatically', handed: 'Handed over', watch: 'Watching' }[t.end] || 'Done';
-const mStatus = t => { const wait = t.status === 'pending' && t.waitOn, tone = wait ? 'indigo' : t.status === 'pending' ? 'amber' : t.status === 'progress' ? 'blue' : ['rejected', 'dismissed'].includes(t.end) ? 'slate' : 'cx';
-  const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${wait ? 'bg-indigo-400' : tone === 'amber' ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-500 animate-pulse' : tone === 'cx' ? 'bg-cx' : 'bg-slate-400'}"></span>`;
-  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${dot}${wait ? 'Pending' : mStatusTxt(t)}</span>`; };
+const mStatusTxt = t => { const st = myState(t); if (st === 'done') return myEndTxt(t);
+  if (st === 'waiting') return t.waitOn ? 'Waiting on ' + t.waitOn : 'Waiting on another team'; if (st === 'running') return 'Running'; if (st === 'blocked') return 'Blocked · partly applied'; return 'Needs you'; };
+const mStatus = t => { const st = myState(t), tone = st === 'done' ? (['rejected', 'cancelled', 'nothing'].includes(t.end) ? 'slate' : 'cx') : M_STATE[st][1];
+  const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${{ amber: 'bg-amber-500', blue: 'bg-blue-500 animate-pulse', indigo: 'bg-indigo-400', rose: 'bg-rose-500', cx: 'bg-cx', slate: 'bg-slate-400' }[tone]}"></span>`;
+  const short = st === 'done' ? myEndTxt(t).split(' · ')[0] : M_STATE[st][0];
+  return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${dot}${esc(short)}</span>`; };
 /* Who a pending mission is pending on: a person, or the agent that owns the mission it waits on. */
-const mPendingOn = t => { if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on a human</span>`; };
+const mPendingOn = t => { if (t.status === 'progress' && t.handed) return `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on another team</span>`; if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on you</span>`; };
 /* Help that belongs to the product: a small info icon with a tooltip. */
 const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
 const M_SUG_HELP = Object.entries(MY_SUGGEST).map(([k, v]) => `${k}: ${v[1]}.`).join(' ');
@@ -78,6 +80,7 @@ function mBoot() {
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
+      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event)" title="Drag to resize"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
       <div id="m-ws-rail" class="hidden w-[264px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
@@ -144,7 +147,7 @@ function mArrive(n) {
   const iv = setInterval(() => {
     t.shown++;
     if (t.shown <= t.steps.length) M.W.log.unshift({ t: Date.now(), kind: 'step', text: `${t.id}: ${t.steps[t.shown - 1]}` });
-    if (t.shown >= t.steps.length) { clearInterval(iv); const sp = myReady(M.W, t); toast(`${(sp || t).id} is ready for your decision`, 'bell-ring'); }
+    if (t.shown >= t.steps.length) { clearInterval(iv); const sp = myReady(M.W, t); toast(`${(sp || t).id} needs you: a decision is ready`, 'bell-ring'); }
     mRender();
   }, stepMs);
   M.timers.push(iv);
@@ -207,8 +210,39 @@ const mWide = () => window.innerWidth >= 1024;
 const mPanelOn = () => M.view !== 'home' && M.panelOpen;
 const mSizeKey = () => M.view === 'work' ? 'work' : 'native';
 const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
-function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
-function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), work = mSize() === 'work'; el.classList.toggle('hidden', !on); el.classList.toggle('flex', on); el.classList.toggle('m-panel-work', work); el.classList.toggle('m-panel-side', !work); }
+/* F moves through the three sizes: full screen, split, side panel. */
+function mSizeToggle() { const order = ['work', 'split', 'side']; M.size[mSizeKey()] = order[(order.indexOf(mSize()) + 1) % 3]; M.lay = false; mRender(); mScrollInit(); }
+function mSetLayout(size, pct) { M.size[mSizeKey()] = size; if (pct) M.pct[mSizeKey()] = pct; M.lay = false; mRender(); mScrollInit(); }
+/* How wide the panel is in pixels, so the split can choose one column or two. */
+function mPanelPx() { const main = document.querySelector('#app main'), w = main ? main.clientWidth : window.innerWidth, sz = mSize();
+  return sz === 'work' ? w : sz === 'split' ? w * M.pct[mSizeKey()] / 100 : Math.max(440, w * .3); }
+function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), sz = mSize(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on);
+  el.classList.toggle('m-panel-work', sz === 'work'); el.classList.toggle('m-panel-side', sz === 'side'); el.classList.toggle('m-panel-split', sz === 'split');
+  el.style.width = sz === 'split' && mWide() ? M.pct[mSizeKey()] + '%' : '';
+  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && sz === 'split' && mWide())); }
+/* The split is dragged by its edge, from 30% to 80% of the screen. */
+function mDragStart(e) {
+  const main = document.querySelector('#app main'), el = $('m-panel'), lab = $('m-drag-pct'); if (!main || !el) return;
+  e.preventDefault(); const r = main.getBoundingClientRect(), key = mSizeKey(); let pct = M.pct[key];
+  document.body.classList.add('m-dragging');
+  const move = ev => { pct = Math.max(30, Math.min(80, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.width = pct + '%'; if (lab) { lab.textContent = `Mission ${pct}% · list ${100 - pct}%`; lab.classList.remove('hidden'); } };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); M.pct[key] = pct; mRender(); };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+}
+/* The layout explorer: every way to share the screen between the mission and the list. */
+const M_LAYOUTS = [['work', 0, 'Full screen', 'The mission covers the screen'], ['split', 70, 'Split · mission 70%', ''], ['split', 60, 'Split · mission 60%', ''], ['split', 50, 'Split · 50 / 50', ''], ['split', 40, 'Split · mission 40%', ''], ['split', 30, 'Split · mission 30%', ''], ['side', 0, 'Side panel', 'Short card, the table stays the working area']];
+function mLayoutThumb(size, pct) {
+  const m = size === 'work' ? 100 : size === 'side' ? 30 : pct, lw = 40 * (100 - m) / 100;
+  return `<svg viewBox="0 0 40 26" width="40" height="26" class="shrink-0"><rect x=".5" y=".5" width="39" height="25" rx="3" fill="none" stroke="rgb(var(--line2))"/>${lw ? `<rect x="2" y="2" width="${Math.max(0, lw - 3)}" height="22" rx="1.5" fill="rgb(var(--line2))"/>` : ''}<rect x="${lw + 1}" y="2" width="${40 - lw - 3}" height="22" rx="1.5" fill="${size === 'side' ? '#818cf8' : '#2dd4bf'}" opacity=".75"/></svg>`;
+}
+function mLayoutMenu() {
+  const sz = mSize(), cur = M.pct[mSizeKey()];
+  return `<div id="m-lay" class="absolute right-0 top-full mt-1.5 w-[270px] rounded-xl bg-panel border border-line2 shadow-2xl p-1.5 z-30">
+    <div class="px-3 pt-1.5 pb-1 text-[11.5px] text-ink4">Mission and ${M.view === 'work' ? 'the Missions list' : 'this screen'}</div>
+    ${M_LAYOUTS.map(([s, p, l, sub]) => { const on = s === sz && (s !== 'split' || p === cur);
+      return `<button data-lay="${s}${p || ''}" onclick="mSetLayout('${s}',${p})" class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-3 ${on ? 'bg-hov' : 'hover:bg-hov/60'}">${mLayoutThumb(s, p)}<span class="min-w-0 flex-1"><span class="block text-[13px] ${on ? 'text-ink font-semibold' : 'text-ink2'}">${l}</span>${sub ? `<span class="block text-[11px] text-ink4 truncate">${sub}</span>` : ''}</span>${on ? ic('check', 'w-4 h-4 c-cx') : ''}</button>`; }).join('')}
+    <div class="px-3 pt-2 pb-1.5 text-[11.5px] text-ink3 leading-snug border-t border-line mt-1">In a split, drag the panel's left edge to any size from 30% to 80%. F moves between the three sizes.</div></div>`;
+}
 function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
 function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
 /* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
@@ -229,7 +263,10 @@ function mOpenObj(kind, id) {
   const W = M.W, rv = kind === 'rule' ? myRuleReview(W, mRule(id)) : myIocReview(W, W.iocs.find(x => x.id === id));
   const sg = kind === 'rule' && W.suggested.find(r => r.id === id);
   if (sg) return mOpenTask(sg.task);
-  if (rv.task && rv.sug !== 'Keep') return mOpenTask(rv.task.id);
+  /* With one open mission the row opens it. With several, the rule's own record lists them. */
+  const openT = kind === 'rule' ? W.tasks.filter(t => t.status !== 'done' && ((t.affects.rules || []).includes(id) || (t.targets || []).includes(id))) : [];
+  if (openT.length === 1) return mOpenTask(openT[0].id);
+  if (!openT.length && rv.task && rv.sug !== 'Keep' && rv.task.status !== 'done') return mOpenTask(rv.task.id);
   M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null;
   mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -252,7 +289,7 @@ function mPivotFocus(kind, key) {
   return false;
 }
 function mBackToTask() { const id = M.pivot && M.pivot.task; if (id) { M.panelTask = id; M.panelOpen = true; } mNav('work'); mScrollInit(); }
-function mToDecisions() { M.tab = 'pending'; mCloseSheet(); mNav('work'); }
+function mToDecisions() { M.tab = 'needs'; mCloseSheet(); mNav('work'); }
 function mReturnBar() {
   const el = $('m-return'); if (!el) return;
   const p = M.pivot, t = p && mTask(p.task);
@@ -324,7 +361,7 @@ function mKey(e) {
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.sel || M.people || M.menu) { M.sel = false; M.people = false; M.menu = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.sel || M.people || M.menu || M.lay) { M.sel = false; M.people = false; M.menu = false; M.lay = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
   if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();

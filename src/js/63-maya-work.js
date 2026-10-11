@@ -4,15 +4,31 @@
    list stays in view while deciding. The activity log sits between the two
    as a thin strip that opens on demand.
    ====================================================================== */
-const M_TABS = [['all', 'All'], ['pending', 'Pending'], ['progress', 'In progress'], ['done', 'Done']];
+const M_TABS = [['needs', 'Needs you'], ['running', 'Running'], ['waiting', 'Waiting'], ['done', 'Done'], ['nothing', 'Nothing found'], ['all', 'All']];
+/* Which filter a mission belongs to. A blocked mission needs a person, so it is under Needs you. */
+const mTabOf = t => t.status === 'done' && t.end === 'nothing' ? 'nothing' : ({ blocked: 'needs' })[myState(t)] || myState(t);
+const mDay = 86400000;
+/* One row per job when a job ran three times or more in the list, so frequent runs do not flood it. */
 function mWorkList() {
-  const W = M.W, order = { pending: 0, progress: 1, done: 2 }, q = M.q.trim().toLowerCase();
-  const list = W.tasks.filter(t => M.tab === 'all' || t.status === M.tab)
-    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || ''].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[a.status] - order[b.status] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
+  const W = M.W, order = { needs: 0, running: 1, waiting: 2, done: 3, nothing: 4 }, q = M.q.trim().toLowerCase();
+  const list = W.tasks.filter(t => M.tab === 'all' || mTabOf(t) === M.tab)
+    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || '', (MY_JOBS[t.job] || {}).name || ''].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[mTabOf(a)] - order[mTabOf(b)] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
   /* A mission that waits on another sits right under it, so the pair reads as one story. */
   list.filter(t => t.waitOn).forEach(t => { const k = list.findIndex(x => x.id === t.waitOn); if (k < 0) return; list.splice(list.indexOf(t), 1); list.splice(list.findIndex(x => x.id === t.waitOn) + 1, 0, t); });
-  return list;
+  const count = {}; list.forEach(t => { count[t.job] = (count[t.job] || 0) + 1; });
+  const out = [], seen = {};
+  list.forEach(t => { if (count[t.job] >= 3 && t.status === 'done') { if (seen[t.job]) { if (M.more['job:' + t.job]) out.push(t); return; } seen[t.job] = true; out.push({ group: t.job, n: list.filter(x => x.job === t.job && x.status === 'done').length }); if (M.more['job:' + t.job]) out.push(t); return; } out.push(t); });
+  return out;
+}
+function mJobRow(g) {
+  const W = M.W, j = MY_JOBS[g.group], all = W.tasks.filter(t => t.job === g.group), today = all.filter(t => Date.now() - t.opened < mDay), none = today.filter(t => t.end === 'nothing').length;
+  const needs = all.filter(t => mTabOf(t) === 'needs'), on = !!M.more['job:' + g.group];
+  return `<div data-job="${g.group}" onclick="M.more['job:${g.group}']=!M.more['job:${g.group}'];mRender()" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line bg-sunk/60 hover:bg-hov">
+    <span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 font-semibold">${ic(on ? 'chevron-down' : 'chevron-right', 'w-4 h-4 text-ink3')}${g.n} runs</span><span>${mSug('Keep')}</span>
+    <span class="min-w-0"><span class="block truncate text-ink font-semibold">${esc(j.name)} <span class="font-normal text-ink3">· v${j.ver}</span></span><span class="block text-[11.5px] text-ink3 truncate">${today.length} today · <span class="text-ink2">${none} found nothing</span>${needs.length ? ` · <span class="c-amber">${needs.length} needs you: ${needs.map(t => t.id).join(', ')}</span>` : ''} · ${esc(j.when)}</span></span>
+    <span class="text-ink4">—</span><span class="text-ink4">—</span><span class="text-[12.5px] text-ink3">${myAge(Date.now() - Math.max(...all.map(t => t.opened)))}</span><span class="text-[12.5px] text-ink3">Job</span>
+    <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(j.agent, 20)}<span class="truncate">${M_AG[j.agent].name}</span></span></div>`;
 }
 /* ---------- widgets ---------- */
 function mRing(pct, col, label, size = 62) {
@@ -27,15 +43,15 @@ function mSpark(vals, col) {
 }
 function mWidgets() {
   const W = M.W, st = myStats(W), total = W.tasks.length || 1, dt = myDetections(W), nz = myNoise(W), un = myUnused(W);
-  const running = W.tasks.filter(mRunning).length, pend = st.pending + st.waiting, pct = Math.round(nz.share * 100), was = Math.round(W.noiseHistory[W.noiseHistory.length - 1] * 100), dn = pct - was;
+  const running = W.tasks.filter(mRunning).length, runN = W.tasks.filter(t => mTabOf(t) === 'running').length, waitN = W.tasks.filter(t => mTabOf(t) === 'waiting').length, doneN = W.tasks.filter(t => mTabOf(t) === 'done').length, tot = Math.max(1, st.pending + runN + waitN + doneN), nothingToday = W.tasks.filter(t => t.end === 'nothing' && Date.now() - t.opened < mDay).length, pend = st.pending + st.waiting, pct = Math.round(nz.share * 100), was = Math.round(W.noiseHistory[W.noiseHistory.length - 1] * 100), dn = pct - was;
   const seg = (k, n, cls, lbl, tone) => `<button onclick="M.tab='${k}';mRender()" class="text-left min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-hov ${M.tab === k ? 'bg-hov' : ''}"><div class="text-[24px] leading-7 font-black font-mono ${tone}">${n}</div><div class="text-[11.5px] text-ink3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${cls}"></span>${lbl}</div></button>`;
   const card = (body, oc = '') => `<div class="m-wid rounded-2xl border border-line px-3 py-2.5 min-w-0 ${oc ? 'cursor-pointer hover:border-line2' : ''}" ${oc ? `onclick="${oc}"` : ''}>${body}</div>`;
   const head = (t, tip, right = '') => `<div class="flex items-center justify-between gap-2 text-[11.5px] text-ink3 mb-1.5"><span class="font-semibold inline-flex items-center gap-1.5">${t} ${mInfo(tip)}</span>${right}</div>`;
   const okInst = st.instOk / st.inst * 100, errInst = st.instErr / st.inst * 100;
   return `<div class="m-wwrap"><div class="m-wgrid">
-    ${card(`${head('<span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Queue flow', 'Missions by state. Pending includes missions that wait on another mission and not on you. Click a number to filter the list.', `<span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : st.waiting ? `${st.pending} need you · ${st.waiting} wait${st.waiting === 1 ? 's' : ''} on a mission` : `${st.pending} need you`}</span>`)}
-      <div class="grid grid-cols-3 gap-2">${seg('pending', pend, 'bg-amber-500', 'Pending', 'c-amber')}${seg('progress', st.progress, 'bg-blue-500', 'In progress', 'c-blue')}${seg('done', st.done, 'bg-cx', 'Done', 'c-cx')}</div>
-      <div class="mt-2 h-2.5 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="m-bar h-full bg-amber-500" data-anim="b-pend" data-to="${pend / total * 100}%"></div><div class="m-bar h-full bg-blue-500 seg-live" data-anim="b-prog" data-to="${st.progress / total * 100}%"></div><div class="m-bar h-full bg-cx" data-anim="b-done" data-to="${st.done / total * 100}%"></div></div>`)}
+    ${card(`${head('<span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Missions now', 'Every run of a job is a mission, including a run that finds nothing. Needs you: a person has to decide, or the mission is blocked. Waiting: on another mission or another team. Click a number to filter the list.', `<span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : `${nothingToday} found nothing today`}</span>`)}
+      <div class="grid grid-cols-4 gap-2">${seg('needs', st.pending, 'bg-amber-500', 'Needs you', 'c-amber')}${seg('running', runN, 'bg-blue-500', 'Running', 'c-blue')}${seg('waiting', waitN, 'bg-indigo-400', 'Waiting', 'c-indigo')}${seg('done', doneN, 'bg-cx', 'Done', 'c-cx')}</div>
+      <div class="mt-2 h-2.5 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="m-bar h-full bg-amber-500" data-anim="b-pend" data-to="${st.pending / tot * 100}%"></div><div class="m-bar h-full bg-blue-500 seg-live" data-anim="b-prog" data-to="${runN / tot * 100}%"></div><div class="m-bar h-full bg-indigo-400" data-anim="b-wait" data-to="${waitN / tot * 100}%"></div><div class="m-bar h-full bg-cx" data-anim="b-done" data-to="${doneN / tot * 100}%"></div></div>`)}
     ${card(`${head('Detections that cannot fire', 'Enabled correlation rules that look fine and cannot fire right now: their data stopped, a filter drops their events, or a field they read arrives empty. Noisy rules fire, but mostly on nothing.')}
       <div class="flex items-center gap-2.5">${mRing(dt.ok / dt.enabled * 100, dt.blind ? '#f43f5e' : '#00c389', dt.blind, 56)}<div class="min-w-0"><div class="text-[13px] text-ink leading-snug">of <b class="font-mono">${dt.enabled}</b> enabled rules</div><div class="text-[11.5px] text-ink3 leading-snug">${dt.noisy ? `<span class="c-amber">${dt.noisy} more are noisy</span>` : 'none are noisy'}</div></div></div>`, "M.onlyOpen=true;mNav('rules')")}
     ${card(`${head('Noise', 'Share of issues in the last 7 days that ended with no action, by the verdicts of analysts and the Investigation Agent. A few rules usually make most of it.', `<span class="font-mono ${dn < 0 ? 'c-cx' : dn > 0 ? 'c-amber' : 'text-ink4'}">${dn < 0 ? '▼ ' + Math.abs(dn) : dn > 0 ? '▲ ' + dn : '±0'} pts</span>`)}
@@ -56,7 +72,7 @@ function mLog() {
       <span class="${mPanelOn() ? 'mt-3' : 'mt-12'} text-ink2">${ic('chevrons-right', 'w-4 h-4')}</span><span class="mt-3 w-2 h-2 rounded-full bg-cx animate-pulse"></span>
       ${n ? `<span class="mt-3 min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-slate-950 text-[11px] font-bold font-mono flex items-center justify-center">${n}</span>` : ''}
       <div class="m-vert mt-4 text-[12px] text-ink3 whitespace-nowrap"><span>${esc(now.length > 58 ? now.slice(0, 58) : now)}…</span><b class="text-ink ml-3">Activity log</b></div></div>`;
-  const rows = W.log.slice(0, 40).map(l => { const kind = l.kind === 'task' && /ready for a decision/.test(l.text) ? 'ready' : l.kind, k = M_LOGK[kind] || M_LOGK.sweep, id = (l.text.match(/MSN-\d+/) || [])[0], d = new Date(l.t);
+  const rows = W.log.slice(0, 40).map(l => { const kind = l.kind === 'task' && /needs you/.test(l.text) ? 'ready' : l.kind, k = M_LOGK[kind] || M_LOGK.sweep, id = (l.text.match(/MSN-\d+/) || [])[0], d = new Date(l.t);
     return `<div ${id ? `onclick="mOpenTask('${id}')"` : ''} class="px-4 py-3 border-b border-line ${id ? 'cursor-pointer hover:bg-hov' : ''}">
       <div class="flex items-center gap-2 text-[11.5px]"><span class="${k[1]} shrink-0">${ic(k[2], 'w-3.5 h-3.5')}</span><span class="font-semibold ${k[1]}">${k[0]}</span><span class="font-mono text-ink4">${d.toTimeString().slice(0, 8)}</span>${id ? `<span class="ml-auto font-mono text-ink4">${id}</span>` : ''}</div>
       <div class="mt-1 text-[13px] text-ink2 leading-snug">${esc(l.text.replace(/^MSN-\d+: /, ''))}</div></div>`; }).join('');
@@ -67,17 +83,17 @@ function mLog() {
 }
 function mWork() {
   const W = M.W, list = mWorkList();
-  const count = k => k === 'all' ? W.tasks.length : W.tasks.filter(t => t.status === k).length;
-  const dot = { pending: 'bg-amber-500', progress: 'bg-blue-500', done: 'bg-cx' };
-  const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
-    return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : t.status === 'pending' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
+  const count = k => k === 'all' ? W.tasks.length : W.tasks.filter(t => mTabOf(t) === k).length;
+  const dot = { needs: 'bg-amber-500', running: 'bg-blue-500', waiting: 'bg-indigo-400', done: 'bg-cx', nothing: 'bg-slate-400' };
+  const rows = list.map(t => { if (t.group) return mJobRow(t); const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
+    return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : mTabOf(t) === 'needs' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
       <span class="leading-tight">${mStatus(t)}${mPendingOn(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
-      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span> · ${esc(MY_CARD[t.card])}` : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : esc(MY_CARD[t.card])}</span></span>
+      <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${esc(MY_JOBS[t.job].name)} · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span>` : t.status === 'blocked' ? '<span class="c-rose">partly applied</span>' : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : t.findings ? `${t.findings.length} findings` : t.nothing ? 'nothing found' : esc(MY_CARD[t.card])}</span></span>
       <span>${run ? '<span class="text-ink4">—</span>' : mConf(t.conf)}</span>
       <span>${mImpact(t.impact)}</span>
       <span class="text-[12.5px] text-ink3">${myAge(Date.now() - t.opened)}</span>
-      <span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 min-w-0">${ic(MY_LAYER[t.layer].icon, 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${MY_LAYER[t.layer].name}</span></span>
-      <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(t.agent, 20)}<span class="truncate">${M_AG[t.agent].name}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'pending' ? 'No open decisions.' : 'Nothing here right now.'}</div>`;
+      ${t.nothing ? '<span class="text-ink4">—</span>' : t.findings ? `<span class="text-[12.5px] text-ink2">${t.findings.length} findings</span>` : `<span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 min-w-0">${ic(MY_LAYER[t.layer].icon, 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${MY_LAYER[t.layer].name}</span></span>`}
+      <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(t.agent, 20)}<span class="truncate">${M_AG[t.agent].name}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'needs' ? 'Nothing needs you right now.' : 'Nothing here right now.'}</div>`;
 
   $('mv-work').innerHTML = `<div class="flex-1 min-w-0 min-h-0 flex">
     <div class="flex-1 min-w-0 min-h-0 flex flex-col bg-panel">
@@ -87,18 +103,18 @@ function mWork() {
           <button onclick="mOpenPanel()" class="lg:hidden mr-10 p-2 rounded-lg bg-sunk text-ink2" title="SecOps">${ic('sparkles', 'w-4 h-4 c-cx')}</button>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
-          <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]} ${k === 'progress' && W.tasks.some(mRunning) ? 'animate-pulse' : ''}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${k === 'progress' && W.tasks.some(mRunning) && M.tab !== k ? 'c-blue font-bold' : M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>
+          <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]} ${k === 'running' && W.tasks.some(mRunning) ? 'animate-pulse' : ''}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${k === 'running' && W.tasks.some(mRunning) && M.tab !== k ? 'c-blue font-bold' : M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>
           <div class="relative flex-1 min-w-[180px] max-w-[280px]"><span class="absolute left-2.5 top-[8px] text-ink4">${ic('search', 'w-3.5 h-3.5')}</span><input type="text" id="m-search" data-keep value="${esc(M.q)}" placeholder="Search missions, IDs" oninput="M.q=this.value;mRender()" class="w-full text-[12.5px] pl-8 pr-3 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink4 focus:outline-none focus:border-cx"></div>
         </div>
         ${mWidgets()}
       </div>
       <div data-scroll class="flex-1 min-h-[160px] overflow-auto border-t border-line">
         <div class="m-table">
-          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Impact</span><span>Age</span><span>Root cause</span><span>Owner</span></div>
+          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Priority</span><span>Age</span><span>Root cause</span><span>Owner</span></div>
           ${rows}
         </div>
       </div>
-      <div class="px-5 py-2 border-t border-line text-[11.5px] text-ink4 font-mono shrink-0 flex justify-between"><span>${list.length} of ${W.tasks.length} missions</span><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Live</span></div>
+      <div class="px-5 py-2 border-t border-line text-[11.5px] text-ink4 font-mono shrink-0 flex justify-between"><span>${list.filter(x => !x.group).length + list.filter(x => x.group).reduce((a, g) => a + (M.more['job:' + g.group] ? 0 : g.n), 0)} of ${W.tasks.length} missions</span><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Live</span></div>
     </div>
     ${mLog()}
   </div>`;

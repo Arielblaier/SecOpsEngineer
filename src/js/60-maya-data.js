@@ -218,8 +218,8 @@ function myWorld() {
       affects: { rules: [215, 217, 220], node: { pipe: 'p-s1', stage: 'model' }, source: 'sentinelone' },
       pivots: [['streams', 'Data Streams', 'the data model step'], ['rules', 'Correlation Rules', 'the 3 rules']] },
 
-    { id: 'MSN-1003', card: 'source', title: 'AWS audit logs stopped 46 hours ago: 2 detections are blind', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'source', status: 'pending', opened: now - 3 * H,
-      trigger: { kind: 'sweep', text: 'Hourly data-health sweep: the instance returned an error on 46 checks in a row.' },
+    { id: 'MSN-1003', card: 'source', title: 'AWS audit logs stopped 46 hours ago: 2 detections are blind', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'source', status: 'pending', opened: now - 45 * H,
+      trigger: { kind: 'sweep', text: 'Hourly data-health sweep: the instance returned an access error on the first check after the key expired.' },
       summary: `The production audit-log instance of Amazon S3 is in error. Two rules that look healthy have had no data to read since ${keyDay}.`,
       steps: [`Saw the instance “Cloud audit logs · production” in error since ${myWhen(down)}`, 'Read the error: access denied when reading the queue, the access key expired', 'Listed the rules that read this dataset: 2 rules, both enabled, both silent since then', 'Checked whether the events can be recovered: the queue keeps 14 days, so a backfill is possible'],
       diagnosis: 'The rules are fine and enabled. Their data source stopped, so they cannot fire.',
@@ -438,7 +438,7 @@ function myWorld() {
   const log = [
     [now - 6 * 60000, 'sweep', `Hourly data-health sweep: ${sources.flatMap(x => x.instances).length} instances checked, ${sources.flatMap(x => x.instances).filter(i => i.status === 'err').length} in error`],
     [now - 41 * 60000, 'check', 'Compared Check Point verdicts with XSIAM: 14 of 14 match'],
-    [now - 3 * H, 'task', 'Opened MSN-1003: AWS audit logs stopped'],
+    [now - 45 * H, 'task', 'Opened MSN-1003: AWS audit logs stopped'],
     [now - 5 * H, 'sweep', 'Change event: the SentinelOne pack was updated and 3 rules went silent'],
     [now - 5 * H + 9 * 60000, 'task', 'Opened MSN-1001: 3 SentinelOne rules went silent'],
     [now - 5 * H + 12 * 60000, 'task', 'Opened MSN-1012 for the Pipeline Engineer: MSN-1001 waits on it'],
@@ -451,7 +451,9 @@ function myWorld() {
     [now - 30 * H, 'done', 'Ariel B. approved MSN-0994: ATT&CK mapping on 2 rules']
   ].map(([t, kind, text]) => ({ t, kind, text }));
 
-  return { sources, pipes, rules, tasks, iocs, suggested, incoming, history, noiseHistory, log, facts: [], dates: { packDay, filterDay, reviewDay } };
+  const W = { sources, pipes, rules, tasks, iocs, suggested, incoming, history, noiseHistory, log, facts: [], dates: { packDay, filterDay, reviewDay } };
+  myEnrich(W, { now, H, D, day });
+  return W;
 }
 
 /* ---------- Derived values: never typed twice ---------- */
@@ -459,7 +461,7 @@ const myOpen = W => W.tasks.filter(t => t.status !== 'done');
 /* One order everywhere: most impact first, then the one that has waited longest. */
 const myRank = (a, b) => ({ High: 0, Medium: 1, Low: 2 })[a.impact] - ({ High: 0, Medium: 1, Low: 2 })[b.impact] || a.opened - b.opened;
 /* Decisions that wait for a person. A mission that waits on another mission is pending too, but not on a person. */
-const myPendingTasks = W => W.tasks.filter(t => t.status === 'pending' && !t.waitOn).sort(myRank);
+const myPendingTasks = W => W.tasks.filter(t => (t.status === 'pending' && !t.waitOn) || t.status === 'blocked').sort(myRank);
 const myWaiting = W => W.tasks.filter(t => t.status === 'pending' && t.waitOn);
 /* v is the health of the rule. sug is what the agent suggests, which is what the user sees. */
 function myRuleReview(W, r) {
@@ -473,7 +475,7 @@ function myRuleReview(W, r) {
   if (open) return { v: open.verdict, sug: open.sug, conf: open.conf, task: open };
   const last = ts.slice().sort((a, b) => (b.closed || 0) - (a.closed || 0))[0];
   if (last) {
-    if (last.end === 'rejected' || last.end === 'dismissed') return { v: last.verdict, sug: last.sug, conf: last.conf, task: last, declined: true };
+    if (last.end === 'rejected' && (!last.declined || !last.declined.until || last.declined.until > Date.now())) return { v: last.verdict, sug: last.sug, conf: last.conf, task: last, declined: last.declined || true };
     if (last.end === 'watch') return { v: 'Inconclusive', sug: 'Watch', conf: last.conf, task: last };
     return { v: 'Healthy', sug: 'Keep', conf: 'High', task: last };
   }
@@ -486,7 +488,7 @@ function myIocReview(W, i) {
   const ts = W.tasks.filter(t => (t.affects.iocs || []).includes(i.id)), open = ts.find(t => t.status !== 'done');
   if (open) return { sug: open.sug, conf: open.conf, task: open };
   if (i.status !== 'Enabled') return { sug: '', conf: '', task: ts[0] || null };
-  const last = ts[0]; if (last && (last.end === 'rejected' || last.end === 'dismissed')) return { sug: last.sug, conf: last.conf, task: last, declined: true };
+  const last = ts[0]; if (last && last.end === 'rejected') return { sug: last.sug, conf: last.conf, task: last, declined: last.declined || true };
   return { sug: 'Keep', conf: 'High', task: null };
 }
 const myIssuesNow = W => W.rules.reduce((a, r) => a + r.issues7d, 0) + W.iocs.reduce((a, i) => a + i.issues7d, 0);
@@ -530,12 +532,23 @@ const myAge = ms => { const m = Math.max(1, Math.round(ms / 60000)); if (m < 60)
 const myWhen = ts => { const d = new Date(ts); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toTimeString().slice(0, 5); };
 
 /* ---------- What a decision changes. The only place the world is modified. ---------- */
-function myApply(W, t, choice, whoName) {
+function myApply(W, t, choice, whoName, reason) {
   const who = whoName.replace(/\.$/, '');
   const now = Date.now(), rule = id => W.rules.find(r => r.id === id);
   const close = (end, outcome) => { t.status = 'done'; t.end = end; t.closed = now; t.by = who; t.outcome = outcome; };
-  if (choice === 'reject') { close('rejected', `Declined by ${who}. Nothing changed. The suggestion stays visible on the affected objects.`); return myUnblock(W, t); }
-  if (choice === 'dismiss') { close('dismissed', `Dismissed by ${who}. Nothing changed, and this is not raised again unless it gets worse.`); return myUnblock(W, t); }
+  if (choice === 'reject') { const r = reason || 'later', D = 86400000;
+    t.declined = { reason: r, until: r === 'later' ? now + 14 * D : r === 'risk' ? now + 90 * D : null, by: who, at: now, ver: t.ver || 1 };
+    close('rejected', `Declined by ${who} · ${myDeclTxt(t.declined)}. Nothing changed. ${r === 'never' ? 'It is not raised again for this rule.' : r === 'wrong' ? 'The agent records why, and learns from it.' : 'It comes back earlier only if the problem gets materially worse.'}`);
+    W.log.unshift({ t: now, kind: 'done', text: `${who} declined ${t.id} · ${myDeclTxt(t.declined)}` });
+    return myUnblock(W, t); }
+  /* Partly applied: one of the rules changed between the approval and the write, so that write was refused. */
+  if (t.id === 'MSN-1005' && t.race) {
+    rule(222).ver = t.expects[222] + 1; rule(222).editedBy = 'Dana K.';
+    rule(216).retired = true; rule(218).retired = true; t.weekly = 0; t.status = 'blocked'; t.by = who; t.actedAt = now;
+    t.partial = { done: ['Rule 216 retired', 'Rule 218 retired'], failed: `Rule 222 was not disabled. Dana K. edited it after your approval, so it is now version ${rule(222).ver}, not version ${t.expects[222]}. The change was refused, because a change applies only to the version that was approved.` };
+    W.log.unshift({ t: now, kind: 'task', text: `MSN-1005 is blocked: 2 of 3 changes applied. Rule 222 changed after the approval` });
+    (t.history = t.history || []).push({ t: now, kind: 'decision', by: who, tone: 'rose', text: 'approved.', more: 'Partly applied: rules 216 and 218 retired. Rule 222 changed after the approval, so that change was refused.' });
+    return; }
   const edited = choice === 'edit', end = edited ? 'edited' : 'approved', verb = edited ? 'Approved with edits' : 'Approved';
   if (t.id === 'MSN-1012') {
     W.pipes.find(p => p.id === 'p-s1').model.ok = true;
@@ -568,11 +581,17 @@ function myApply(W, t, choice, whoName) {
   } else if (t.id === 'MSN-1010') {
     rule(237).issues7d = 3; t.weekly = 22; W.facts.push({ text: 'svc-backup is the nightly backup account', review: W.dates.reviewDay, by: who });
     close(end, `${verb} by ${who}. The environment fact is saved. It removes 22 issues a week and keeps alerts on every other account.`);
+  } else if (t.id === 'MSN-1016') {
+    close(end, `${verb} by ${who}. Installs of unapproved extensions now create High issues.`);
+  } else if (t.id === 'MSN-1017') {
+    rule(236).issues7d = 2; W.facts.push({ text: 'partner.example is a finance partner', review: W.dates.reviewDay, by: who });
+    close(end, `${verb} by ${who}. The environment fact is saved. Forwarding to partner.example no longer creates issues.`);
   } else if (t.id === 'MSN-1011') {
     W.iocs.filter(x => [3, 2].includes(x.id)).forEach(x => { x.status = 'Disabled'; x.exp = 'Expired'; });
     close(end, `${verb} by ${who}. Both indicators are disabled and expired.`);
   }
   W.log.unshift({ t: now, kind: 'done', text: `${who} ${edited ? 'approved an edited version of' : 'approved'} ${t.id}` });
+  (t.targets || []).forEach(id => { if (!(t.id === 'MSN-1005' && id === 222 && t.partial)) myBump(W, id, `changed by ${t.id}`, t); });
   /* An approved noise fix leaves the rule with little noise. */
   if (t.verdict === 'Noisy') (t.affects.rules || []).forEach(id => { const r = rule(id); if (r) r.nshare = .1; });
   myUnblock(W, t);
@@ -583,12 +602,12 @@ function myUnblock(W, p) {
   d.waitOn = null;
   if (['approved', 'edited'].includes(p.end)) { d.status = 'progress'; d.progressNote = `${p.id} approved · checking that the detection works again`; d.unblockedBy = p.id; d.resume = true;
     W.log.unshift({ t: Date.now(), kind: 'step', text: `${d.id}: continued after ${p.id} was approved` }); }
-  else { d.status = 'done'; d.end = 'dismissed'; d.closed = Date.now(); d.outcome = `Closed with nothing changed. The fix in ${p.id} was declined, so the detection stays as it is. The suggestion stays visible on the affected rules.`; }
+  else { d.status = 'done'; d.end = 'rejected'; d.declined = p.declined; d.closed = Date.now(); d.outcome = `Closed with nothing changed. The fix in ${p.id} was declined, so the detection stays as it is. The suggestion stays visible on the affected rules.`; }
 }
 /* The check after an unblock is done: the mission closes itself. */
 function myResolve(W, d) {
   if (!d || d.status !== 'progress' || !d.resume) return;
-  d.resume = false; d.status = 'done'; d.end = 'auto'; d.closed = Date.now(); d.fresh = Date.now(); d.outcome = d.after || 'Closed automatically. The detection works again.';
+  d.resume = false; d.status = 'done'; d.end = 'auto'; d.autoWhy = 'verified'; d.closed = Date.now(); d.fresh = Date.now(); d.outcome = d.after || 'Closed automatically. The detection works again.';
   W.log.unshift({ t: Date.now(), kind: 'done', text: `${d.id} closed automatically: the detection works again` });
 }
 /* A person fixes the source in the native screen. The mission notices and closes itself. */
@@ -597,7 +616,7 @@ function myReconnect(W, instId, whoName) {
   const inst = W.sources.flatMap(s => s.instances).find(i => i.id === instId); if (!inst) return null;
   inst.status = 'ok'; inst.last = Date.now(); inst.count = 18400; inst.note = '';
   const t = W.tasks.find(x => x.status !== 'done' && x.affects.instance === instId);
-  if (t) { t.status = 'done'; t.end = 'auto'; t.closed = Date.now(); t.by = who; t.decision = null;
+  if (t) { t.status = 'done'; t.end = 'auto'; t.autoWhy = 'outside'; t.closed = Date.now(); t.by = who; t.decision = null;
     t.outcome = `Closed automatically. ${who} replaced the access key in Data Sources, events are arriving again, and the Pipeline Engineer is backfilling 46 hours from the queue.`;
     W.rules.filter(r => t.affects.rules.includes(r.id)).forEach(r => { r.backfill = true; });
     W.log.unshift({ t: Date.now(), kind: 'done', text: `${t.id} closed automatically: data is arriving again` }); }
@@ -619,8 +638,198 @@ function myReady(W, t) {
   /* The cause is in the pipeline: a mission is opened for the Pipeline Engineer and this one waits on it. */
   if (t.spawn) { const p = t.spawn; t.spawn = null; p.opened = Date.now(); p.fresh = Date.now(); W.tasks.unshift(p); t.status = 'pending'; t.waitOn = p.id;
     W.log.unshift({ t: Date.now(), kind: 'task', text: `Opened ${p.id} for the Pipeline Engineer: ${t.id} waits on it` });
-    W.log.unshift({ t: Date.now(), kind: 'task', text: `${p.id} is ready for a decision` }); return p; }
+    W.log.unshift({ t: Date.now(), kind: 'task', text: `${p.id} needs you: a decision is ready` }); return p; }
   if (!t.decision) return;
   t.status = 'pending';
-  W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id} is ready for a decision` });
+  W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id} needs you: a decision is ready` });
+}
+
+
+/* ======================================================================
+   JOBS, MISSIONS AND THE OBJECT RECORD (the AgentiX Always On Experts brief)
+   A job is a predefined piece of work. Every run of a job is a mission,
+   including a run that finds nothing. A mission has a shared part that is
+   the same for every expert, and a detection engineering part.
+   ====================================================================== */
+const MY_JOBS = {
+  health: { name: 'Hourly data-health sweep', agent: 'pipe', ver: 4, when: 'Every hour', budget: '5 minutes' },
+  change: { name: 'Change check', agent: 'det', ver: 2, when: 'On every pack, parser or rule change', budget: '20 minutes' },
+  pipefix: { name: 'Pipeline diagnosis', agent: 'pipe', ver: 3, when: 'When another agent asks', budget: '30 minutes' },
+  noise: { name: 'Noise review', agent: 'det', ver: 5, when: 'Daily, and on Investigation Agent handoffs', budget: '40 minutes' },
+  rules: { name: 'Rule-health sweep', agent: 'det', ver: 3, when: 'Daily', budget: '30 minutes' },
+  hygiene: { name: 'Weekly rule hygiene', agent: 'det', ver: 2, when: 'Weekly', budget: '30 minutes' },
+  coverage: { name: 'Coverage review', agent: 'det', ver: 2, when: 'Weekly, on a new source, or on request', budget: '60 minutes' },
+  source: { name: 'Third-party source check', agent: 'det', ver: 1, when: 'On a pack update, or on request', budget: '30 minutes' },
+  review: { name: 'Rule review on request', agent: 'det', ver: 2, when: 'When a person asks', budget: '20 minutes' },
+  ioc: { name: 'Indicator review', agent: 'det', ver: 2, when: 'Weekly', budget: '15 minutes' },
+  content: { name: 'Content feedback', agent: 'det', ver: 1, when: 'On repeated noise in Palo Alto content', budget: '20 minutes' }
+};
+/* What each mission is for, what it looked at, and what it cost. */
+const MY_SPEC = {
+  'MSN-1001': ['change', 'Find out why three SentinelOne rules stopped firing after the pack update.', '3 rules, their dataset and the 6 fields they read', [14, 41, 70]],
+  'MSN-1012': ['pipefix', 'Find why xdm.event.type arrives empty on SentinelOne events, and fix it.', 'The SentinelOne data model rule and 2 days of raw events', [18, 36, 60]],
+  'MSN-1003': ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 in error', [3, 12, 60]],
+  'MSN-1002': ['noise', 'Reduce the noise from the Chrome extension rule without losing real detections.', '1,250 issues in 30 days and 140 case verdicts', [22, 58, 55]],
+  'MSN-1004': ['rules', 'Check that every enabled rule can fire.', '152 enabled rules · 1 cannot fire', [11, 64, 37]],
+  'MSN-0999': ['pipefix', 'Find what drops the deny events the port-scan rule needs.', 'FortiGate pipeline: 1 filter, 1 parsing rule, 1 data model', [9, 21, 30]],
+  'MSN-1006': ['coverage', 'Answer whether impossible-travel logins can be detected, and what is missing.', 'Ingested sources, Palo Alto Analytics and the Marketplace', [7, 19, 12]],
+  'MSN-1014': ['pipefix', 'Find whether identity sign-in data exists for an impossible-travel rule.', 'Okta, Entra ID and Active Directory sources', [4, 11, 13]],
+  'MSN-1005': ['hygiene', 'Find rules that duplicate others or no longer run.', '152 rules, 90 days of issues', [16, 47, 53]],
+  'MSN-1007': ['noise', 'Reduce the noise from indicator 1 without losing real matches.', '290 issues in 7 days, and its reputation today', [6, 14, 15]],
+  'MSN-1008': ['coverage', 'Cover what the Threat Hunter found: Office launching a script host.', '41 SentinelOne rules, Analytics and the Marketplace', [26, 73, 43]],
+  'MSN-0998': ['noise', 'Reduce the noise from the VPN brute-force rule.', '61 cases and 266 issues', [19, 52, 48]],
+  'MSN-0996': ['rules', 'Check the rules edited in the last week.', '4 edited rules', [5, 9, 17]],
+  'MSN-0994': ['coverage', 'Find enabled rules with no ATT&CK mapping.', '152 enabled rules', [4, 6, 7]],
+  'MSN-0991': ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 delayed', [3, 12, 60]],
+  'MSN-0988': ['content', 'Send repeated noise in a Palo Alto analytic to the content team.', '1 analytic and 412 issues', [8, 17, 40]],
+  'MSN-1009': ['source', 'Compare the Check Point verdicts with what XSIAM receives.', '14 product verdicts, 9 of them in XSIAM', [12, 30, 40]],
+  'MSN-1013': ['pipefix', 'Find where the Check Point verdicts are lost.', 'The Check Point parsing rule and 20 minutes of events', [8, 17, 27]],
+  'MSN-1010': ['noise', 'Reduce the noise from the SharePoint mass-download rule.', '22 cases from one service account', [10, 24, 25]],
+  'MSN-1011': ['ioc', 'Find indicators that never matched or never expire.', '6 indicators', [3, 7, 20]],
+  'MSN-1015': ['noise', 'Find rules whose issues mostly end with no action, and suggest the smallest fix.', '64 rules with issues this week · 1 skipped, handled in MSN-1002', [24, 81, 60]],
+  'MSN-1016': ['review', 'Raise the severity of the Chrome extension rule for extensions IT did not approve.', '1 rule and its last 30 days of issues', [6, 13, 30]],
+  'MSN-0987': ['noise', 'Reduce the noise from the mail forwarding rule.', '6 issues a week, 4 to one partner domain', [7, 15, 18]],
+  'MSN-1017': ['noise', 'Reduce the noise from the mail forwarding rule.', '13 issues this week, 11 to one partner domain', [8, 16, 20]]
+};
+/* The rule a proposal changes, and which part of it. A change applies only if the rule is still the version the approval saw. */
+const MY_TARGET = { 'MSN-1002': [[224], 'issue settings'], 'MSN-1005': [[222, 216, 218], 'status'], 'MSN-1010': [[237], 'environment facts'], 'MSN-1016': [[224], 'issue settings'], 'MSN-1017': [[236], 'environment facts'], 'MSN-0998': [[231], 'query'] };
+const M_DECL = { wrong: ['Wrong', 'The diagnosis or the change is wrong. The agent learns from it.'], later: ['Not now', 'Ask again after the cool-down: 14 days.'], risk: ['Accepted risk', 'Keep it as it is until a date: 90 days.'], never: ['Never', 'Do not raise this again for this rule.'] };
+const myDay = ts => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const myDeclTxt = d => d ? `${M_DECL[d.reason] ? M_DECL[d.reason][0] : 'Declined'}${d.until ? ', until ' + myDay(d.until) : ''}` : '';
+
+function myEnrich(W, k) {
+  const { now, H, D } = k, rule = id => W.rules.find(r => r.id === id);
+  W.rules.forEach(r => { r.ver = 3 + (r.id % 7); r.checked = { at: now - (r.id % 9 + 1) * H, why: r.id % 3 ? 'Daily rule-health sweep' : 'Noise review', next: now + (24 - r.id % 9) * H }; });
+  rule(224).ver = 7; rule(222).ver = 5;
+  /* An earlier decline, and a mission with several findings */
+  W.tasks.push({ id: 'MSN-0987', card: 'noisy', title: 'Mail forwarding rule: forwarding to a partner domain is expected', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'Medium', impact: 'Low', layer: 'rule', status: 'done', end: 'rejected', by: 'Ariel B', opened: now - 8 * D, closed: now - 8 * D + 5 * H,
+    noise: 'Benign true positive', declined: { reason: 'later', until: now + 6 * D, by: 'Ariel B', at: now - 8 * D + 5 * H },
+    trigger: { kind: 'sweep', text: 'Daily noise review: 4 of 6 issues a week go to one partner domain.' },
+    summary: 'Most issues are mail forwarded to a partner the finance team works with.', steps: ['Counted 6 issues a week', 'Grouped them by target domain: 4 go to partner.example', 'Proposed an environment fact for the partner domain'],
+    diagnosis: 'Benign true positive. Forwarding to this partner is part of the finance process.',
+    current: { kind: 'settings', label: 'M365 - Mail forwarding rule to external domain', rows: [['Environment facts', 'None'], ['Issues a week', '6']] },
+    recommended: { kind: 'settings', label: 'M365 - Mail forwarding rule to external domain', rows: [['Environment facts', 'partner.example is a finance partner · review in 6 months'], ['Issues a week', '2']] },
+    validation: null, decision: { q: 'Add the partner domain as an environment fact?', approve: 'Approve fact', effect: 'Forwarding to partner.example no longer creates issues.', risk: 'Low.', reversible: true },
+    outcome: 'Declined by Ariel B · Not now. Nothing changed.', affects: { rules: [236] }, pivots: [['rules', 'Correlation Rules', 'the rule']] });
+  W.tasks.push({ id: 'MSN-1015', card: 'noisy', title: 'Noise review: 2 rules to tune, 1 already handled', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Medium', layer: 'rule', status: 'pending', opened: now - 4 * H,
+    trigger: { kind: 'sweep', text: 'Daily noise review, 09:00.' },
+    summary: 'Two rules make most of their issues on things the company expects. A third is already being handled.',
+    steps: ['Listed the 64 rules that created issues this week', 'Skipped rule 224: MSN-1002 already handles its noise. Added this week’s 38 issues to MSN-1002 as evidence', 'Found two rules whose issues mostly end with no action', 'Named the cause of each and chose the smallest change', 'Backtested both changes on 30 days'],
+    diagnosis: 'Two benign true positives. Both rules are right, and the behavior is expected here.',
+    findings: [
+      { id: 'F1', title: 'Outbound to rare country: 9 of 11 issues go to the two new offices', card: 'noisy', layer: 'rule', noise: 'Benign true positive', conf: 'High', status: 'proposal', affects: { rules: [232] },
+        diagnosis: 'The company opened offices in Portugal and Poland. The country list the rule uses is from February.',
+        prop: { ver: 1, kind: 'Act on an object', part: 'query', current: { kind: 'settings', label: 'FortiGate - Outbound to rare country', rows: [['Common countries', '31 countries'], ['Issues a week', '11']] },
+          recommended: { kind: 'settings', label: 'FortiGate - Outbound to rare country', rows: [['Common countries', '33 countries: adds Portugal and Poland'], ['Issues a week', '2']] },
+          validation: { rows: [['Issues a week', 11, 2, 11]], note: 'Backtest on 30 days. The 2 issues left go to countries with no office.' },
+          decision: { q: 'Add Portugal and Poland to the common countries?', approve: 'Add both', effect: 'The rule stops raising issues for traffic to the two new offices.', risk: 'Low. Traffic to other rare countries still alerts.', reversible: true } } },
+      { id: 'F2', title: 'Password reuse: 12 of 14 issues come from phishing-simulation accounts', card: 'noisy', layer: 'rule', noise: 'Benign true positive', conf: 'High', status: 'proposal', affects: { rules: [225] },
+        diagnosis: 'The security team runs a phishing simulation with 6 test accounts. The rule is right about them, and nobody acts on it.',
+        prop: { ver: 1, kind: 'Act on an object', part: 'environment facts', current: { kind: 'settings', label: 'Chrome - User Phished and/or Password Re-use/Breach event', rows: [['Environment facts', 'None'], ['Issues a week', '14']] },
+          recommended: { kind: 'settings', label: 'Chrome - User Phished and/or Password Re-use/Breach event', rows: [['Environment facts', '6 phishing-simulation accounts · review in 3 months'], ['Issues a week', '2']] },
+          validation: { rows: [['Issues a week', 14, 2, 14]], note: 'Backtest on 30 days. Real users are still covered.' },
+          decision: { q: 'Add the 6 test accounts as an environment fact?', approve: 'Add the fact', effect: 'Issues from the test accounts stop. The fact is reviewed in 3 months.', risk: 'Low. Only the 6 listed accounts are affected.', reversible: true } } },
+      { id: 'F3', title: 'Chrome extension installs: still noisy', card: 'noisy', layer: 'rule', conf: 'High', status: 'handled', handledIn: 'MSN-1002', affects: { rules: [224] },
+        diagnosis: 'MSN-1002 already proposes a fix for this. This week’s 38 issues were added to it as evidence, and nothing new is proposed here.' }
+    ],
+    affects: { rules: [232, 225] }, pivots: [['rules', 'Correlation Rules', 'the 2 rules']] });
+  /* Missions that arrive later in the scenarios */
+  W.incoming.push({ id: 'MSN-1016', card: 'settings', title: 'Chrome extension rule: High severity for extensions IT did not approve', verdict: 'Gap', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Medium', layer: 'rule', progressNote: 'Detection Engineer is checking the rule',
+    trigger: { kind: 'human', text: 'Dana K. asked: “Make installs of unapproved extensions High severity.”' },
+    summary: 'Installs of extensions that IT did not approve are the ones that matter. Today they are Medium, like every other install.',
+    steps: ['Read the rule and its issue settings: severity Medium for every install', 'Found that MSN-1002 also proposes a change to the issue settings of this rule', 'Wrote the severity change so it works with or without that change'],
+    diagnosis: 'A severity change on the same rule, in the same part that MSN-1002 changes.',
+    current: { kind: 'settings', label: 'Chrome - Chrome Extension Install Event', rows: [['Severity', 'Medium for every install']] },
+    recommended: { kind: 'settings', label: 'Chrome - Chrome Extension Install Event', rows: [['Severity', 'High when the extension is not on the IT list, otherwise Medium']] },
+    validation: { rows: [['High-severity issues a month', 0, 100, 1250]], note: 'Backtest on 30 days: 100 issues would have been High.' },
+    decision: { q: 'Raise the severity for unapproved extensions?', approve: 'Approve change', effect: 'Installs of extensions that IT did not approve create High issues.', risk: 'Low.', reversible: true },
+    affects: { rules: [224] }, pivots: [['rules', 'Correlation Rules', 'the rule']] });
+  W.incoming.push({ id: 'MSN-1017', card: 'noisy', title: 'Raised again: mail forwarding noise doubled since you declined it', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Medium', layer: 'rule', noise: 'Benign true positive', progressNote: 'Detection Engineer is measuring the rule', raisedFrom: 'MSN-0987',
+    trigger: { kind: 'sweep', text: 'Daily noise review: issues on a rule with a “not now” decline doubled.' },
+    summary: 'You declined this on ' + myDay(now - 8 * D + 5 * H) + ', “not now”. The cool-down has not ended, but the noise is materially worse: 13 issues this week instead of 6.',
+    steps: ['Read the decision on the rule: declined, not now, cool-down until ' + myDay(now + 6 * D), 'Measured this week: 13 issues, 11 to partner.example', 'The job’s policy says a doubling is materially worse, so the suggestion is raised again'],
+    diagnosis: 'The same benign true positive, with twice the volume.',
+    current: { kind: 'settings', label: 'M365 - Mail forwarding rule to external domain', rows: [['Environment facts', 'None'], ['Issues a week', '13']] },
+    recommended: { kind: 'settings', label: 'M365 - Mail forwarding rule to external domain', rows: [['Environment facts', 'partner.example is a finance partner · review in 6 months'], ['Issues a week', '2']] },
+    validation: { rows: [['Issues a week', 13, 2, 13]], note: 'Backtest on 30 days.' },
+    decision: { q: 'Add the partner domain as an environment fact?', approve: 'Approve fact', effect: 'Forwarding to partner.example no longer creates issues.', risk: 'Low.', reversible: true },
+    affects: { rules: [236] }, pivots: [['rules', 'Correlation Rules', 'the rule']] });
+  /* The hourly data-health sweep ran 24 times today. Every run is a mission, and these found nothing new. */
+  for (let h = 23; h >= 0; h--) {
+    const at = now - h * H - 6 * 60000, hh = new Date(at).toTimeString().slice(0, 5), id = 'MSN-' + (1124 - h);
+    W.tasks.push({ id, card: 'check', title: `Hourly data-health sweep · ${hh}`, verdict: 'Healthy', sug: 'Keep', agent: 'pipe', conf: 'High', impact: 'Low', layer: 'source', status: 'done', end: 'nothing', opened: at, closed: at + 3 * 60000, nothing: true,
+      trigger: { kind: 'sweep', text: `Hourly data-health sweep, ${hh}.` },
+      summary: 'Every instance sent events in the last hour, except one that MSN-1003 already handles.',
+      steps: ['Checked 103 instances: 102 sent events in the last hour', 'Skipped “Cloud audit logs · production”: MSN-1003 already handles it', 'Nothing new found'],
+      diagnosis: 'Nothing new.', skips: [['Cloud audit logs · production', 'MSN-1003']], validation: null, decision: null,
+      outcome: `Nothing found. The next run is at ${new Date(at + H).toTimeString().slice(0, 5)}.`, affects: {} });
+  }
+  W.log.forEach(l => { if (/^Hourly data-health sweep/.test(l.text)) l.text = 'MSN-1124: ' + l.text; });
+  const all = W.tasks.concat(W.incoming), spawn = W.incoming.map(t => t.spawn).filter(Boolean);
+  all.concat(spawn).forEach(t => myShape(W, t));
+}
+/* The shared part of every mission: job, objective, coverage, cost and result. */
+function myShape(W, t) {
+  const sp = MY_SPEC[t.id] || (t.nothing ? ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 skipped, handled in MSN-1003', [3, 12, 60]] : ['review', t.title, '', [5, 10, 20]]);
+  const j = MY_JOBS[sp[0]];
+  Object.assign(t, { job: sp[0], jobVer: j.ver, objective: sp[1], coverage: sp[2], cost: { min: sp[3][0], queries: sp[3][1], pct: sp[3][2] } });
+  t.resultClass = t.sug === 'Keep' ? 'nothing' : t.sug === 'Watch' ? 'inconclusive' : 'action';
+  if (!t.skips && /handled in (MSN-\d+)/.test(t.coverage)) t.skips = [['rule 224', t.coverage.match(/handled in (MSN-\d+)/)[1]]];
+  const tg = MY_TARGET[t.id];
+  if (tg) { t.targets = tg[0]; t.part = tg[1]; t.expects = {}; tg[0].forEach(id => { const r = W.rules.find(x => x.id === id); if (r) t.expects[id] = r.ver; }); }
+  t.history = t.history || [];
+}
+/* ---------- states ---------- */
+const myState = t => t.status === 'blocked' ? 'blocked' : t.status === 'done' ? 'done' : t.status === 'pending' ? (t.waitOn ? 'waiting' : 'needs') : t.handed ? 'waiting' : 'running';
+const M_STATE = { needs: ['Needs you', 'amber'], running: ['Running', 'blue'], waiting: ['Waiting', 'indigo'], blocked: ['Blocked', 'rose'], done: ['Done', 'cx'] };
+function myEndTxt(t) {
+  if (t.status !== 'done') return '';
+  return ({ approved: 'Changes applied', edited: 'Changes applied, with your edits', rejected: 'Declined' + (t.declined ? ' · ' + myDeclTxt(t.declined) : ''), handed: 'Handed over', watch: 'Inconclusive · checks again', nothing: 'Nothing found', partly: 'Partly applied', cancelled: 'Cancelled',
+    auto: t.autoWhy === 'outside' ? 'Closed · fixed outside the mission' : t.autoWhy === 'verified' ? 'Changes applied · verified' : 'Closed · the problem disappeared', mixed: 'Done · ' + (t.mixTxt || 'some changes applied') })[t.end] || 'Done';
+}
+/* A rule changed: its version goes up, and every other open proposal on it is out of date until the agent checks it again. */
+function myBump(W, id, why, from) {
+  const r = W.rules.find(x => x.id === id); if (!r) return;
+  r.ver++;
+  W.tasks.filter(x => x !== from && x.status !== 'done' && x.targets && x.targets.includes(id) && x.expects && x.expects[id] < r.ver && !x.stale)
+    .forEach(x => { x.stale = { rule: id, from: x.expects[id], to: r.ver, why }; (x.history = x.history || []).push({ t: Date.now(), kind: 'evidence', text: `Rule ${id} changed (${why}). It is now version ${r.ver}, so the proposal on version ${x.expects[id]} is out of date.` }); W.log.unshift({ t: Date.now(), kind: 'task', text: `${x.id}: rule ${id} changed (${why}). The proposal is out of date and is checked again` }); });
+}
+
+/* A decision on one proposal of a mission with several findings. The mission is done when every proposal is decided. */
+function myApplyProp(W, t, fi, choice, whoName, reason) {
+  const who = whoName.replace(/\.$/, ''), now = Date.now(), f = t.findings[fi], D = 86400000; if (!f || !f.prop || f.dec) return;
+  f.dec = { choice, by: who, at: now, ver: f.prop.ver };
+  if (choice === 'reject') { const r = reason || 'later'; f.dec.reason = r; f.dec.until = r === 'later' ? now + 14 * D : r === 'risk' ? now + 90 * D : null; }
+  else { (f.affects.rules || []).forEach(id => { const r = W.rules.find(x => x.id === id); if (r) { r.issues7d = Math.round(r.issues7d * .18); r.nshare = .1; } myBump(W, id, `changed by ${t.id}`, t); }); }
+  W.log.unshift({ t: now, kind: 'done', text: `${who} ${choice === 'reject' ? 'declined' : 'approved'} ${t.id} · ${f.id}` });
+  const props = t.findings.filter(x => x.prop), left = props.filter(x => !x.dec);
+  if (left.length) return;
+  const ok = props.filter(x => x.dec.choice !== 'reject').length;
+  t.status = 'done'; t.closed = now; t.by = who; t.end = ok === props.length ? 'approved' : ok === 0 ? 'rejected' : 'mixed';
+  t.mixTxt = `${ok} applied, ${props.length - ok} declined`;
+  if (t.end === 'rejected') t.declined = { reason: props[0].dec.reason, until: props[0].dec.until, by: who, at: now };
+  t.outcome = ok === props.length ? `Both changes applied by ${who}.` : ok === 0 ? `Both declined by ${who}. Nothing changed.` : `${t.mixTxt}. ${props.map(x => `${x.id}: ${x.dec.choice === 'reject' ? 'declined · ' + myDeclTxt(x.dec) : 'applied'}`).join(' · ')}.`;
+}
+/* A blocked mission: check the refused part again, or stop with what was applied. */
+function myUnblockPartial(W, t, how, whoName) {
+  const who = whoName.replace(/\.$/, ''), now = Date.now(), r = W.rules.find(x => x.id === 222);
+  if (how === 'stop') { (t.history = t.history || []).push({ t: now, kind: 'steer', who: 'me', text: 'stopped here, with 2 of 3 changes applied.' }); t.status = 'done'; t.end = 'partly'; t.closed = now; t.outcome = `Partly applied. ${t.partial.done.join(' and ')}. ${who} stopped here, so rule 222 stays enabled.`; return; }
+  t.status = 'pending'; t.race = false; t.ver = (t.ver || 1) + 1; t.expects[222] = r.ver; t.targets = [222];
+  t.prevRec = JSON.parse(JSON.stringify(t.recommended));
+  t.current = { kind: 'settings', label: 'Rule 222, version ' + r.ver, rows: [['Chrome - Known Malicious Site Visit (ID 222)', 'Enabled · Dana K. renamed it · still a copy of 221']] };
+  t.recommended = { kind: 'settings', label: 'Rule 222, version ' + r.ver, rows: [['Chrome - Known Malicious Site Visit (ID 222)', 'Disable']] };
+  t.decision = { q: `Disable rule 222 (version ${r.ver})?`, approve: 'Disable rule 222', effect: 'Rule 222 is disabled. Rules 216 and 218 are already retired.', risk: 'Low. Dana K. only renamed it: the query is still a copy of rule 221.', reversible: true };
+  t.changed = { ver: t.ver, title: 'Checked rule 222 again', what: ['Rule 222 changed after your approval: Dana K. renamed it.', 'The query is still identical to rule 221, so disabling it is still right.', 'Rules 216 and 218 were already retired, so only rule 222 is left.'] };
+  t.partial.rechecked = true;
+  (t.history = t.history || []).push({ t: now, kind: 'steer', who: 'me', text: `asked the agent to check rule 222 again. Version ${t.ver} is ready.` });
+}
+/* The agent checks an out-of-date proposal again, on the new version of the rule. */
+function myReassess(W, t) {
+  const s = t.stale; if (!s) return; const r = W.rules.find(x => x.id === s.rule);
+  t.stale = null; if (t.status === 'done') return;
+  if (r && r.deleted) { t.status = 'done'; t.end = 'cancelled'; t.closed = Date.now(); t.decision = null; t.outcome = `Cancelled. Rule ${s.rule} was deleted, so there is nothing left to change.`; return; }
+  t.ver = (t.ver || 1) + 1; t.expects[s.rule] = r.ver; t.prevRec = JSON.parse(JSON.stringify(t.recommended || null));
+  t.changed = { ver: t.ver, title: `Checked again on version ${r.ver} of rule ${s.rule}`, what: [`Rule ${s.rule} changed: ${s.why}. It is now version ${r.ver}.`, 'The agent read the new version and rebuilt the proposal on it.', 'The change still applies, so the suggestion stays the same.'] };
+  (t.history = t.history || []).push({ t: Date.now(), kind: 'evidence', text: `Checked again on version ${r.ver} of rule ${s.rule}. Version ${t.ver} of the proposal is ready.` });
+  W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id}: version ${t.ver} of the proposal is ready` });
 }
