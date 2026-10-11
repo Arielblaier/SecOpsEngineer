@@ -656,7 +656,7 @@ const MF = { i: null, step: 0, ok: [], pos: null, min: false, iv: null, off: fal
 function mFlow(i) {
   i = (i + M_FLOWS.length) % M_FLOWS.length;
   closeDemoMenu(); mSheetShow(false); mInit(); mLiveStop();
-  Object.assign(MF, { i, step: 0, ok: [], min: false, off: false }); M.scn = i; M.scnBar = false;
+  Object.assign(MF, { i, step: 0, ok: [], min: false, off: false, busy: false }); M.scn = i; M.scnBar = false;
   M_FLOWS[i].setup(); mFlowRender();
   clearInterval(MF.iv); MF.iv = setInterval(mFlowTick, 600);
 }
@@ -668,7 +668,22 @@ function mFlowTick() {
   while (MF.step < f.steps.length) { let d = false; try { d = f.steps[MF.step].done(); } catch (e) {} if (!d) break; MF.ok[MF.step] = true; MF.step++; moved = true; }
   if (moved) mFlowRender();
 }
-function mFlowShow() { const f = M_FLOWS[MF.i], st = f && f.steps[MF.step]; if (st) { st.act(); setTimeout(mFlowTick, 250); } }
+function mFlowShow() { if (MF.busy) return; const f = M_FLOWS[MF.i], st = f && f.steps[MF.step]; if (st) { st.act(); setTimeout(mFlowTick, 250); } }
+/* One step back. What a step did cannot be undone in place, so the flow restarts and replays every step before it. */
+function mFlowBack() {
+  if (MF.busy || MF.i === null) return; const target = Math.max(0, MF.step - 1), i = MF.i, min = MF.min;
+  mFlow(i); MF.min = min; if (!target) return mFlowRender();
+  MF.busy = true; mFlowRender();
+  const run = k => {
+    if (MF.i !== i) { MF.busy = false; return; }
+    if (MF.step >= target) { MF.busy = false; return mFlowRender(); }
+    const st = M_FLOWS[i].steps[MF.step]; st.act(); const t0 = Date.now();
+    const wait = () => { mFlowTick(); if (MF.step > k || Date.now() - t0 > 12000) return run(MF.step); setTimeout(wait, 250); };
+    setTimeout(wait, 250);
+  };
+  run(0);
+}
+function mFlowReset() { if (MF.busy || MF.i === null) return; const min = MF.min; mFlow(MF.i); MF.min = min; mFlowRender(); }
 function mFlowRender() {
   let el = $('m-flow');
   if (!el) { document.body.insertAdjacentHTML('beforeend', '<div id="m-flow" class="m-flow"></div>'); el = $('m-flow'); }
@@ -686,12 +701,17 @@ function mFlowRender() {
       <select onpointerdown="event.stopPropagation()" onchange="mFlow(+this.value)" class="min-w-0 flex-1 bg-sunk border border-line2 rounded-lg text-[12.5px] text-ink px-2 py-1 focus:outline-none">${M_FLOWS.map((x, k) => `<option value="${k}" ${k === MF.i ? 'selected' : ''}>${k + 1}. ${esc(x.name)}</option>`).join('')}</select>
       <button onpointerdown="event.stopPropagation()" onclick="MF.min=!MF.min;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="${MF.min ? 'Open' : 'Minimize'}">${ic(MF.min ? 'chevron-up' : 'chevron-down', 'w-4 h-4')}</button>
       <button onpointerdown="event.stopPropagation()" onclick="clearInterval(MF.iv);MF.i=null;MF.off=true;mFlowRender()" class="w-7 h-7 rounded-lg hover:bg-hov text-ink3 flex items-center justify-center shrink-0" title="Close. The Demo flows button reopens it">${ic('x', 'w-4 h-4')}</button></div>
+    ${MF.min ? `<div class="px-3 py-2 flex items-center gap-2">
+      <button data-act="flow-back" onclick="mFlowBack()" ${MF.step === 0 || MF.busy ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-line2 text-ink2 hover:bg-hov flex items-center justify-center shrink-0 disabled:opacity-35" title="One step back">${ic('skip-back', 'w-4 h-4')}</button>
+      <button data-act="flow-play" onclick="mFlowShow()" ${all || MF.busy ? 'disabled' : ''} class="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 flex items-center justify-center shrink-0 disabled:opacity-35" title="Do the next step">${ic('play', 'w-4 h-4')}</button>
+      <button data-act="flow-reset" onclick="mFlowReset()" ${MF.busy ? 'disabled' : ''} class="w-8 h-8 rounded-lg border border-line2 text-ink2 hover:bg-hov flex items-center justify-center shrink-0 disabled:opacity-35" title="Start the flow from the beginning">${ic('rotate-ccw', 'w-4 h-4')}</button>
+      <span class="min-w-0 flex-1 text-[12px] leading-snug ${all ? 'c-cx font-semibold' : 'text-ink2'}">${MF.busy ? 'Going back…' : all ? 'Flow done' : `<span class="text-ink4 font-mono">${MF.step + 1}/${f.steps.length}</span> ${esc(f.steps[MF.step].do)}`}</span></div>` : ''}
     ${MF.min ? '' : `<div class="px-4 pt-3 pb-1 text-[12.5px] text-ink2 leading-relaxed"><b class="text-ink">The point:</b> ${esc(f.point)}</div>
     <ol class="px-3 py-2 space-y-1 max-h-[46vh] overflow-y-auto">${f.steps.map((s, k) => { const done = MF.ok[k], cur = k === MF.step;
       return `<li data-step="${k}" class="rounded-xl px-2.5 py-2 ${cur ? 'bg-hov' : ''}"><div class="flex gap-2.5"><span class="w-5 h-5 mt-0.5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold ${done ? 'bg-cx text-slate-950' : cur ? 'bg-amber-500 text-slate-950' : 'bg-line2 text-ink3'}">${done ? ic('check', 'w-3 h-3') : k + 1}</span>
         <div class="min-w-0 flex-1"><div class="text-[13px] ${cur ? 'text-ink font-semibold' : done ? 'text-ink3' : 'text-ink2'}">${esc(s.do)}</div>${cur || done ? `<div class="text-[12px] ${done ? 'text-ink4' : 'text-ink3'} mt-0.5 leading-snug">Notice: ${esc(s.see)}</div>` : ''}
         ${cur ? `<button data-act="flow-show" onclick="mFlowShow()" class="mt-1.5 px-2.5 py-1 rounded-lg border border-line2 text-[12px] text-ink2 hover:bg-panel inline-flex items-center gap-1.5">${ic('play', 'w-3 h-3')}Show me</button>` : ''}</div></div></li>`; }).join('')}</ol>
-    <div class="px-4 pb-3 pt-1 flex items-center justify-between gap-2 text-[12px]"><span class="flex items-center gap-3"><button onclick="mFlow(MF.i)" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('rotate-ccw', 'w-3.5 h-3.5')}Restart</button><button data-act="flow-list" onclick="clearInterval(MF.iv);MF.i=null;mFlowRender()" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('list', 'w-3.5 h-3.5')}All flows</button></span>${all ? `<span class="c-cx font-semibold">Flow done</span><button data-act="flow-next" onclick="mFlow(MF.i+1)" class="px-3 py-1.5 rounded-lg bg-ink text-panel font-bold inline-flex items-center gap-1">Next flow${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : `<span class="text-ink4">Step ${MF.step + 1} of ${f.steps.length}</span>`}</div>`}`;
+    <div class="px-4 pb-3 pt-1 flex items-center justify-between gap-2 text-[12px]"><span class="flex items-center gap-3"><button onclick="mFlowBack()" ${MF.step === 0 || MF.busy ? 'disabled' : ''} class="text-ink3 hover:text-ink inline-flex items-center gap-1 disabled:opacity-35">${ic('skip-back', 'w-3.5 h-3.5')}Back</button><button onclick="mFlowReset()" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('rotate-ccw', 'w-3.5 h-3.5')}Restart</button><button data-act="flow-list" onclick="clearInterval(MF.iv);MF.i=null;mFlowRender()" class="text-ink3 hover:text-ink inline-flex items-center gap-1">${ic('list', 'w-3.5 h-3.5')}All flows</button></span>${all ? `<span class="c-cx font-semibold">Flow done</span><button data-act="flow-next" onclick="mFlow(MF.i+1)" class="px-3 py-1.5 rounded-lg bg-ink text-panel font-bold inline-flex items-center gap-1">Next flow${ic('arrow-right', 'w-3.5 h-3.5')}</button>` : `<span class="text-ink4">Step ${MF.step + 1} of ${f.steps.length}</span>`}</div>`}`;
   icons();
 }
 /* The card moves by its header and stays where it is put, also across flows. */
