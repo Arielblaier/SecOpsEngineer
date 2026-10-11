@@ -4,31 +4,19 @@
    list stays in view while deciding. The activity log sits between the two
    as a thin strip that opens on demand.
    ====================================================================== */
-const M_TABS = [['needs', 'Needs you'], ['running', 'Running'], ['waiting', 'Waiting'], ['done', 'Done'], ['nothing', 'Nothing found'], ['all', 'All']];
+const M_TABS = [['needs', 'Needs you'], ['running', 'Running'], ['waiting', 'Waiting'], ['done', 'Done'], ['all', 'All']];
 /* Which filter a mission belongs to. A blocked mission needs a person, so it is under Needs you. */
-const mTabOf = t => t.status === 'done' && t.end === 'nothing' ? 'nothing' : ({ blocked: 'needs' })[myState(t)] || myState(t);
+const mTabOf = t => ({ blocked: 'needs' })[myState(t)] || myState(t);
 const mDay = 86400000;
 /* One row per job when a job ran three times or more in the list, so frequent runs do not flood it. */
 function mWorkList() {
-  const W = M.W, order = { needs: 0, running: 1, waiting: 2, done: 3, nothing: 4 }, q = M.q.trim().toLowerCase();
+  const W = M.W, order = { needs: 0, running: 1, waiting: 2, done: 3 }, q = M.q.trim().toLowerCase();
   const list = W.tasks.filter(t => M.tab === 'all' || mTabOf(t) === M.tab)
     .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || '', (MY_JOBS[t.job] || {}).name || ''].join(' ').toLowerCase().includes(q))
     .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[mTabOf(a)] - order[mTabOf(b)] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
   /* A mission that waits on another sits right under it, so the pair reads as one story. */
   list.filter(t => t.waitOn).forEach(t => { const k = list.findIndex(x => x.id === t.waitOn); if (k < 0) return; list.splice(list.indexOf(t), 1); list.splice(list.findIndex(x => x.id === t.waitOn) + 1, 0, t); });
-  const count = {}; list.forEach(t => { count[t.job] = (count[t.job] || 0) + 1; });
-  const out = [], seen = {};
-  list.forEach(t => { if (count[t.job] >= 3 && t.status === 'done') { if (seen[t.job]) { if (M.more['job:' + t.job]) out.push(t); return; } seen[t.job] = true; out.push({ group: t.job, n: list.filter(x => x.job === t.job && x.status === 'done').length }); if (M.more['job:' + t.job]) out.push(t); return; } out.push(t); });
-  return out;
-}
-function mJobRow(g) {
-  const W = M.W, j = MY_JOBS[g.group], all = W.tasks.filter(t => t.job === g.group), today = all.filter(t => Date.now() - t.opened < mDay), none = today.filter(t => t.end === 'nothing').length;
-  const needs = all.filter(t => mTabOf(t) === 'needs'), on = !!M.more['job:' + g.group];
-  return `<div data-job="${g.group}" onclick="M.more['job:${g.group}']=!M.more['job:${g.group}'];mRender()" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line bg-sunk/60 hover:bg-hov">
-    <span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 font-semibold">${ic(on ? 'chevron-down' : 'chevron-right', 'w-4 h-4 text-ink3')}${g.n} runs</span><span>${mSug('Keep')}</span>
-    <span class="min-w-0"><span class="block truncate text-ink font-semibold">${esc(j.name)} <span class="font-normal text-ink3">· v${j.ver}</span></span><span class="block text-[11.5px] text-ink3 truncate">${today.length} today · <span class="text-ink2">${none} found nothing</span>${needs.length ? ` · <span class="c-amber">${needs.length} needs you: ${needs.map(t => t.id).join(', ')}</span>` : ''} · ${esc(j.when)}</span></span>
-    <span class="text-ink4">—</span><span class="text-ink4">—</span><span class="text-[12.5px] text-ink3">${myAge(Date.now() - Math.max(...all.map(t => t.opened)))}</span><span class="text-[12.5px] text-ink3">Job</span>
-    <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(j.agent, 20)}<span class="truncate">${M_AG[j.agent].name}</span></span></div>`;
+  return list;
 }
 /* ---------- widgets ---------- */
 function mRing(pct, col, label, size = 62) {
@@ -43,13 +31,13 @@ function mSpark(vals, col) {
 }
 function mWidgets() {
   const W = M.W, st = myStats(W), total = W.tasks.length || 1, dt = myDetections(W), nz = myNoise(W), un = myUnused(W);
-  const running = W.tasks.filter(mRunning).length, runN = W.tasks.filter(t => mTabOf(t) === 'running').length, waitN = W.tasks.filter(t => mTabOf(t) === 'waiting').length, doneN = W.tasks.filter(t => mTabOf(t) === 'done').length, tot = Math.max(1, st.pending + runN + waitN + doneN), nothingToday = W.tasks.filter(t => t.end === 'nothing' && Date.now() - t.opened < mDay).length, pend = st.pending + st.waiting, pct = Math.round(nz.share * 100), was = Math.round(W.noiseHistory[W.noiseHistory.length - 1] * 100), dn = pct - was;
+  const running = W.tasks.filter(mRunning).length, runN = W.tasks.filter(t => mTabOf(t) === 'running').length, waitN = W.tasks.filter(t => mTabOf(t) === 'waiting').length, doneN = W.tasks.filter(t => mTabOf(t) === 'done').length, tot = Math.max(1, st.pending + runN + waitN + doneN), nothingN = W.tasks.filter(t => t.end === 'nothing').length, pend = st.pending + st.waiting, pct = Math.round(nz.share * 100), was = Math.round(W.noiseHistory[W.noiseHistory.length - 1] * 100), dn = pct - was;
   const seg = (k, n, cls, lbl, tone) => `<button onclick="M.tab='${k}';mRender()" class="text-left min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-hov ${M.tab === k ? 'bg-hov' : ''}"><div class="text-[24px] leading-7 font-black font-mono ${tone}">${n}</div><div class="text-[11.5px] text-ink3 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${cls}"></span>${lbl}</div></button>`;
   const card = (body, oc = '') => `<div class="m-wid rounded-2xl border border-line px-3 py-2.5 min-w-0 ${oc ? 'cursor-pointer hover:border-line2' : ''}" ${oc ? `onclick="${oc}"` : ''}>${body}</div>`;
   const head = (t, tip, right = '') => `<div class="flex items-center justify-between gap-2 text-[11.5px] text-ink3 mb-1.5"><span class="font-semibold inline-flex items-center gap-1.5">${t} ${mInfo(tip)}</span>${right}</div>`;
   const okInst = st.instOk / st.inst * 100, errInst = st.instErr / st.inst * 100;
   return `<div class="m-wwrap"><div class="m-wgrid">
-    ${card(`${head('<span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Missions now', 'Every run of a job is a mission, including a run that finds nothing. Needs you: a person has to decide, or the mission is blocked. Waiting: on another mission or another team. Click a number to filter the list.', `<span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : `${nothingToday} found nothing today`}</span>`)}
+    ${card(`${head('<span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Missions now', 'Every run of a job is a mission, including a run that finds nothing. Those are Done, and their AI suggestion says Nothing found. Needs you: a person has to decide, or the mission is blocked. Waiting: on another mission or another team. Click a number to filter the list.', `<span class="font-mono ${running ? 'c-blue' : 'text-ink4'}">${running ? `${running} running now` : `${doneN} done · ${nothingN} found nothing`}</span>`)}
       <div class="grid grid-cols-4 gap-2">${seg('needs', st.pending, 'bg-amber-500', 'Needs you', 'c-amber')}${seg('running', runN, 'bg-blue-500', 'Running', 'c-blue')}${seg('waiting', waitN, 'bg-indigo-400', 'Waiting', 'c-indigo')}${seg('done', doneN, 'bg-cx', 'Done', 'c-cx')}</div>
       <div class="mt-2 h-2.5 rounded-full bg-sunk flex gap-[2px] overflow-hidden"><div class="m-bar h-full bg-amber-500" data-anim="b-pend" data-to="${st.pending / tot * 100}%"></div><div class="m-bar h-full bg-blue-500 seg-live" data-anim="b-prog" data-to="${runN / tot * 100}%"></div><div class="m-bar h-full bg-indigo-400" data-anim="b-wait" data-to="${waitN / tot * 100}%"></div><div class="m-bar h-full bg-cx" data-anim="b-done" data-to="${doneN / tot * 100}%"></div></div>`)}
     ${card(`${head('Detections that cannot fire', 'Enabled correlation rules that look fine and cannot fire right now: their data stopped, a filter drops their events, or a field they read arrives empty. Noisy rules fire, but mostly on nothing.')}
@@ -84,8 +72,8 @@ function mLog() {
 function mWork() {
   const W = M.W, list = mWorkList();
   const count = k => k === 'all' ? W.tasks.length : W.tasks.filter(t => mTabOf(t) === k).length;
-  const dot = { needs: 'bg-amber-500', running: 'bg-blue-500', waiting: 'bg-indigo-400', done: 'bg-cx', nothing: 'bg-slate-400' };
-  const rows = list.map(t => { if (t.group) return mJobRow(t); const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
+  const dot = { needs: 'bg-amber-500', running: 'bg-blue-500', waiting: 'bg-indigo-400', done: 'bg-cx' };
+  const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
     return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : mTabOf(t) === 'needs' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
       <span class="leading-tight">${mStatus(t)}${mPendingOn(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
       <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${esc(MY_JOBS[t.job].name)} · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span>` : t.status === 'blocked' ? '<span class="c-rose">partly applied</span>' : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : t.findings ? `${t.findings.length} findings` : t.nothing ? 'nothing found' : esc(MY_CARD[t.card])}</span></span>
@@ -114,7 +102,7 @@ function mWork() {
           ${rows}
         </div>
       </div>
-      <div class="px-5 py-2 border-t border-line text-[11.5px] text-ink4 font-mono shrink-0 flex justify-between"><span>${list.filter(x => !x.group).length + list.filter(x => x.group).reduce((a, g) => a + (M.more['job:' + g.group] ? 0 : g.n), 0)} of ${W.tasks.length} missions</span><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Live</span></div>
+      <div class="px-5 py-2 border-t border-line text-[11.5px] text-ink4 font-mono shrink-0 flex justify-between"><span>${list.length} of ${W.tasks.length} missions</span><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-cx animate-pulse"></span>Live</span></div>
     </div>
     ${mLog()}
   </div>`;

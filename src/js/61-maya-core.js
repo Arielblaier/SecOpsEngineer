@@ -40,7 +40,7 @@ function mInit() {
   if (M) mLiveStop();
   M = { W: myWorld(), view: 'home', tab: 'needs', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
     /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
-    size: { work: 'work', native: 'side' }, pct: { work: 55, native: 50 }, lay: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: M ? M.scnBar : true };
+    size: { work: 'work', native: 'side' }, pct: { work: 40, native: 34 }, artPct: 52, railOff: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: false };
   mWsSeed();
   mLiveStart();
 }
@@ -61,10 +61,10 @@ const mStatusTxt = t => { const st = myState(t); if (st === 'done') return myEnd
   if (st === 'waiting') return t.waitOn ? 'Waiting on ' + t.waitOn : 'Waiting on another team'; if (st === 'running') return 'Running'; if (st === 'blocked') return 'Blocked · partly applied'; return 'Needs you'; };
 const mStatus = t => { const st = myState(t), tone = st === 'done' ? (['rejected', 'cancelled', 'nothing'].includes(t.end) ? 'slate' : 'cx') : M_STATE[st][1];
   const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${{ amber: 'bg-amber-500', blue: 'bg-blue-500 animate-pulse', indigo: 'bg-indigo-400', rose: 'bg-rose-500', cx: 'bg-cx', slate: 'bg-slate-400' }[tone]}"></span>`;
-  const short = st === 'done' ? myEndTxt(t).split(' · ')[0] : M_STATE[st][0];
+  const short = M_STATE[st][0];
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}" title="${esc(mStatusTxt(t))}">${dot}${esc(short)}</span>`; };
 /* Who a pending mission is pending on: a person, or the agent that owns the mission it waits on. */
-const mPendingOn = t => { if (t.status === 'progress' && t.handed) return `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on another team</span>`; if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on you</span>`; };
+const mPendingOn = t => { if (t.status === 'done') return `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3 truncate">${esc(myEndTxt(t).toLowerCase())}</span>`; if (t.status === 'progress' && t.handed) return `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on another team</span>`; if (t.status !== 'pending') return ''; const o = t.waitOn && mTask(t.waitOn); return o ? `<span class="flex items-center gap-1 text-[11px] c-indigo font-semibold whitespace-nowrap">${mAv(o.agent, 14)}on the ${M_AG[o.agent].name}</span>` : `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3">on you</span>`; };
 /* Help that belongs to the product: a small info icon with a tooltip. */
 const mInfo = text => `<span ${tipAttr(`<span style="color:#e5e9f2">${esc(text)}</span>`)} class="inline-flex items-center text-ink4 hover:text-ink2 cursor-help align-middle">${ic('info', 'w-3.5 h-3.5')}</span>`;
 const M_SUG_HELP = Object.entries(MY_SUGGEST).map(([k, v]) => `${k}: ${v[1]}.`).join(' ');
@@ -80,7 +80,7 @@ function mBoot() {
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
-      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event)" title="Drag to resize"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
+      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event,'panel')" title="Drag to change the width of the panel"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
       <div id="m-ws-rail" class="hidden w-[264px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
@@ -101,7 +101,7 @@ function mBoot() {
               <div id="m-hint" class="text-[11.5px] text-ink4 px-1 empty:hidden"></div>
             </div>
           </div>
-          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden">
+          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden relative"><div id="m-art-drag" class="m-drag" onpointerdown="mDragStart(event,'art')" title="Drag to change how much space the mission takes"><span></span></div>
             <div id="m-art-scroll" class="flex-1 overflow-y-auto px-6 sm:px-8 py-5"></div>
             <div id="m-art-acts" class="px-6 sm:px-8 pb-5 pt-3 shrink-0 empty:hidden"></div>
           </div>
@@ -210,38 +210,27 @@ const mWide = () => window.innerWidth >= 1024;
 const mPanelOn = () => M.view !== 'home' && M.panelOpen;
 const mSizeKey = () => M.view === 'work' ? 'work' : 'native';
 const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
-/* F moves through the three sizes: full screen, split, side panel. */
-function mSizeToggle() { const order = ['work', 'split', 'side']; M.size[mSizeKey()] = order[(order.indexOf(mSize()) + 1) % 3]; M.lay = false; mRender(); mScrollInit(); }
-function mSetLayout(size, pct) { M.size[mSizeKey()] = size; if (pct) M.pct[mSizeKey()] = pct; M.lay = false; mRender(); mScrollInit(); }
-/* How wide the panel is in pixels, so the split can choose one column or two. */
-function mPanelPx() { const main = document.querySelector('#app main'), w = main ? main.clientWidth : window.innerWidth, sz = mSize();
-  return sz === 'work' ? w : sz === 'split' ? w * M.pct[mSizeKey()] / 100 : Math.max(440, w * .3); }
+/* Two sizes. Side panel: one column next to the screen, its width set by dragging its left edge (30% to 70%).
+   Full screen: the history, the conversation and the mission, with a divider between the conversation and the mission. F switches. */
+function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
+/* How wide the panel is in pixels. The side panel shows the full mission card from 560px, and the short card below that. */
+function mPanelPx() { const main = document.querySelector('#app main'), w = main ? main.clientWidth : window.innerWidth;
+  return mSize() === 'work' ? w : Math.max(420, w * M.pct[mSizeKey()] / 100); }
 function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), sz = mSize(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on);
-  el.classList.toggle('m-panel-work', sz === 'work'); el.classList.toggle('m-panel-side', sz === 'side'); el.classList.toggle('m-panel-split', sz === 'split');
-  el.style.width = sz === 'split' && mWide() ? M.pct[mSizeKey()] + '%' : '';
-  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && sz === 'split' && mWide())); }
-/* The split is dragged by its edge, from 30% to 80% of the screen. */
-function mDragStart(e) {
-  const main = document.querySelector('#app main'), el = $('m-panel'), lab = $('m-drag-pct'); if (!main || !el) return;
-  e.preventDefault(); const r = main.getBoundingClientRect(), key = mSizeKey(); let pct = M.pct[key];
+  el.classList.toggle('m-panel-work', sz === 'work'); el.classList.toggle('m-panel-side', sz !== 'work'); el.classList.remove('m-panel-split');
+  el.style.width = sz !== 'work' && mWide() ? M.pct[mSizeKey()] + '%' : '';
+  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && sz !== 'work' && mWide()));
+  const art = $('m-art'); if (art) art.style.width = M.artPct + '%'; }
+/* Drag a divider. The side panel's left edge sets its width; in full screen the divider sets how much of it the mission takes. */
+function mDragStart(e, what) {
+  const el = what === 'art' ? $('m-art') : $('m-panel'), box = (what === 'art' ? el.parentElement : document.querySelector('#app main')), lab = $('m-drag-pct'); if (!box || !el) return;
+  e.preventDefault(); const r = box.getBoundingClientRect(), key = mSizeKey(); let pct = what === 'art' ? M.artPct : M.pct[key];
+  const [lo, hi] = what === 'art' ? [30, 72] : [30, 70];
   document.body.classList.add('m-dragging');
-  const move = ev => { pct = Math.max(30, Math.min(80, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.width = pct + '%'; if (lab) { lab.textContent = `Mission ${pct}% · list ${100 - pct}%`; lab.classList.remove('hidden'); } };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); M.pct[key] = pct; mRender(); };
+  const move = ev => { pct = Math.max(lo, Math.min(hi, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.width = pct + '%';
+    if (lab) { lab.textContent = what === 'art' ? `Mission ${pct}% · conversation ${100 - pct}%` : `Panel ${pct}% · screen ${100 - pct}%`; lab.classList.remove('hidden'); } };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); if (what === 'art') M.artPct = pct; else M.pct[key] = pct; mRender(); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-}
-/* The layout explorer: every way to share the screen between the mission and the list. */
-const M_LAYOUTS = [['work', 0, 'Full screen', 'The mission covers the screen'], ['split', 70, 'Split · mission 70%', ''], ['split', 60, 'Split · mission 60%', ''], ['split', 50, 'Split · 50 / 50', ''], ['split', 40, 'Split · mission 40%', ''], ['split', 30, 'Split · mission 30%', ''], ['side', 0, 'Side panel', 'Short card, the table stays the working area']];
-function mLayoutThumb(size, pct) {
-  const m = size === 'work' ? 100 : size === 'side' ? 30 : pct, lw = 40 * (100 - m) / 100;
-  return `<svg viewBox="0 0 40 26" width="40" height="26" class="shrink-0"><rect x=".5" y=".5" width="39" height="25" rx="3" fill="none" stroke="rgb(var(--line2))"/>${lw ? `<rect x="2" y="2" width="${Math.max(0, lw - 3)}" height="22" rx="1.5" fill="rgb(var(--line2))"/>` : ''}<rect x="${lw + 1}" y="2" width="${40 - lw - 3}" height="22" rx="1.5" fill="${size === 'side' ? '#818cf8' : '#2dd4bf'}" opacity=".75"/></svg>`;
-}
-function mLayoutMenu() {
-  const sz = mSize(), cur = M.pct[mSizeKey()];
-  return `<div id="m-lay" class="absolute right-0 top-full mt-1.5 w-[270px] rounded-xl bg-panel border border-line2 shadow-2xl p-1.5 z-30">
-    <div class="px-3 pt-1.5 pb-1 text-[11.5px] text-ink4">Mission and ${M.view === 'work' ? 'the Missions list' : 'this screen'}</div>
-    ${M_LAYOUTS.map(([s, p, l, sub]) => { const on = s === sz && (s !== 'split' || p === cur);
-      return `<button data-lay="${s}${p || ''}" onclick="mSetLayout('${s}',${p})" class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-3 ${on ? 'bg-hov' : 'hover:bg-hov/60'}">${mLayoutThumb(s, p)}<span class="min-w-0 flex-1"><span class="block text-[13px] ${on ? 'text-ink font-semibold' : 'text-ink2'}">${l}</span>${sub ? `<span class="block text-[11px] text-ink4 truncate">${sub}</span>` : ''}</span>${on ? ic('check', 'w-4 h-4 c-cx') : ''}</button>`; }).join('')}
-    <div class="px-3 pt-2 pb-1.5 text-[11.5px] text-ink3 leading-snug border-t border-line mt-1">In a split, drag the panel's left edge to any size from 30% to 80%. F moves between the three sizes.</div></div>`;
 }
 function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
 function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
@@ -252,6 +241,7 @@ function mOpenTask(id) {
   /* A pending mission is always shown as one of the decisions, so the next one is a click away. */
   if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
+  M.recent = (M.recent || []).filter(r => r.id !== id); M.recent.unshift({ id, t: Date.now() }); M.art = null;
   M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.sel = false; M.people = false; M.menu = false; M.to = t.agent;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();
@@ -270,7 +260,7 @@ function mOpenObj(kind, id) {
   M.panelObj = { kind, id }; M.panelTask = null; M.deck = null; M.panelOpen = true; M.editing = null;
   mRender(); $('m-panel-scroll').scrollTo({ top: 0, behavior: 'instant' });
 }
-function mPanelHome() { M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; M.sel = false; M.people = false; M.menu = false; M.to = 'sec'; mRender(); mScrollInit(); }
+function mPanelHome() { M.art = null; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.lastDecision = null; M.sel = false; M.people = false; M.menu = false; M.to = 'sec'; mRender(); mScrollInit(); }
 
 /* ---------- pivot out, and the way back ---------- */
 function mPivot(taskId, view) {
@@ -361,7 +351,7 @@ function mKey(e) {
   if (e.target.matches && e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (e.key === 'Escape') { closeDemoMenu(); if (M.sel || M.people || M.menu || M.lay) { M.sel = false; M.people = false; M.menu = false; M.lay = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
+  if (e.key === 'Escape') { closeDemoMenu(); if (M.sel || M.people || M.menu || M.art) { if (M.art && !M.sel && !M.people && !M.menu) { M.art = null; mRender(); return; } M.sel = false; M.people = false; M.menu = false; mPanelRender(); icons(); } else if (M.sheet) mCloseSheet(); else if (M.editing) { M.editing = null; mRender(); } else if ((M.panelTask || M.panelObj) && M.view === 'work') mPanelHome(); else if (M.panelOpen) mClosePanel(); else if (M.pivot) mBackToTask(); return; }
   if (k === 't') return toggleTheme();
   if (k === 'r') return location.reload();
   if (k === 'c') return mReviewAll();

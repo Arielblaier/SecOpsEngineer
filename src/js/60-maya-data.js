@@ -26,7 +26,8 @@ const MY_SUGGEST = {
   Drop: ['purple', 'Disable or retire a rule or an indicator that no longer earns its place'],
   Watch: ['slate', 'Not enough evidence yet. No change, checked again later'],
   'Hand over': ['indigo', 'The fix belongs to another owner, such as the Cortex content team'],
-  Keep: ['slate', 'Checked. Nothing to change']
+  Keep: ['slate', 'Checked. Nothing to change'],
+  'Nothing found': ['slate', 'A run of a job that found nothing new. Nothing needs you']
 };
 const MY_CARD = {
   source: 'Missing data source', integration: 'Missing integration', pipeline: 'Broken data or mapping', broken: 'Broken rule', noisy: 'Noisy rule',
@@ -754,17 +755,28 @@ function myEnrich(W, k) {
     validation: { rows: [['Issues a week', 13, 2, 13]], note: 'Backtest on 30 days.' },
     decision: { q: 'Add the partner domain as an environment fact?', approve: 'Approve fact', effect: 'Forwarding to partner.example no longer creates issues.', risk: 'Low.', reversible: true },
     affects: { rules: [236] }, pivots: [['rules', 'Correlation Rules', 'the rule']] });
-  /* The hourly data-health sweep ran 24 times today. Every run is a mission, and these found nothing new. */
-  for (let h = 23; h >= 0; h--) {
-    const at = now - h * H - 6 * 60000, hh = new Date(at).toTimeString().slice(0, 5), id = 'MSN-' + (1124 - h);
-    W.tasks.push({ id, card: 'check', title: `Hourly data-health sweep · ${hh}`, verdict: 'Healthy', sug: 'Keep', agent: 'pipe', conf: 'High', impact: 'Low', layer: 'source', status: 'done', end: 'nothing', opened: at, closed: at + 3 * 60000, nothing: true,
-      trigger: { kind: 'sweep', text: `Hourly data-health sweep, ${hh}.` },
-      summary: 'Every instance sent events in the last hour, except one that MSN-1003 already handles.',
-      steps: ['Checked 103 instances: 102 sent events in the last hour', 'Skipped “Cloud audit logs · production”: MSN-1003 already handles it', 'Nothing new found'],
-      diagnosis: 'Nothing new.', skips: [['Cloud audit logs · production', 'MSN-1003']], validation: null, decision: null,
-      outcome: `Nothing found. The next run is at ${new Date(at + H).toTimeString().slice(0, 5)}.`, affects: {} });
-  }
-  W.log.forEach(l => { if (/^Hourly data-health sweep/.test(l.text)) l.text = 'MSN-1124: ' + l.text; });
+  /* Runs that found nothing. Every run of a job is a mission, so these are kept, measured and open to feedback.
+     Most belong to the Detection Engineer's own jobs. */
+  const NF = [
+    [2, 'rules', 'det', 'Rule-health sweep', 'Check that every enabled rule can fire.', '152 enabled rules · 1 skipped, handled in MSN-1004', ['port-scan rule 230', 'MSN-1004'], ['Checked that 152 enabled rules have data, filled fields and recent issues', 'Skipped the port-scan rule: MSN-1004 already handles it', 'Nothing new found'], 'Every enabled rule can fire, except one that MSN-1004 already handles.'],
+    [26, 'rules', 'det', 'Rule-health sweep', 'Check that every enabled rule can fire.', '152 enabled rules', null, ['Checked that 152 enabled rules have data, filled fields and recent issues', 'Nothing found'], 'Every enabled rule can fire.'],
+    [50, 'rules', 'det', 'Rule-health sweep', 'Check that every enabled rule can fire.', '152 enabled rules', null, ['Checked that 152 enabled rules have data, filled fields and recent issues', 'Nothing found'], 'Every enabled rule can fire.'],
+    [6, 'change', 'det', 'Change check · Google Chrome pack updated', 'Check that the rules on Chrome data still fire after the pack update.', '6 Chrome rules and the 4 fields they read', null, ['Read what the pack update changed: 2 parsing rules', 'Checked the 4 fields the Chrome rules read: all filled', 'Replayed one hour of events: all 6 rules fire as before'], 'The pack update changed nothing that the Chrome rules depend on.'],
+    [30, 'change', 'det', 'Change check · rule 238 edited', 'Check that an edited rule still fires.', 'Rule 238 and its last 24 hours', null, ['Compared the edit with the previous version', 'Ran the new query on 24 hours: it fires where the old one did'], 'The edit kept the rule working.'],
+    [27, 'noise', 'det', 'Noise review', 'Find rules whose issues mostly end with no action, and suggest the smallest fix.', '64 rules with issues this week · 1 skipped, handled in MSN-1002', ['rule 224', 'MSN-1002'], ['Listed the 64 rules that created issues this week', 'Skipped rule 224: MSN-1002 already handles its noise', 'No other rule crossed the threshold'], 'No new noisy rule, beyond the one MSN-1002 already handles.'],
+    [74, 'coverage', 'det', 'Coverage review', 'Find log sources with no working detection.', '62 sources and the techniques they can show', null, ['Listed the sources added this week: none', 'Checked the priority techniques: no new gap with data'], 'No new source and no new gap this week.'],
+    [52, 'ioc', 'det', 'Indicator review', 'Find indicators that never matched or never expire.', '6 indicators · 2 skipped, handled in MSN-1011', null, ['Checked 6 indicators', 'Nothing new beyond what is already open'], 'Nothing new.'],
+    [1, 'health', 'pipe', 'Hourly data-health sweep', 'Check every data source instance for errors and delays.', '103 instances · 1 skipped, handled in MSN-1003', ['Cloud audit logs · production', 'MSN-1003'], ['Checked 103 instances: 102 sent events in the last hour', 'Skipped “Cloud audit logs · production”: MSN-1003 already handles it', 'Nothing new found'], 'Every instance sent events in the last hour, except one that MSN-1003 already handles.']
+  ].sort((a, b) => b[0] - a[0]);
+  NF.forEach(([h, job, agent, name, obj, cov, skip, steps, summary], n) => {
+    const at = now - h * H - 7 * 60000, id = 'MSN-' + (1101 + n), hh = new Date(at).toTimeString().slice(0, 5);
+    MY_SPEC[id] = [job, obj, cov, [Math.max(2, steps.length * 3), steps.length * 7, 10 + steps.length * 6]];
+    W.tasks.push({ id, card: 'check', title: /sweep|review/i.test(name) ? `${name} · ${myDay(at)}, ${hh}` : name, verdict: 'Healthy', sug: 'Nothing found', agent, conf: 'High', impact: 'Low', layer: agent === 'pipe' ? 'source' : 'rule', status: 'done', end: 'nothing', opened: at, closed: at + 4 * 60000, nothing: true,
+      trigger: { kind: job === 'change' ? 'change' : 'sweep', text: job === 'change' ? name.split(' · ')[1] + '.' : `${MY_JOBS[job].name}, ${hh}.` },
+      summary, steps, diagnosis: 'Nothing new.', skips: skip ? [skip] : null, validation: null, decision: null,
+      outcome: 'Nothing found. Nothing needs you.', affects: {} });
+  });
+  W.log.forEach(l => { if (/^Hourly data-health sweep/.test(l.text)) l.text = 'MSN-1109: ' + l.text; });
   const all = W.tasks.concat(W.incoming), spawn = W.incoming.map(t => t.spawn).filter(Boolean);
   all.concat(spawn).forEach(t => myShape(W, t));
 }
@@ -773,8 +785,8 @@ function myShape(W, t) {
   const sp = MY_SPEC[t.id] || (t.nothing ? ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 skipped, handled in MSN-1003', [3, 12, 60]] : ['review', t.title, '', [5, 10, 20]]);
   const j = MY_JOBS[sp[0]];
   Object.assign(t, { job: sp[0], jobVer: j.ver, objective: sp[1], coverage: sp[2], cost: { min: sp[3][0], queries: sp[3][1], pct: sp[3][2] } });
-  t.resultClass = t.sug === 'Keep' ? 'nothing' : t.sug === 'Watch' ? 'inconclusive' : 'action';
-  if (!t.skips && /handled in (MSN-\d+)/.test(t.coverage)) t.skips = [['rule 224', t.coverage.match(/handled in (MSN-\d+)/)[1]]];
+  t.resultClass = t.sug === 'Keep' || t.sug === 'Nothing found' ? 'nothing' : t.sug === 'Watch' ? 'inconclusive' : 'action';
+  if (!t.skips && !t.nothing && /handled in (MSN-\d+)/.test(t.coverage)) t.skips = [['rule 224', t.coverage.match(/handled in (MSN-\d+)/)[1]]];
   const tg = MY_TARGET[t.id];
   if (tg) { t.targets = tg[0]; t.part = tg[1]; t.expects = {}; tg[0].forEach(id => { const r = W.rules.find(x => x.id === id); if (r) t.expects[id] = r.ver; }); }
   t.history = t.history || [];

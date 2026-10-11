@@ -136,7 +136,7 @@ class Orb3D {
     this.onMove = e => { const r = el.getBoundingClientRect(); if (!r.width) return; const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       this.mouse.x = Math.max(-1, Math.min(1, (e.clientX - cx) / 500)); this.mouse.y = Math.max(-1, Math.min(1, (e.clientY - cy) / 500)); };
     window.addEventListener('mousemove', this.onMove, { passive: true });
-    this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(el); this.resize();
+    this.ro = new ResizeObserver(() => requestAnimationFrame(() => this.resize())); this.ro.observe(el); this.resize();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     ORBS.push(this);
   }

@@ -185,8 +185,9 @@ and `16-maya.css`. It follows the brief and the PRD of Oct 10.
 
 **Job and mission.** A job is a predefined piece of work: a sweep, a change
 check, a noise review, a review on request. Every run of a job is a mission,
-also a run that finds nothing (the hourly data-health sweep runs 24 times a
-day). A mission has a shared part (job and version, objective, what it looked
+also a run that finds nothing. Most of these runs belong to the Detection
+Engineer's jobs (rule-health sweep, change checks, noise review). A run that finds nothing is Done, and its AI suggestion says Nothing
+found. A mission has a shared part (job and version, objective, what it looked
 at, result and confidence, findings, proposals with versions, decisions,
 outcome, cost, feedback, activity) and a detection engineering part (card
 type, root-cause layer, noise type, health, validation).
@@ -194,8 +195,8 @@ type, root-cause layer, noise type, health, validation).
 **States.** Needs you (a decision, or blocked), Running, Waiting (on another
 mission or team), Done. Done ends as changes applied, nothing found, partly
 applied, declined (with a reason), handed over, cancelled, or closed because
-the problem disappeared. The Missions screen opens on Needs you and groups a
-job's runs into one row.
+the problem disappeared. The Missions screen opens on Needs you. Done shows
+the end as a second line under the state.
 
 **Decisions.** Decline asks why: wrong, not now (14 days), accepted risk (90
 days), never. The reason shows on the rule and decides when the suggestion may
@@ -221,14 +222,24 @@ after you confirm it. Help between agents shows as breadcrumbs.
 with approval (no mission). A request that starts a job runs as a mission,
 with its card anchored in the chat. "Review this rule now" starts a job too.
 
-**Panel.** Three sizes: full screen, split and side panel. The layout button in
-the panel header shows every option with a thumbnail. In a split, drag the
-panel's left edge from 30% to 80%. `F` moves between the three sizes.
+**Panel.** Two sizes, switched by one button or `F`.
+- Side panel: one column next to the screen (short card, then the activity
+  and your conversation, Approve and Decline fixed at the bottom). Drag its
+  left edge from 30% to 70% of the screen. From 560 pixels it shows the full
+  mission card. The screen behind stays usable.
+- Full screen: the history on the left (Needs you, then Recent missions and
+  chats; it hides with its own button), the conversation, and the mission.
+  Drag the divider between the conversation and the mission (30% to 72%).
 
-**Scenarios.** The striped bar at the top is demo chrome, not product. It
-opens 29 situations, grouped by states, decisions, the same object, talking to
-the owner, chats and layouts, each from a fresh world. `?scn=7` opens
-scenario 7.
+**Artifacts.** A result in a chat worth seeing in full (a table, a mission
+started from the chat) shows as a card in the chat. In full screen it opens
+on the right, next to the chat. From the side panel there is no room, so
+opening one switches to full screen with the artifact on the right.
+
+**Demo flows.** A movable card (demo chrome, not product) runs 12 flows. Each
+stresses one point: it says what to do and what to notice, ticks a step when
+you do it, and "Show me" does it for you. `?flow=3` opens flow 3. The demo
+menu reopens the card.
 
 **Left for later:** private/public toggles, tagging, agent switching inside a
 mission, the quick task-switch modal, customer-editable job policies, live

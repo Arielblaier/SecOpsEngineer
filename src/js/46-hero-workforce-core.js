@@ -2,7 +2,7 @@
    HERO: the Agentic Workforce, four sides of one liquid core
    ====================================================================== */
 const HERO_POS = { analyst: [500, 180], engineer: [850, 400], hunter: [500, 620], intel: [150, 400] };   // N, E, S, W
-if (window.ResizeObserver) setTimeout(() => { const sc = document.getElementById('home-scroll'); if (sc) new ResizeObserver(() => setHomeHeight()).observe(sc); }, 0);
+if (window.ResizeObserver) setTimeout(() => { const sc = document.getElementById('home-scroll'); if (sc) new ResizeObserver(() => requestAnimationFrame(setHomeHeight)).observe(sc); }, 0);
 const HERO_STATS = { analyst: [147, 'investigations'], engineer: [23, 'new detections'], hunter: [38, 'hunts'], intel: [6, 'threat groups'] };
 const HERO_LBL = { analyst: 'right', engineer: 'below', hunter: 'right', intel: 'below' };
 const HERO_REL_ALL = [
