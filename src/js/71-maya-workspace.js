@@ -47,23 +47,20 @@ const mAgo = ts => { const ms = Date.now() - ts; return ms < 50000 ? 'now' : myA
 /* ---------- story seeds: who else is in a mission, what they said, and the earlier private chats ---------- */
 function mWsSeed() {
   const now = Date.now(), H = 3600000, M1 = 60000, t1 = mTask('MSN-1001'), t2 = mTask('MSN-1002');
-  mNote('MSN-1012', { who: 'dana', kind: 'context', t: now - 4 * H, text: 'I installed the pack update. I did not touch the data model, so the old mapping is still there.' });
+  mNote('MSN-1001', { who: 'dana', kind: 'context', t: now - 4 * H, text: 'I installed the pack update. I did not touch the data model, so the old mapping is still there.' });
   mNote('MSN-1002', { who: 'noam', kind: 'context', t: now - 6 * H, text: 'These come from the extensions that IT approved. I close them by hand every day.' });
   mNote('MSN-1005', { who: 'dana', kind: 'context', t: now - 40 * H, text: 'Rule 222 is a copy I made for a test. It is safe to disable.' });
-  /* An agent asks another agent. A question stays in the conversation... */
+  /* The owner asks another agent a question. It shows as a breadcrumb in the activity. */
   mNote('MSN-1002', { who: 'det', to: 'inv', kind: 'crumb', t: t2.opened + 2 * M1, text: 'How did you close the Chrome extension issues in the last 30 days?' });
   mNote('MSN-1002', { who: 'inv', to: 'det', kind: 'crumb', t: t2.opened + 3 * M1, text: '1,150 of 1,250 were closed with no action: the extension was on the list IT approved. The other 100 were on extensions nobody approved, and those were escalated.' });
-  /* ...and a change in the other agent's area becomes a linked mission (MSN-1012). */
-  mNote('MSN-1001', { who: 'det', to: 'pipe', kind: 'crumb', t: t1.opened + 6 * M1, text: 'xdm.event.type is empty on every new SentinelOne event since the pack update. The rules did not change. Did the mapping change?' });
-  mNote('MSN-1001', { who: 'pipe', to: 'det', kind: 'crumb', t: t1.opened + 9 * M1, text: 'Yes. The pack renamed eventType to event_type, and the data model still reads the old name. That is a change in the data model, so it gets its own mission.' });
   /* Steering already given by people. Each was asked in someone's own conversation, confirmed, and shared as one line. */
   (t2.history = t2.history || []).push({ t: now - 5 * H, kind: 'steer', who: 'noam', text: 'asked to keep alerts on extensions installed outside the Chrome Web Store. Accepted by the Detection Engineer: the proposal keeps them.' });
-  const t12 = mTask('MSN-1012'); (t12.history = t12.history || []).push({ t: now - 3 * H, kind: 'steer', who: 'dana', text: 'asked to replay 2 days of events, not 1, before proposing. Accepted by the Pipeline Engineer.' });
+  (t1.history = t1.history || []).push({ t: now - 3 * H, kind: 'steer', who: 'dana', text: 'asked to replay 2 days of events, not 1, before sending the fix. Accepted by the Detection Engineer.' });
   /* A later run reached the same rule, found the same problem, and added its evidence here instead of proposing again. */
   mNote('MSN-1002', { who: 'det', kind: 'evidence', t: now - 4 * H + 3 * M1, link: 'MSN-1015', text: 'The daily noise review (MSN-1015) reached this rule, saw this mission, and added this week’s 38 issues here instead of proposing again.' });
   /* Earlier private chats. The answers are computed from the world, like every other answer. */
   M.hist = [];
-  [['h1', 'SentinelOne: why three rules went silent', 'Why did SentinelOne break?', 'MSN-1012', 4.5], ['h2', 'Impossible travel coverage', 'Are we covered for impossible travel?', 'MSN-1006', 28], ['h3', 'Status brief', 'Brief me', null, 52]].forEach(([id, title, q, task, h]) => {
+  [['h1', 'SentinelOne: why three rules went silent', 'Why did SentinelOne break?', 'MSN-1001', 4.5], ['h2', 'Impossible travel coverage', 'Are we covered for impossible travel?', 'MSN-1006', 28], ['h3', 'Status brief', 'Brief me', null, 52]].forEach(([id, title, q, task, h]) => {
     M.hist.push({ id, title, task, t: now - h * H });
     M.chats[id] = [{ role: 'user', text: q }, { role: 'agent', text: mAnswer(q).text }];
   });
@@ -79,7 +76,7 @@ function mNote(tid, o) { const t = mTask(tid); if (!t) return null; t.notes = t.
    (a re-check, a counter) is applied in place.
    ====================================================================== */
 const M_UPD = {
-  'MSN-1012': {
+  'MSN-1001': {
     material: { title: 'A second renamed field was found',
       what: ['The pack also renamed threatInfo_confidenceLevel to threat_confidence_level, so xdm.alert.severity arrives empty too.', 'The mapping now reads both new names and falls back to the old ones.', 'The replay was run again with the new mapping. The result did not change.'],
       apply: t => {
@@ -139,15 +136,16 @@ function mOther(tid, who, choice) {
    Steps that depend on each other are one plan with one Approve. The
    states are read from the missions, not kept on the side.
    ====================================================================== */
-const M_PS = { proposed: ['Proposed', 'slate', 'circle-dashed'], queued: ['Queued', 'slate', 'clock'], applying: ['Applying', 'blue', 'loader'], verifying: ['Verifying', 'blue', 'loader'], done: ['Done', 'cx', 'circle-check'], declined: ['Declined', 'slate', 'x'] };
+const M_PS = { proposed: ['Proposed', 'slate', 'circle-dashed'], queued: ['Queued', 'slate', 'clock'], waiting: ['Waiting for the team', 'indigo', 'clock'], applying: ['Applying', 'blue', 'loader'], verifying: ['Verifying', 'blue', 'loader'], done: ['Done', 'cx', 'circle-check'], declined: ['Declined', 'slate', 'x'] };
+/* A fix in a part another team owns: send it, the team applies it, the owner checks the detection. */
 function mPlan(t) {
-  const o = t.unblocks && mTask(t.unblocks); if (!o || t.card !== 'pipeline' || !t.recommended) return null;
-  const off = ['rejected', 'dismissed'].includes(t.end), ok = t.status === 'done' && !off, age = ok ? Date.now() - t.closed : 0;
-  const s2 = ok ? (age > 3000 || o.status === 'done' ? 'done' : 'applying') : off ? 'declined' : 'queued';
-  const s3 = ok ? (o.status === 'done' ? 'done' : s2 === 'done' ? 'verifying' : 'queued') : off ? 'declined' : 'queued';
-  return [{ label: 'Apply the change', sub: t.recommended.label, state: ok ? 'done' : off ? 'declined' : 'proposed' },
-    { label: 'Replay recent events through it', sub: t.validation ? t.validation.rows[0][0] : '', state: s2 },
-    { label: `${o.id} checks that the detection works again`, sub: s3 === 'verifying' && o.progressNote ? o.progressNote : M_AG[o.agent].name, state: s3, link: o.id }];
+  if (!t.teamFix || !t.recommended) return null;
+  const off = ['rejected', 'cancelled'].includes(t.end), done = t.status === 'done' && !off, sent = done || (t.status === 'progress' && !!t.by);
+  const s2 = off ? 'declined' : done || t.teamDone ? 'done' : sent ? 'waiting' : 'queued';
+  const s3 = off ? 'declined' : done ? 'done' : t.teamDone ? 'verifying' : 'queued';
+  return [{ label: `Send the fix to the ${t.teamFix}`, sub: t.recommended.label, state: off ? 'declined' : sent ? 'done' : 'proposed' },
+    { label: `The ${t.teamFix} applies it`, sub: 'A person on that team. The Detection Engineer does not change it.', state: s2 },
+    { label: t.teamCheck, sub: M_AG[t.agent].name, state: s3 }];
 }
 function mPlanBox(t) {
   const p = mPlan(t); if (!p) return '';
@@ -172,8 +170,8 @@ function mLife(t) {
    The owner, the agents it asked, the agents that asked it, the agents a
    person brought in, and the people who wrote in it. Nobody else.
    ====================================================================== */
-const M_AGENTS = ['sec', 'det', 'pipe', 'inv', 'hunt'];
-const M_ROLE = { sec: 'Picks the right agent', det: 'Rules, indicators and coverage', pipe: 'Filtering, parsing and normalizing', inv: 'Triage and investigation', hunt: 'Hunts and findings' };
+const M_AGENTS = ['sec', 'det', 'inv', 'hunt'];
+const M_ROLE = { sec: 'Picks the right agent', det: 'Rules, indicators and coverage', inv: 'Triage and investigation', hunt: 'Hunts and findings' };
 function mMissionAgents(t) {
   const out = [t.agent], add = k => { if (k && M_AG[k] && !out.includes(k)) out.push(k); };
   [t.waitOn, t.unblockedBy, t.unblocks].map(id => id && mTask(id)).forEach(x => x && add(x.agent));
@@ -217,7 +215,7 @@ function mThreadItems(t) {
   if (w) out.push({ t: Math.max(w.opened, t.opened + 3), kind: 'call', who: t.agent, link: w.id, text: `Asked the ${M_AG[w.agent].name} for help. The fix is in its area, so ${w.id} was opened${t.waitOn ? ' and this mission waits on it' : ''}.` });
   (t.notes || []).forEach(x => out.push(x));
   (t.history || []).forEach(x => out.push(x));
-  if (t.status === 'progress' && t.by && t.actedAt) out.push({ t: t.actedAt, kind: 'decision', by: t.by, tone: 'cx', text: `approved. ${t.progressNote}.` });
+  if (t.status === 'progress' && t.by && t.actedAt && !t.teamFix) out.push({ t: t.actedAt, kind: 'decision', by: t.by, tone: 'cx', text: `approved. ${t.progressNote}.` });
   if (t.status === 'done') out.push(['auto', 'nothing', 'cancelled', 'partly'].includes(t.end) || !t.by ? { t: t.closed, kind: 'outcome', who: t.agent, text: t.outcome } : { t: t.closed, kind: 'decision', by: t.by, tone: t.end === 'rejected' ? 'slate' : 'cx', text: `${t.end === 'rejected' ? 'declined' : t.end === 'mixed' ? 'decided' : 'approved'}${(t.ver || 1) > 1 ? ' version ' + (t.decVer || t.ver) : ''}${t.declined && t.end === 'rejected' ? ' · ' + myDeclTxt(t.declined) : ''}.`, more: String(t.outcome || '').replace(/^(Approved|Declined|Approved with edits) by [^.]+\. ?/, '') });
   return out.map((x, i) => [x, i]).sort((a, b) => a[0].t - b[0].t || a[1] - b[1]).map(x => x[0]);
 }
@@ -231,6 +229,7 @@ function mThreadItem(t, x) {
   const go = id => `<button onclick="mOpenTask('${id}')" class="font-mono c-indigo hover:underline">${id}</button>`;
   if (x.kind === 'event') return quiet(x.icon, esc(x.text));
   if (x.kind === 'work') return quiet(x.run ? 'loader' : 'list-checks', `${esc(M_AG[x.who].name)}: ${x.run ? 'working on it' : `${x.steps.length} steps`}.<ol class="mt-1.5 space-y-1 list-decimal pl-4">${x.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`);
+  if (x.kind === 'team') return quiet('user-check', esc(x.text), 'text-ink2');
   if (x.kind === 'call') return quiet('corner-down-right', esc(x.text).replace(x.link, go(x.link)));
   /* one agent asked another: a breadcrumb, not a conversation */
   if (x.kind === 'crumb') return quiet('corner-down-right', `${esc(M_AG[x.who].name)} ${x.who === t.agent ? 'asked' : 'answered'} the ${esc(M_AG[x.to].name)}: <span class="text-ink2">“${esc(x.text)}”</span>`);
@@ -251,20 +250,22 @@ function mThreadItem(t, x) {
     return msg(x.who, md(x.text), `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sunk text-[11px] text-ink3">${ic(c[1], 'w-3 h-3')}${c[0]}</span>`, x.acts ? `<div class="mt-2 flex gap-2 flex-wrap">${x.acts}</div>` : ''); }
   return '';
 }
-const M_SHARED = ['event', 'work', 'call', 'crumb', 'context', 'evidence', 'steer', 'feedback', 'minor', 'outcome', 'decision', 'update'];
+const M_SHARED = ['event', 'work', 'team', 'call', 'crumb', 'context', 'evidence', 'steer', 'feedback', 'minor', 'outcome', 'decision', 'update'];
+/* The mission's own record of steering and activity. It belongs to the mission, so it is shown on the mission card, not in a conversation. */
+function mActivity(t) {
+  const list = mThreadItems(t), steerOnly = M.actF === t.id, nSteer = list.filter(x => x.kind === 'steer').length;
+  const shared = list.filter(x => M_SHARED.includes(x.kind) && !['event', 'work'].includes(x.kind) && (!steerOnly || ['steer', 'context', 'decision'].includes(x.kind)));
+  const sw = `<span class="flex items-center gap-0.5 text-[11.5px] shrink-0 normal-case tracking-normal font-normal">${[['all', 'All'], ['steer', `Steering · ${nSteer}`]].map(([k, l]) => `<button data-actf="${k}" onclick="M.actF=${k === 'steer' ? `'${t.id}'` : 'null'};mRender()" class="px-2 py-0.5 rounded-md ${(k === 'steer') === steerOnly ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('')}</span>`;
+  return `<section data-activity="${t.id}">${mLabel('Steering and activity', sw)}
+    <p class="text-[12px] text-ink3 mt-1.5">${steerOnly ? 'What people told this mission: steering they confirmed, context they added, and decisions.' : 'Part of the mission: everyone who can see it sees this. How it started is under “How it got there”.'}</p>
+    <div class="mt-3 space-y-2.5">${shared.map(x => mThreadItem(t, x)).join('') || `<p class="text-[12.5px] text-ink4">${steerOnly ? 'No steering yet. Ask the owner for a change in your conversation, and confirm it to add it here.' : 'Nothing yet.'}</p>`}</div></section>`;
+}
+/* Your conversation with the owner. Only you see it. What you confirm is written to the mission, not kept here. */
 function mThreadHtml(t) {
-  const list = mThreadItems(t), steerOnly = M.actF === t.id, shared = list.filter(x => M_SHARED.includes(x.kind) && (!steerOnly || ['steer', 'context', 'decision'].includes(x.kind))), mine = list.filter(x => ['mine', 'reply'].includes(x.kind)), nSteer = list.filter(x => x.kind === 'steer').length;
-  /* How the mission started is one quiet line. It opens on request, and while the agent is still working. */
-  const story = shared.filter(x => ['event', 'work', 'call', 'crumb'].includes(x.kind)), rest = shared.filter(x => !story.includes(x)), k = t.id + ':story', run = mRunning(t), open = !!M.more[k] || run;
-  const from = t.unblocks && mTask(t.unblocks);
-  const line = `<button onclick="M.more['${k}']=!M.more['${k}'];mPanelRender();icons()" class="w-full flex items-center gap-2.5 text-[12.5px] text-ink3 hover:text-ink text-left"><span class="w-[26px] flex justify-center shrink-0">${mAv(t.agent, 20)}</span><span class="min-w-0 flex-1">${esc(M_AG[t.agent].name)} opened this ${mAgo(t.opened)}${from ? `, asked by the ${esc(M_AG[from.agent].name)}` : t.trigger.kind === 'human' ? ', from a request' : ''}. ${t.steps.length} steps${story.filter(x => x.kind === 'crumb').length ? ', asked another agent for help' : ''}.</span>${run ? '' : ic(open ? 'chevron-up' : 'chevron-down', 'w-3.5 h-3.5')}</button>`;
+  const mine = mThreadItems(t).filter(x => ['mine', 'reply'].includes(x.kind));
   const typing = M.typing && M.typing.key === t.id ? `<div class="flex gap-2.5">${mAv(t.agent, 26)}<div class="bg-sunk rounded-2xl rounded-tl-md px-3.5 py-3"><span class="inline-flex gap-1 items-center h-4"><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.2s"></span><span class="w-1.5 h-1.5 rounded-full bg-ink3 animate-pulse" style="animation-delay:.4s"></span></span></div></div>` : '';
-  const head = (icon, title, sub) => `<div class="flex items-center gap-2 text-[11px] font-black tracking-[.14em] uppercase text-ink3">${ic(icon, 'w-3.5 h-3.5')}${title}<span class="normal-case tracking-normal font-normal text-ink4">· ${sub}</span></div>`;
-  return `<div class="space-y-5" id="m-thread">
-    <div class="space-y-3"><div class="flex items-center justify-between gap-2">${head('users', 'Activity', 'everyone in the mission sees this')}<span class="flex items-center gap-0.5 text-[11.5px] shrink-0">${[['all', 'All'], ['steer', `Steering · ${nSteer}`]].map(([k, l]) => `<button data-actf="${k}" onclick="M.actF=${k === 'steer' ? `'${t.id}'` : 'null'};mPanelRender();icons()" class="px-2 py-0.5 rounded-md ${(k === 'steer') === steerOnly ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('')}</span></div>
-      ${steerOnly ? `<p class="text-[12px] text-ink3">What people told this mission: steering they confirmed, context they added, and decisions.</p>` : line}${!steerOnly && open ? `<div class="space-y-2.5 pb-1">${story.map(x => mThreadItem(t, x)).join('')}</div>` : ''}${(steerOnly ? shared : rest).map(x => mThreadItem(t, x)).join('') || (steerOnly ? '<p class="text-[12.5px] text-ink4">No steering yet. Ask the owner for a change in your conversation below, and confirm it to share it here.</p>' : '')}</div>
-    <div class="space-y-3 pt-4 border-t border-line">${head('lock', `Your conversation with the ${M_AG[t.agent].name}`, 'only you see this')}
-      ${mine.map(x => mThreadItem(t, x)).join('')}${typing}${!mine.length && !typing ? `<p class="text-[12.5px] text-ink4">Ask anything about this mission. Questions and answers stay yours. A change you ask for is added to the activity after you confirm it.</p>` : ''}</div></div>`;
+  return `<div class="space-y-3" id="m-thread"><div class="flex items-center gap-2 text-[11px] font-black tracking-[.14em] uppercase text-ink3">${ic('lock', 'w-3.5 h-3.5')}Your conversation with the ${M_AG[t.agent].name}<span class="normal-case tracking-normal font-normal text-ink4">· only you see this</span></div>
+    ${mine.map(x => mThreadItem(t, x)).join('')}${typing}${!mine.length && !typing ? `<p class="text-[12.5px] text-ink4">Ask anything about this mission. Questions and answers stay yours. A change you ask for is written to the mission’s steering after you confirm it.</p>` : ''}</div>`;
 }
 function mThreadEnd(tid) { if (M.panelTask === tid) setTimeout(mPanelBottom, 30); }
 /* ---------- the prompt bar: who answers ----------
@@ -282,7 +283,6 @@ function mGuestAnswer(t, k, q) {
   const W = M.W, rules = (t.affects.rules || []).map(mRule).filter(Boolean), src = W.sources.find(s => s.id === t.affects.source);
   if (k === 'inv') { const n = rules.reduce((a, r) => a + (r.issues7d || 0), 0);
     return rules.length ? `I work on cases, not on rules. The ${rules.length === 1 ? 'rule' : rules.length + ' rules'} in this mission usually bring me about **${n.toLocaleString()} issues a week**. ${t.layer === 'rule' ? 'That is the volume this mission changes.' : 'While they are silent, those issues are not created, so I have nothing to triage from them.'}` : 'I work on cases. Nothing in this mission touches a case I am working on.'; }
-  if (k === 'pipe') return t.affects.node ? `The cause is at the **${MY_LAYER[t.affects.node.stage].name.toLowerCase()}** step of ${esc(W.pipes.find(p => p.id === t.affects.node.pipe).product)}.` : src ? `The data for this mission comes from **${src.name}**. ${src.instances.some(i => i.status !== 'ok') ? 'One of its instances is stopped.' : 'Its instances are connected and events arrive.'}` : 'Nothing in this mission touches the data pipeline.';
   if (k === 'det') return rules.length ? `The rules here: ${rules.map(r => `${r.name} (ID ${r.id})`).join(', ')}. None of them was edited.` : 'No correlation rule is part of this mission.';
   if (k === 'hunt') return 'No open hunt covers the objects in this mission.';
   return mTaskAnswer(t, q).text;
@@ -328,10 +328,10 @@ function mSendMission(t, q) {
     if (a.act) { mNote(t.id, { who: to, kind: 'reply', cls: 'question', text: a.text }); return mDecide(t.id, a.act); }
     const q2 = esc(q).replace(/'/g, '&#39;');
     if (cls === 'change') { M.steer = { tid: t.id, q, kind: 'change' };
-      mNote(t.id, { who: to, kind: 'reply', cls: 'change', steer: true, text: `I’ll treat this as a **change to this mission**. Before I start, it goes into the shared activity as: “You asked to ${q.charAt(0).toLowerCase() + q.slice(1).replace(/\.$/, '')}.” If the proposal changes, I post a new version and it needs a person again.`,
+      mNote(t.id, { who: to, kind: 'reply', cls: 'change', steer: true, text: `I’ll treat this as a **change to this mission**. Before I start, it is written to the mission’s steering as: “You asked to ${q.charAt(0).toLowerCase() + q.slice(1).replace(/\.$/, '')}.” If the proposal changes, I post a new version and it needs a person again.`,
         acts: `<button data-act="steer-ok" onclick="mSteer('${t.id}',true)" class="px-3 py-1.5 rounded-lg bg-ink text-panel text-[12.5px] font-bold">Confirm and share</button><button data-act="steer-no" onclick="mSteer('${t.id}',false)" class="px-3 py-1.5 rounded-lg border border-line2 text-[12.5px] text-ink2 hover:bg-hov">Keep it a question</button>` }); }
     else if (cls === 'stop') { M.steer = { tid: t.id, q, kind: 'stop' };
-      mNote(t.id, { who: to, kind: 'reply', cls: 'stop', steer: true, text: 'I’ll treat this as a **stop**. I do no more work on this mission until someone resumes it. It goes into the shared activity as: “Paused by you.”',
+      mNote(t.id, { who: to, kind: 'reply', cls: 'stop', steer: true, text: 'I’ll treat this as a **stop**. I do no more work on this mission until someone resumes it. It is written to the mission’s steering as: “Paused by you.”',
         acts: `<button data-act="steer-ok" onclick="mSteer('${t.id}',true)" class="px-3 py-1.5 rounded-lg bg-ink text-panel text-[12.5px] font-bold">Pause the mission</button><button onclick="mSteer('${t.id}',false)" class="px-3 py-1.5 rounded-lg border border-line2 text-[12.5px] text-ink2 hover:bg-hov">Cancel</button>` }); }
     else if (cls === 'outside') { M.carry = q;
       mNote(t.id, { who: to, kind: 'reply', cls: 'outside', text: `That is **outside ${t.id}**, so I will not add it to this mission. Continue in a general chat, with your question carried over.`,
@@ -348,7 +348,7 @@ function mSteer(tid, ok) {
   else { (t.history = t.history || []).push({ t: Date.now(), kind: 'steer', who: 'me', text: `asked to ${st.q.charAt(0).toLowerCase() + st.q.slice(1).replace(/\.$/, '')}. Accepted by the ${M_AG[t.agent].name}.` });
     t.objective = (t.objective || '').replace(/\.$/, '') + '. ' + st.q.replace(/\.$/, '') + '.';
     const upd = M_UPD[t.id] && !t.next && (t.ver || 1) === 1;
-    mNote(tid, { who: t.agent, kind: 'reply', cls: 'change', text: upd ? 'Shared. Working on it. If the proposal changes, version 2 appears in the activity.' : 'Shared. Checked again: nothing new was found, so the proposal stays as it is.' });
+    mNote(tid, { who: t.agent, kind: 'reply', cls: 'change', text: upd ? 'Written to the mission’s steering. Working on it. If the proposal changes, version 2 appears on the mission.' : 'Written to the mission’s steering. Checked again: nothing new was found, so the proposal stays as it is.' });
     if (upd) M.timers.push(setTimeout(() => mUpdate(t.id, 'material'), 2600)); }
   mRender(); mPanelBottom();
 }
@@ -369,7 +369,7 @@ function mAskPrivately(tid) {
 const mMine = t => String(t.by || '').replace(/\.$/, '') === mMe();
 function mQueue() {
   const W = M.W;
-  return { need: myPendingTasks(W), mine: W.tasks.filter(t => (t.status === 'progress' && mMine(t)) || (t.status === 'done' && mMine(t) && mPlan(t) && mPlan(t).some(s => s.state !== 'done'))), wait: myWaiting(W), run: W.tasks.filter(t => t.status === 'progress' && !mMine(t)) };
+  return { need: myPendingTasks(W), mine: W.tasks.filter(t => (t.status === 'progress' && mMine(t) && !t.handed) || (t.status === 'done' && mMine(t) && mPlan(t) && mPlan(t).some(s => s.state !== 'done'))), wait: myWaiting(W), run: W.tasks.filter(t => t.status === 'progress' && !mMine(t)) };
 }
 function mMove(dir) {
   const t = M.panelTask && mTask(M.panelTask); if (!t) return;
@@ -435,7 +435,7 @@ function mStandby() {
     return `<div class="space-y-4 ${work ? 'max-w-[760px] mx-auto' : ''}"><div class="flex items-center gap-3 pb-3 border-b border-line">${mAv('sec', 40, true)}<div class="min-w-0 flex-1"><div class="text-[15px] font-bold text-ink truncate">${esc(h ? h.title : 'Chat')}</div><div class="text-[12px] text-ink3 inline-flex items-center gap-1.5">${ic('lock', 'w-3 h-3')}Your chat${h && h.task ? ` · about <button onclick="mOpenTask('${h.task}')" class="font-mono c-indigo hover:underline">${h.task}</button>` : ''}</div></div></div>${chat}</div>`; }
   const auto = W.tasks.filter(t => t.status === 'done' && t.end === 'auto').length, n = q.need.length, show = q.need.slice(0, work ? 3 : 2);
   const none = W.tasks.filter(t => t.end === 'nothing' && Date.now() - t.opened < 86400000).length, runN = W.tasks.filter(t => myState(t) === 'running').length;
-  const line = `**${n}** mission${n === 1 ? ' needs' : 's need'} you. **${q.wait.length}** wait${q.wait.length === 1 ? 's' : ''} on another mission and will continue on ${q.wait.length === 1 ? 'its' : 'their'} own. **${runN}** ${runN === 1 ? 'is' : 'are'} running and need${runN === 1 ? 's' : ''} nothing from you. **${none}** run${none === 1 ? '' : 's'} today found nothing${auto ? `, and **${auto}** closed on ${auto === 1 ? 'its' : 'their'} own` : ''}.`;
+  const line = `**${n}** mission${n === 1 ? ' needs' : 's need'} you. **${q.wait.length}** wait${q.wait.length === 1 ? 's' : ''} on another team and will continue on ${q.wait.length === 1 ? 'its' : 'their'} own. **${runN}** ${runN === 1 ? 'is' : 'are'} running and need${runN === 1 ? 's' : ''} nothing from you. **${none}** run${none === 1 ? '' : 's'} today found nothing${auto ? `, and **${auto}** closed on ${auto === 1 ? 'its' : 'their'} own` : ''}.`;
   return `<div class="${work ? 'max-w-[760px] mx-auto pt-6' : 'pt-2'} space-y-4">
     <div class="flex items-center gap-3.5">${mAv('sec', work ? 64 : 48, true)}<div><div class="text-[20px] font-black text-ink leading-tight">SecOps</div><div class="text-[13px] c-blue font-semibold flex items-center gap-1.5">${run ? `<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>` : ''}${label}</div></div></div>
     <div class="rounded-2xl rounded-tl-md px-4 py-3 bg-card border border-line text-[14px] text-ink2 leading-relaxed">${md(`Here is where things stand. ${line}`)}${n ? md(`\n\nThe ${show.length === 1 ? 'first one is' : `first ${show.length} are`} below, most valuable first. You can decide from here, or open one to see the evidence and the conversation.`) : md('\n\nNothing is waiting for you.')}</div>
@@ -470,6 +470,7 @@ function mMini(t) {
     <h2 class="text-[17px] font-bold text-ink leading-snug mt-2">${esc(t.title)}</h2>
     ${ch ? `<div class="text-[12.5px] text-ink3 mt-1">Changes: <span class="text-ink2">${esc(ch)}</span></div>` : ''}
     <p class="text-[13.5px] text-ink2 leading-relaxed mt-2">${esc(t.summary)}</p>${state}
+    ${(() => { const st = (t.history || []).filter(h => h.kind === 'steer'); if (!st.length) return ''; const x = st[st.length - 1], who = M_PPL[x.who] ? (x.who === 'me' ? 'You' : M_PPL[x.who].name) : ''; return `<div class="mt-3 text-[12.5px] text-ink3 flex items-start gap-2"><span class="inline-flex px-1.5 py-0.5 rounded-md tn tn-indigo text-[10.5px] font-bold uppercase tracking-wider shrink-0">Steering${st.length > 1 ? ' · ' + st.length : ''}</span><span class="min-w-0 line-clamp-2"><b class="text-ink2">${esc(who)}</b> ${esc(x.text)}</span></div>`; })()}
     <button data-act="details" onclick="M.more['${k}']=true;mPanelRender();icons()" class="mt-3 text-[13px] c-indigo hover:underline inline-flex items-center gap-1">Show details${ic('chevron-down', 'w-3.5 h-3.5')}</button></div></div>`;
 }
 function mScrollInit() {
@@ -489,7 +490,7 @@ function mPanelRender() {
   /* head, one row: what this is, who is in it, the way to the next one, close */
   const ids = t ? pend.map(x => x.id) : [], i = t ? ids.indexOf(t.id) : -1;
   const o2 = t && t.waitOn && mTask(t.waitOn);
-  const status = !t ? '' : t.status === 'done' || t.status === 'blocked' ? mStatus(t) : o2 ? `<span class="text-[12.5px] c-indigo whitespace-nowrap">Waiting on the ${M_AG[o2.agent].name}</span>` : t.status === 'pending' ? `<span class="text-[12.5px] c-amber whitespace-nowrap">Needs you</span>` : `<span class="text-[12.5px] c-blue whitespace-nowrap">${t.handed ? 'Waiting on another team' : t.paused ? 'Paused' : 'Running'}</span>`;
+  const status = !t ? '' : t.status === 'done' || t.status === 'blocked' ? mStatus(t) : o2 ? `<span class="text-[12.5px] c-indigo whitespace-nowrap">Waiting on the ${M_AG[o2.agent].name}</span>` : t.status === 'pending' ? `<span class="text-[12.5px] c-amber whitespace-nowrap">Needs you</span>` : `<span class="text-[12.5px] c-blue whitespace-nowrap">${t.handed ? 'Waiting on the ' + esc(t.teamFix || 'other team') : t.paused ? 'Paused' : 'Running'}</span>`;
   const left = `${work && wide && M.railOff ? btn('M.railOff=false;mPanelRender();icons()', 'panel-left-open', 'Show the history', 'data-act="rail-on"') : ''}${t || o ? btn('mPanelHome()', 'arrow-left', 'Back to the conversation (Esc)') : ''}
     ${t ? `<span class="text-[13.5px] font-semibold text-ink font-mono whitespace-nowrap">${t.id}</span><span class="min-w-0 truncate">${status}</span>`
       : o ? `<span class="text-[13.5px] font-semibold text-ink whitespace-nowrap">${o.kind === 'rule' ? 'Correlation rule ' + o.id : o.kind === 'tech' ? 'Technique ' + o.id : 'IOC rule ' + o.id}</span>`
@@ -534,7 +535,7 @@ function mPanelRender() {
   tb.dataset.to = to; tb.title = to === 'sec' && !t ? 'SecOps picks the right agent. Click to ask one agent directly.' : 'Who answers. Click to change.';
   $('m-cmd-box').className = 'flex-1 min-w-0 flex items-center rounded-2xl bg-sunk border border-line focus-within:border-line2 transition';
   $('m-cmd').placeholder = t ? `Ask the ${M_AG[t.agent].name}, the owner of ${t.id}…` : to === 'sec' ? 'Ask anything, or ask for work…' : `Ask the ${M_AG[to].name}…`;
-  $('m-hint').innerHTML = t ? `Only you see this conversation. A change you ask for is shared after you confirm it.` : '';
+  $('m-hint').innerHTML = t ? `Only you see this conversation. A change you confirm is written to the mission.` : '';
 }
 
 /* ======================================================================
@@ -561,7 +562,7 @@ const M_FLOWS = [
     setup: () => mNav('work'),
     steps: [
       { do: 'Look at the Missions screen.', see: 'It opens on Needs you. Running and Waiting need nothing from you. Done holds every finished run, also the ones that found nothing.', act: () => { M.tab = 'needs'; mRender(); }, done: () => M.view === 'work' },
-      { do: 'Open the first mission, MSN-1003.', see: 'Full screen: the history on the left, your conversation in the middle, the mission on the right.', act: () => mOpenTask('MSN-1003'), done: () => M.panelTask === 'MSN-1003' },
+      { do: 'Open MSN-1003: AWS audit logs stopped.', see: 'Full screen: the history on the left, your conversation in the middle, the mission on the right.', act: () => mOpenTask('MSN-1003'), done: () => M.panelTask === 'MSN-1003' },
       { do: 'Press “Hand over to cloud team”.', see: 'It moves to Waiting on another team, and the next mission that needs you comes up on its own.', act: () => mDecide('MSN-1003', 'approve'), done: () => mT('MSN-1003').status !== 'pending' },
       { do: 'Close the panel and open the Done filter.', see: 'The runs that found nothing are here, with the AI suggestion Nothing found.', act: () => { mClosePanel(); M.tab = 'done'; mRender(); }, done: () => M.tab === 'done' && !mPanelOn() }
     ] },
@@ -618,21 +619,21 @@ const M_FLOWS = [
       { do: 'Press “Check rule 222 again”.', see: 'Version 2 asks only about rule 222, on its new version.', act: () => mBlockedGo('MSN-1005', 'recheck'), done: () => !!(mT('MSN-1005').partial || {}).rechecked },
       { do: 'Approve version 2.', see: 'Done: all three changes are applied.', act: () => mDecide('MSN-1005', 'approve'), done: () => mT('MSN-1005').status === 'done' }
     ] },
-  { name: 'Waiting on another mission', point: 'When the fix is in another agent’s area, it becomes a linked mission. The first one waits, then continues and closes on its own.',
+  { name: 'Waiting on another team', point: 'When the cause is in a part another team owns, the Detection Engineer finds it, writes the fix and sends it. The mission waits, then checks the detection and closes on its own.',
     setup: () => mNav('work'),
     steps: [
-      { do: 'Open MSN-1001: three SentinelOne rules went silent.', see: 'Waiting on MSN-1012. The help from the Pipeline Engineer shows as a breadcrumb in the activity.', act: () => { mOpenTask('MSN-1001'); M.more['MSN-1001:story'] = true; mPanelRender(); icons(); }, done: () => M.panelTask === 'MSN-1001' },
-      { do: 'Open MSN-1012 from the link.', see: 'One approval runs the steps in order.', act: () => mOpenTask('MSN-1012'), done: () => M.panelTask === 'MSN-1012' },
-      { do: 'Approve the mapping fix.', see: 'Step 1 applied, step 2 replays, then MSN-1001 checks the rules.', act: () => mDecide('MSN-1012', 'approve'), done: () => mT('MSN-1012').status === 'done' },
-      { do: 'Open MSN-1001 again.', see: 'It continued on its own and closes when the rules fire again.', act: () => mOpenTask('MSN-1001'), done: () => mT('MSN-1001').status === 'done' }
+      { do: 'Open MSN-1001: three SentinelOne rules went silent.', see: 'The cause is the SentinelOne data model, which the data platform team owns. The fix is written and replayed. One approval sends it.', act: () => mOpenTask('MSN-1001'), done: () => M.panelTask === 'MSN-1001' },
+      { do: 'Press “Send the fix”.', see: 'The next decision comes up on its own. MSN-1001 moves to Waiting, on the data platform team.', act: () => mDecide('MSN-1001', 'approve'), done: () => mT('MSN-1001').status !== 'pending' },
+      { do: 'Go back to MSN-1001 and wait for the team, or press Show me.', see: 'Waiting, then the team applies the fix. The plan on the card ticks step 2, and the Detection Engineer replays the 2 days.', act: () => { mOpenTask('MSN-1001'); mLater(1500, () => { const t = mTask('MSN-1001'); if (t.handed) { myTeamApplied(M.W, t); mResume(); mRender(); } }); }, done: () => !!mT('MSN-1001').teamDone && M.panelTask === 'MSN-1001' },
+      { do: 'Wait for the check, or press Show me.', see: 'Done · Changes applied · verified. Steering and activity on the card show who sent it, when the team applied it, and the check.', act: () => { if (M.panelTask !== 'MSN-1001') mOpenTask('MSN-1001'); const t = mTask('MSN-1001'); if (t.resume) { myResolve(M.W, t); mRender(); } }, done: () => mT('MSN-1001').status === 'done' }
     ] },
   { name: 'Talking to the owner', point: 'In a mission you talk only to its owner. It says how it treats each ask. Your conversation is yours; only confirmed changes reach the shared activity.',
     setup: () => mNav('work'),
     steps: [
-      { do: 'Open MSN-1012.', see: 'Activity on top, shared. Your conversation below, only yours. No agent selector.', act: () => mOpenTask('MSN-1012'), done: () => M.panelTask === 'MSN-1012' },
-      { do: 'Ask: “What is the risk?”', see: 'Tagged “Question”. Only you see it and the answer.', act: () => mSend('What is the risk?'), done: () => (mT('MSN-1012').notes || []).some(n => n.kind === 'reply') },
-      { do: 'Ask: “Also check other renamed fields”.', see: 'Tagged “Change to this mission”, with the line it will share.', act: () => mSend('Also check other renamed fields'), done: () => !!M.steer || (mT('MSN-1012').history || []).some(h => h.kind === 'steer') },
-      { do: 'Press “Confirm and share”.', see: 'One line in the activity, never your conversation. Version 2 arrives.', act: () => mSteer('MSN-1012', true), done: () => (mT('MSN-1012').history || []).some(h => h.kind === 'steer') },
+      { do: 'Open MSN-1001.', see: 'The mission card holds its steering and activity. The middle is only your conversation with the owner. No agent selector.', act: () => mOpenTask('MSN-1001'), done: () => M.panelTask === 'MSN-1001' },
+      { do: 'Ask: “What is the risk?”', see: 'Tagged “Question”. Only you see it and the answer.', act: () => mSend('What is the risk?'), done: () => (mT('MSN-1001').notes || []).some(n => n.kind === 'reply') },
+      { do: 'Ask: “Also check other renamed fields”.', see: 'Tagged “Change to this mission”, with the line it will share.', act: () => mSend('Also check other renamed fields'), done: () => !!M.steer || (mT('MSN-1001').history || []).some(h => h.kind === 'steer') },
+      { do: 'Press “Confirm and share”.', see: 'One line is written to the mission’s steering on the card, never your conversation. Version 2 arrives.', act: () => mSteer('MSN-1001', true), done: () => (mT('MSN-1001').history || []).some(h => h.kind === 'steer') },
       { do: 'Ask: “Are we covered for impossible travel?”, then continue in a general chat.', see: 'It is outside the mission, so it moves to a general chat with the question carried over.', act: () => { mSend('Are we covered for impossible travel?'); mLater(1200, () => mCarry()); }, done: () => !M.panelTask && (M.chats._ || []).length > 0 }
     ] },
   { name: 'From a chat: artifacts and missions', point: 'A chat answers, shows results as artifacts next to it, runs a one-off action with approval, and starts a mission only when it starts a job.',

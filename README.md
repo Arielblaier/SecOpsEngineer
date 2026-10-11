@@ -100,10 +100,10 @@ for SecOps, with the focus on detection engineering. It is the default mode on
 this branch. The other two modes still work: switch from the demo menu (the
 lightning icon) under "Agents".
 
-The screens are about SecOps, not about an agent. Two agents do the work
-behind it (Detection Engineer: rules, indicators, coverage. Pipeline Engineer:
-filtering, parsing, normalizing). They show up inside a mission, under "How it
-got there", when one passed work to the other.
+The screens are about SecOps, not about an agent. One agent is in scope: the
+Detection Engineer (rules, indicators, coverage). It owns every mission. Other
+agents (the Investigation Agent, the Threat Hunter) only hand work over or
+answer a question, and show up as a line in the mission's activity.
 
 What the mode shows:
 
@@ -120,11 +120,12 @@ What the mode shows:
 | MITRE ATT&CK Coverage | The native dashboard, plus a layer that says whether the mapped detections can work: looks covered but cannot fire, no detection, coverage available, noisy |
 | Insights | Value regained, and an ATT&CK status per technique instead of one percentage |
 
-Each mission has one owner. When a detection problem starts in the pipeline,
-the Detection Engineer opens a second mission for the Pipeline Engineer and
-its own mission shows as Pending with a link ("waits on MSN-1012"). Approving
-the pipeline mission lets the first one continue, check the detection and
-close itself.
+Each mission has one owner, the Detection Engineer. When a detection problem
+starts in a part another team owns (a filter, a parsing rule, a data model, an
+integration, a credential), it finds the cause and writes the fix, but does
+not change that part. One approval sends the fix to the owning team. The
+mission is Waiting until the team applies it, then the Detection Engineer
+checks the detection and closes it on its own (MSN-1001, demo flow 9).
 
 The tenant is sized like a real one: 62 data sources, about 100 instances and
 about 150 correlation rules. The story rules are hand-written; the rest is
@@ -192,8 +193,8 @@ at, result and confidence, findings, proposals with versions, decisions,
 outcome, cost, feedback, activity) and a detection engineering part (card
 type, root-cause layer, noise type, health, validation).
 
-**States.** Needs you (a decision, or blocked), Running, Waiting (on another
-mission or team), Done. Done ends as changes applied, nothing found, partly
+**States.** Needs you (a decision, or blocked), Running, Waiting (on the team
+that owns the fix), Done. Done ends as changes applied, nothing found, partly
 applied, declined (with a reason), handed over, cancelled, or closed because
 the problem disappeared. The Missions screen opens on Needs you. Done shows
 the end as a second line under the state.
@@ -213,18 +214,22 @@ warning; open proposals become out of date and are checked again, or cancelled.
 The rule's record (open the rule with Edit or from its row) shows its version,
 missions, pending changes and decisions.
 
-**In a mission.** You talk only to the owner: no agent selector, no tags. The
-activity is shared; your conversation is yours. The owner says how it treats
-each ask (question, change, stop, outside the mission), and a change is shared
-after you confirm it. Help between agents shows as breadcrumbs.
+**In a mission.** Steering belongs to the mission, not to the chat. The
+mission card holds "Steering and activity": every decision, confirmed
+steering line, handoff and the team applying a fix, shared with everyone in
+the mission. The chat in the middle is only your conversation with the owner
+(no agent selector, no tags). The owner says how it treats each ask (question,
+change, stop, outside the mission); a change is written to the mission's
+steering only after you confirm it. Help from another agent shows as a
+breadcrumb in the activity.
 
 **Chats.** A general chat can switch agents, answer, and run a one-off action
 with approval (no mission). A request that starts a job runs as a mission,
 with its card anchored in the chat. "Review this rule now" starts a job too.
 
 **Panel.** Two sizes, switched by one button or `F`.
-- Side panel: one column next to the screen (short card, then the activity
-  and your conversation, Approve and Decline fixed at the bottom). Drag its
+- Side panel: one column next to the screen (short card with the latest
+  steering line, then your conversation, Approve and Decline fixed at the bottom). Drag its
   left edge from 30% to 70% of the screen. From 560 pixels it shows the full
   mission card. The screen behind stays usable.
 - Full screen: the history on the left (Needs you, then Recent missions and

@@ -20,11 +20,10 @@ const M_LIVE_GAP = (() => { try { const v = +new URLSearchParams(location.search
 const M_AG = {
   sec: { name: 'SecOps', role: 'Detections and the data behind them', c: ['#3ee6a0', '#36d4ea', '#7ff7d6'], hex: '#10b981' },
   det: { name: 'Detection Engineer', role: 'Rules, indicators and coverage', c: ['#8b5cf6', '#c4b5fd', '#c4b5fd'], hex: '#8b5cf6' },
-  pipe: { name: 'Pipeline Engineer', role: 'Filtering, parsing and normalizing', c: ['#06b6d4', '#67e8f9', '#67e8f9'], hex: '#06b6d4' },
   inv: { name: 'Investigation Agent', role: 'Triage and investigation', c: ['#3b82f6', '#7dd3fc', '#93c5fd'], hex: '#3b82f6' },
   hunt: { name: 'Threat Hunter agent', role: 'Hunts and findings', c: ['#f97316', '#fdba74', '#fdba74'], hex: '#f97316' }
 };
-const M_FROM = { analyst: 'inv', hunter: 'hunt', det: 'det', pipe: 'pipe' };
+const M_FROM = { analyst: 'inv', hunter: 'hunt', det: 'det' };
 function mAv(k, size = 24, live = false) {
   const a = M_AG[k] || M_AG.det, d = Math.max(6, Math.round(size * .2));
   return `<span class="relative inline-flex shrink-0" style="width:${size}px;height:${size}px" title="${esc(a.name)}">${robotSVG(size, a.c[0], a.c[1], a.c[2])}${live ? `<span class="absolute rounded-full" style="width:${d}px;height:${d}px;right:${Math.round(size * .02)}px;bottom:${Math.round(size * .08)}px;background:#4DFFA6;box-shadow:0 0 0 2px rgb(var(--panel)), 0 0 8px #4DFFA6"></span>` : ''}</span>`;
@@ -147,15 +146,18 @@ function mArrive(n) {
   const iv = setInterval(() => {
     t.shown++;
     if (t.shown <= t.steps.length) M.W.log.unshift({ t: Date.now(), kind: 'step', text: `${t.id}: ${t.steps[t.shown - 1]}` });
-    if (t.shown >= t.steps.length) { clearInterval(iv); const sp = myReady(M.W, t); toast(`${(sp || t).id} needs you: a decision is ready`, 'bell-ring'); }
+    if (t.shown >= t.steps.length) { clearInterval(iv); myReady(M.W, t); toast(`${t.id} needs you: a decision is ready`, 'bell-ring'); }
     mRender();
   }, stepMs);
   M.timers.push(iv);
 }
 /* A mission that was unblocked checks its detection, then closes itself. */
 function mResume() {
+  /* A fix sent to another team: in the demo the team applies it a few seconds later. */
+  M.W.tasks.filter(t => t.handed && t.teamAuto && t.status === 'progress' && !t.teamTimer).forEach(t => { t.teamTimer = true;
+    M.timers.push(setTimeout(() => { myTeamApplied(M.W, t); toast(`${t.id}: the ${t.teamFix} applied the fix. Checking the detection`, 'user-check'); mResume(); mRender(); }, 4000)); });
   M.W.tasks.filter(t => t.resume && !t.resumeTimer).forEach(t => { t.resumeTimer = true;
-    M.timers.push(setTimeout(() => { myResolve(M.W, t); toast(`${t.id} closed automatically: the detection works again`, 'circle-check'); mRender(); }, 7000)); });
+    M.timers.push(setTimeout(() => { myResolve(M.W, t); toast(`${t.id} closed automatically: the detection works again`, 'circle-check'); mRender(); }, 5000)); });
 }
 function mArriveNext() { const n = M.W.incoming.findIndex(t => !M.W.tasks.includes(t)); if (n < 0) return toast('No more triggers in this demo', 'check'); mArrive(n); }
 

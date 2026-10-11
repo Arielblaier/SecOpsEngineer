@@ -4,8 +4,10 @@
    objects below, so the screens cannot disagree with each other.
    Rule names and screen layouts follow the real product screens. Volumes,
    people and failures are invented for the story.
-   Two agents work this domain: the Detection Engineer (rules, indicators,
-   coverage) and the Pipeline Engineer (filtering, parsing, normalizing).
+   One agent is in scope: the Detection Engineer (rules, indicators,
+   coverage). When a cause sits in the data pipeline (a filter, a parsing
+   rule, a data model, an integration), it finds the cause, writes the fix
+   and sends it to the team that owns that part. It does not change it.
    ====================================================================== */
 const MY_LAYERS = [
   ['integration', 'Integration', 'plug'], ['source', 'Data source', 'cable'], ['filter', 'Filter', 'filter'], ['parsing', 'Parsing', 'braces'],
@@ -198,36 +200,30 @@ function myWorld() {
 
   /* ---------- Missions ---------- */
   const tasks = [
-    { id: 'MSN-1001', card: 'broken', title: '3 SentinelOne rules went silent after a pack update', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', waitOn: 'MSN-1012', opened: now - 5 * H,
+    { id: 'MSN-1001', card: 'broken', title: '3 SentinelOne rules went silent after a pack update', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', opened: now - 5 * H,
+      teamFix: 'data platform team', teamAuto: true, teamCheck: 'Replay the 2 days and check that the three rules fire', teamThen: 'When the team applies it, the Detection Engineer replays the 2 days and closes the mission if the rules fire',
       trigger: { kind: 'change', text: `The SentinelOne pack was updated on ${packDay}. Three rules have created no issue since then.` },
-      summary: 'Three rules that created 1,204 issues a week stopped firing two days ago. The rules did not change. The field they filter on now arrives empty.',
-      steps: ['Saw three enabled SentinelOne rules with no issue since the pack update', 'Checked the rules: valid queries, nothing was edited', 'Checked the data: events still arrive, 12.1K a day', 'Followed the field the rules filter on, xdm.event.type: it is empty on every new event', 'The cause is below the rule, so opened MSN-1012 for the Pipeline Engineer'],
-      diagnosis: 'The rules are fine. They filter on xdm.event.type, and the data model no longer fills it.',
-      validation: null, decision: null,
-      after: 'Closed automatically. After MSN-1012 was approved, the last 2 days were replayed: the three rules fire again and the 344 missed issues were created.',
-      affects: { rules: [215, 217, 220], source: 'sentinelone' },
-      pivots: [['rules', 'Correlation Rules', 'the 3 rules']] },
-    { id: 'MSN-1012', card: 'pipeline', title: 'SentinelOne data model reads a field the pack renamed', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'model', status: 'pending', unblocks: 'MSN-1001', opened: now - 5 * H + 12 * 60000,
-      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1001: why is xdm.event.type empty on SentinelOne events?' },
-      summary: 'The pack update renamed the raw field eventType to event_type. The user-defined data model still maps the old name, so xdm.event.type arrives empty and three rules match nothing.',
-      steps: ['Compared raw events before and after the pack update: eventType is gone, event_type is new', 'Read the data model rule: it maps xdm.event.type from eventType', 'Listed what reads xdm.event.type from this dataset: 3 correlation rules', 'Wrote a mapping that reads the new name and falls back to the old one', 'Replayed the 2 days since the update through it'],
-      diagnosis: 'The data model maps xdm.event.type from a raw field that the source no longer sends.',
+      summary: 'Three rules that created 1,204 issues a week stopped firing two days ago. The rules did not change. The pack update renamed a raw field, and the data model still maps the old name, so the field the rules filter on arrives empty.',
+      steps: ['Saw three enabled SentinelOne rules with no issue since the pack update', 'Checked the rules: valid queries, nothing was edited', 'Checked the data: events still arrive, 12.1K a day', 'Followed the field the rules filter on, xdm.event.type: it is empty on every new event', 'Compared raw events before and after the update: eventType is gone, event_type is new', 'Read the data model rule: it still maps xdm.event.type from eventType. The data model belongs to the data platform team', 'Wrote a mapping that reads the new name and falls back to the old one', 'Replayed the 2 days since the update through it: the three rules fire again'],
+      diagnosis: 'The rules are fine. They filter on xdm.event.type, and the data model no longer fills it because it reads a raw field the source stopped sending.',
       current: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = eventType,', 'del'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_confidenceLevel,'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
       recommended: { kind: 'code', label: 'Data model rule · SentinelOne model', lines: [['[MODEL: dataset = sentinelone_xdr_raw]'], ['alter'], ['  xdm.event.type = coalesce(event_type, eventType),', 'add'], ['  xdm.alert.original_threat_name = threatInfo_threatName,'], ['  xdm.alert.severity = threatInfo_confidenceLevel,'], ['  xdm.source.host.hostname = agentRealtimeInfo_agentComputerName;']] },
       validation: { rows: [['Issues from the three rules (2-day replay)', 0, 344, 344]], note: 'Replayed the 2 days since the update through the corrected mapping. The three rules themselves do not change.' },
-      decision: { q: 'Approve the mapping fix?', approve: 'Approve fix', effect: 'The data model rule is updated and the three rules read the field again. MSN-1001 then continues on its own.', risk: 'Medium. A mapping feeds every rule that reads the field, so all three were replayed.', reversible: true },
+      decision: { q: 'Send the mapping fix to the data platform team?', approve: 'Send the fix', effect: 'The Detection Engineer sends the data platform team the corrected mapping, the replay and the three rules. It does not change the data model itself.', risk: 'Medium. A mapping feeds every rule that reads the field, so all three were replayed. The team reviews it before applying.', reversible: true },
+      after: 'Closed automatically. The data platform team applied the mapping fix. The last 2 days were replayed: the three rules fire again and the 344 missed issues were created.',
       affects: { rules: [215, 217, 220], node: { pipe: 'p-s1', stage: 'model' }, source: 'sentinelone' },
-      pivots: [['streams', 'Data Streams', 'the data model step'], ['rules', 'Correlation Rules', 'the 3 rules']] },
+      pivots: [['rules', 'Correlation Rules', 'the 3 rules'], ['streams', 'Data Streams', 'the data model step']] },
 
     { id: 'MSN-1003', card: 'source', title: 'AWS audit logs stopped 46 hours ago: 2 detections are blind', verdict: 'Broken', conf: 'High', impact: 'High', layer: 'source', status: 'pending', opened: now - 45 * H,
-      trigger: { kind: 'sweep', text: 'Hourly data-health sweep: the instance returned an access error on the first check after the key expired.' },
+      teamFix: 'cloud team', teamCheck: 'Backfill 46 hours and check that the two rules run', teamThen: 'The mission closes on its own when the data arrives',
+      trigger: { kind: 'sweep', text: 'Hourly data check for detections: the instance returned an access error on the first check after the key expired.' },
       summary: `The production audit-log instance of Amazon S3 is in error. Two rules that look healthy have had no data to read since ${keyDay}.`,
       steps: [`Saw the instance “Cloud audit logs · production” in error since ${myWhen(down)}`, 'Read the error: access denied when reading the queue, the access key expired', 'Listed the rules that read this dataset: 2 rules, both enabled, both silent since then', 'Checked whether the events can be recovered: the queue keeps 14 days, so a backfill is possible'],
       diagnosis: 'The rules are fine and enabled. Their data source stopped, so they cannot fire.',
       current: { kind: 'settings', label: 'Amazon S3 · Cloud audit logs · production', rows: [['Status', 'Error'], ['Last event received', myWhen(down)], ['Error', 'Access denied, the access key expired'], ['Rules without data', '2']] },
       recommended: { kind: 'settings', label: 'Amazon S3 · Cloud audit logs · production', rows: [['Status', 'Connected'], ['Action', 'Replace the access key (needs a person)'], ['After reconnect', 'Backfill 46 hours from the queue'], ['Rules without data', '0']] },
       validation: { rows: [['Rules receiving data', 0, 2, 2]], note: `The queue keeps 14 days of events, so nothing is lost if the key is replaced before ${lastChance}.` },
-      decision: { q: 'Replace the access key, or hand this to the cloud team?', approve: 'Hand over to cloud team', effect: 'The Pipeline Engineer opens a request for the cloud team with the error, the instance and the two rules. An agent cannot create credentials.', risk: 'Low. Restores access that existed before. No new access is granted.', reversible: true, selfFix: 'You can also replace the key yourself in Data Sources.' },
+      decision: { q: 'Replace the access key, or hand this to the cloud team?', approve: 'Hand over to cloud team', effect: 'The Detection Engineer opens a request for the cloud team with the error, the instance and the two rules. An agent cannot create credentials.', risk: 'Low. Restores access that existed before. No new access is granted.', reversible: true, selfFix: 'You can also replace the key yourself in Data Sources.' },
       affects: { rules: [233, 234], instance: 's3-audit', source: 's3', node: { pipe: 'p-aws', stage: 'source' } },
       pivots: [['sources', 'Data Sources & Integrations', 'the instance in error'], ['rules', 'Correlation Rules', 'the 2 rules']] },
 
@@ -243,43 +239,25 @@ function myWorld() {
       affects: { rules: [224], source: 'chrome' },
       pivots: [['rules', 'Correlation Rules', 'the rule']] },
 
-    { id: 'MSN-1004', card: 'broken', title: 'Port-scan rule was silent for 23 days: data is back, silent test running', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'progress', progressNote: 'Silent test · day 1 of 7', unblockedBy: 'MSN-0999', opened: now - 26 * H,
-      trigger: { kind: 'sweep', text: 'Weekly sweep: an enabled rule has not fired for 23 days, while its source is healthy.' },
-      summary: `The port-scan rule only reads firewall “deny” events, and a filter added on ${filterDay} dropped all of them. The filter was fixed in MSN-0999. The dropped events were never stored, so the rule is now proven with a silent test.`,
-      steps: [`Saw the rule “FortiGate - Port scan from internal host” silent since ${filterDay}`, 'Checked the rule: valid, nothing was edited', 'Checked the source: connected, 1.9M events a day', 'The rule’s events were missing before the rule, so opened MSN-0999 for the Pipeline Engineer', 'MSN-0999 was approved by Ariel B: internal deny events are kept again', 'Started a 7-day silent test, because no backtest is possible'],
+    { id: 'MSN-1004', card: 'broken', title: 'Port-scan rule was silent for 23 days: data is back, silent test running', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'progress', progressNote: 'Silent test · day 1 of 7', opened: now - 26 * H,
+      trigger: { kind: 'sweep', text: 'Daily rule-health sweep: an enabled rule has not fired for 23 days, while its source is healthy.' },
+      summary: `The port-scan rule only reads firewall “deny” events, and a filter added on ${filterDay} dropped all of them. Ariel B. sent the narrower filter to the data platform team and they applied it. The dropped events were never stored, so the rule is now proven with a silent test.`,
+      steps: [`Saw the rule “FortiGate - Port scan from internal host” silent since ${filterDay}`, 'Checked the rule: valid, nothing was edited', 'Checked the source: connected, 1.9M events a day', `Counted deny events before and after the filter step: 38,000 a day go in, none come out. The filter “Drop firewall deny (cost saving)” was added ${filterDay} by Dana L.`, 'Wrote a narrower filter that keeps internal deny events and still drops internet-side ones', 'Ariel B. approved sending it. The data platform team applied it: internal deny events are kept again', 'Started a 7-day silent test, because no backtest is possible'],
       diagnosis: 'The rule is valid. Its events were removed by a filter before the rule saw them.',
       validation: null, decision: null,
       affects: { rules: [230], source: 'fortigate' },
       pivots: [['rules', 'Correlation Rules', 'the rule']] },
-    { id: 'MSN-0999', card: 'pipeline', title: 'A cost-saving filter drops the events a port-scan rule needs', verdict: 'Broken', conf: 'Medium', impact: 'Medium', layer: 'filter', status: 'done', end: 'approved', by: 'Ariel B', unblocks: 'MSN-1004', opened: now - 25 * H, closed: now - 20 * H,
-      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1004: the port-scan rule gets no deny events, while the firewall sends 1.9M events a day.' },
-      summary: `A filter added on ${filterDay} dropped every firewall “deny” event to save ingestion. The port-scan rule reads only “deny” events between internal hosts.`,
-      steps: ['Counted deny events before and after the filter step: 38,000 a day go in, none come out', `Found the filter “Drop firewall deny (cost saving)”, added ${filterDay} by Dana L.`, 'Read what the rule needs: deny events between internal hosts', 'Wrote a narrower filter that keeps internal deny events and still drops internet-side ones'],
-      diagnosis: 'The source is healthy. A filter removes events that a rule needs.',
-      current: { kind: 'code', label: 'Filter rule · Drop firewall deny (cost saving)', lines: [['[FILTER: dataset = fortinet_fortigate_raw]'], ['drop where action = "deny"', 'del']] },
-      recommended: { kind: 'code', label: 'Filter rule · Drop internet-side firewall deny', lines: [['[FILTER: dataset = fortinet_fortigate_raw]'], ['drop where action = "deny" and srcintfrole = "wan"', 'add']] },
-      validation: { rows: [['Deny events kept per day', 0, 38000, 38000]], note: 'No backtest is possible: the events were dropped and are not stored. Ingestion grows by about 3.2 GB a day.' },
-      decision: null, outcome: 'Approved by Ariel B. Internal deny events are kept. MSN-1004 continued on its own: the port-scan rule is in a 7-day silent test.',
-      affects: { rules: [230], source: 'fortigate' },
-      pivots: [['streams', 'Data Streams', 'the filter step']] },
-    { id: 'MSN-1006', card: 'gap', title: 'Impossible-travel logins are not detected: no Okta sign-in data', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'integration', status: 'pending', waitOn: 'MSN-1014', opened: now - 30 * H,
+    { id: 'MSN-1006', card: 'gap', title: 'Impossible-travel logins are not detected: no Okta sign-in data', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'integration', status: 'pending', opened: now - 30 * H,
+      teamFix: 'identity team', teamCheck: 'Run the Marketplace rule in a 14-day silent test', teamThen: 'The mission continues on its own when the Okta data arrives',
       trigger: { kind: 'human', text: 'Ariel B. asked: “Add a rule for impossible-travel logins.”' },
-      summary: 'No rule can detect impossible travel today, because Okta sign-in logs are not ingested. A Marketplace rule covers it once they are, so no new rule is needed.',
-      steps: ['Looked for the data first: no Okta sign-in logs are ingested', 'Searched existing content: the Marketplace has “Okta - Impossible travel”', 'No new rule is needed. The missing piece is the Okta integration, so opened MSN-1014 for the Pipeline Engineer'],
+      summary: 'No rule can detect impossible travel today, because Okta sign-in logs are not ingested. A Marketplace rule covers it once they are, so no new rule is needed. Connecting Okta needs an API token from the identity team.',
+      steps: ['Looked for the data first: Entra ID and Active Directory sign-ins arrive, Okta sign-ins do not', 'Searched existing content: the Marketplace has “Okta - Impossible travel”', 'Checked the Okta pack: it brings the parser, the data model and 9 detections, with no custom work', 'Estimated the volume: about 2 GB a day', 'No new rule is needed. The missing piece is the integration, and an agent cannot create credentials, so this needs the identity team'],
       diagnosis: 'Coverage gap caused by a missing integration, not by a missing rule.',
-      validation: null, decision: null,
-      after: 'Closed automatically. Okta sign-in logs arrive and the Marketplace rule finished its silent test.',
-      affects: { rules: [], source: 'okta' },
-      pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
-    { id: 'MSN-1014', card: 'integration', title: 'Missing integration: Okta sign-in logs are not connected', verdict: 'Gap', conf: 'High', impact: 'Medium', layer: 'integration', status: 'pending', unblocks: 'MSN-1006', opened: now - 30 * H + 15 * 60000,
-      trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1006: is there identity sign-in data for an impossible-travel rule?' },
-      summary: 'Okta is the identity provider for the workforce and it is not connected to XSIAM. 9 Marketplace detections need its sign-in logs, including impossible travel. Connecting it needs an API token from the identity team.',
-      steps: ['Checked what is ingested: Entra ID and Active Directory sign-ins arrive, Okta does not', 'Checked the Marketplace: the Okta pack brings the parser, the data model and 9 detections, with no custom work', 'Estimated the volume: about 2 GB a day', 'An API token is needed, and an agent cannot create credentials, so this needs the identity team'],
-      diagnosis: 'An integration that detections need is missing. Nothing is wrong with the rules or the pipeline: the data never enters XSIAM.',
       current: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Not connected'], ['Detections that need it', '0 of 9 working'], ['Impossible travel', 'Not detected']] },
       recommended: { kind: 'settings', label: 'Okta', rows: [['Integration', 'Connect (API token from the identity team)'], ['Detections that need it', '9 of 9, after a 14-day silent test'], ['Impossible travel', 'Marketplace rule “Okta - Impossible travel”']] },
       validation: { rows: [['Detections unlocked', 0, 9, 9]], note: 'Expected ingestion is about 2 GB a day. The Marketplace rules run in a silent test for 14 days before they create issues.' },
-      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'A request is opened for the identity team, with the steps and the scope of the API token. MSN-1006 continues when the data arrives.', risk: 'Low. Nothing changes until the source is connected.', reversible: true },
+      decision: { q: 'Ask the identity team to connect Okta?', approve: 'Send the request', effect: 'The Detection Engineer opens a request for the identity team, with the steps and the scope of the API token. Nothing changes in XSIAM until the source is connected.', risk: 'Low. Nothing changes until the source is connected.', reversible: true },
+      after: 'Closed automatically. Okta sign-in logs arrive and the Marketplace rule finished its silent test.',
       affects: { rules: [], source: 'okta' },
       pivots: [['sources', 'Data Sources & Integrations', 'where Okta would be added']] },
     { id: 'MSN-1005', card: 'retire', title: 'Retire 3 leftover rules: a duplicate, an old beta and a test', verdict: 'Noisy', conf: 'High', impact: 'Low', layer: 'rule', status: 'pending', opened: now - 50 * H, noise: 'Duplicate',
@@ -347,7 +325,7 @@ function myWorld() {
       affects: { rules: [221, 223] }, pivots: [['rules', 'Correlation Rules', 'the 2 rules']] },
 
     { id: 'MSN-0991', card: 'source', title: 'Microsoft 365 audit logs arrived 3 hours late', verdict: 'Healthy', conf: 'High', impact: 'Low', layer: 'source', status: 'done', end: 'auto', opened: now - 2 * D, closed: now - 2 * D + 3 * H,
-      trigger: { kind: 'sweep', text: 'Hourly data-health sweep: no events for 3 checks in a row.' },
+      trigger: { kind: 'sweep', text: 'Hourly data check for detections: no events for 3 checks in a row.' },
       summary: 'The source went quiet for 3 hours and recovered without help. The late events arrived and both rules ran on them.',
       steps: ['Saw no events from “Audit logs · general” for 3 hours', 'Opened a mission and kept watching', 'Events resumed, including the delayed ones', 'Confirmed both Microsoft 365 rules ran on the late events'],
       diagnosis: 'A delay on the vendor side. Nothing was lost.',
@@ -380,34 +358,28 @@ function myWorld() {
 
   /* ---------- Which agent owns each mission, and what it suggests ---------- */
   const TEAM = {
-    'MSN-1001': { sug: 'Fix', agent: 'det' }, 'MSN-1012': { sug: 'Fix', agent: 'pipe' }, 'MSN-1003': { sug: 'Fix', agent: 'pipe' },
-    'MSN-1002': { sug: 'Tune', agent: 'det' }, 'MSN-1004': { sug: 'Fix', agent: 'det' }, 'MSN-0999': { sug: 'Fix', agent: 'pipe' },
-    'MSN-1006': { sug: 'Adopt', agent: 'det' }, 'MSN-1014': { sug: 'Connect', agent: 'pipe' }, 'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
+    'MSN-1001': { sug: 'Fix', agent: 'det' }, 'MSN-1003': { sug: 'Fix', agent: 'det' },
+    'MSN-1002': { sug: 'Tune', agent: 'det' }, 'MSN-1004': { sug: 'Fix', agent: 'det' },
+    'MSN-1006': { sug: 'Connect', agent: 'det' }, 'MSN-1005': { sug: 'Drop', agent: 'det' }, 'MSN-1007': { sug: 'Drop', agent: 'det' }, 'MSN-1008': { sug: 'Adopt', agent: 'det' },
     'MSN-0998': { sug: 'Tune', agent: 'det' }, 'MSN-0996': { sug: 'Watch', agent: 'det' }, 'MSN-0994': { sug: 'Tune', agent: 'det' },
-    'MSN-0991': { sug: 'Keep', agent: 'pipe' }, 'MSN-0988': { sug: 'Hand over', agent: 'det' }
+    'MSN-0991': { sug: 'Keep', agent: 'det' }, 'MSN-0988': { sug: 'Hand over', agent: 'det' }
   };
   tasks.forEach(t => Object.assign(t, TEAM[t.id]));
 
   /* ---------- Missions that arrive while the screen is open ---------- */
   const incoming = [
     { id: 'MSN-1009', card: 'broken', title: 'Check Point: 5 of 14 verdicts never reach the rule', verdict: 'Mismatch', sug: 'Fix', agent: 'det', conf: 'High', impact: 'Medium', layer: 'parsing', progressNote: 'Comparing the product with XSIAM',
+      teamFix: 'data platform team', teamAuto: true, teamCheck: 'Compare the product with XSIAM again', teamThen: 'When the team applies it, the Detection Engineer compares again and closes the mission if all verdicts arrive',
       trigger: { kind: 'change', text: 'The Check Point Threat Emulation pack was updated 20 minutes ago.' },
-      summary: 'After a pack update the product reports 14 verdicts and XSIAM shows 9. The rule is valid and fired on all 9, so 5 events are lost before the rule.',
-      steps: ['Compared the product with XSIAM after the update: the product reports 14 verdicts, XSIAM shows 9', 'Checked the rule: valid, and it fired on all 9', 'Checked the source: connected, events arrive', 'The 5 missing events are lost before the rule, so opened MSN-1013 for the Pipeline Engineer'],
-      diagnosis: 'The product and XSIAM disagree. The rule is fine. Events are lost between the source and the rule.',
-      validation: null, decision: null,
-      after: 'Closed automatically. After MSN-1013 was approved, the product and XSIAM were compared again: 14 of 14 verdicts match.',
-      affects: { rules: [235], source: 'checkpoint' }, pivots: [['rules', 'Correlation Rules', 'the rule']],
-      spawn: { id: 'MSN-1013', card: 'pipeline', title: 'Check Point parsing rule drops a new event type', verdict: 'Broken', sug: 'Fix', agent: 'pipe', conf: 'High', impact: 'Medium', layer: 'parsing', status: 'pending', unblocks: 'MSN-1009',
-        trigger: { kind: 'handoff', from: 'det', text: 'Asked in MSN-1009: where are 5 of 14 Check Point verdicts lost?' },
-        summary: 'The pack update added the event type “archive verdict”. The user-defined parsing rule drops every event type it does not know.',
-        steps: ['Counted events before and after each step: 14 arrive, 9 leave the parsing step', 'Read the 5 dropped events: all have the new event type “archive verdict”', 'Read the parsing rule: no_hit=drop removes what it does not know', 'Replayed the last 24 hours through the changed rule'],
-        diagnosis: 'The parsing rule drops an event type that the pack update added.',
-        current: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=drop]', 'del']] },
-        recommended: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=keep]', 'add']] },
-        validation: { rows: [['Verdicts reaching the rule (24 hours)', 9, 14, 14]], note: 'Replayed the last 24 hours through the changed rule.' },
-        decision: { q: 'Approve the parsing change?', approve: 'Approve fix', effect: 'Event types the parsing rule does not know are kept. MSN-1009 then continues on its own.', risk: 'Low. It adds a small number of events.', reversible: true },
-        affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['streams', 'Data Streams', 'the parsing step']] } },
+      summary: 'After a pack update the product reports 14 verdicts and XSIAM shows 9. The rule is valid and fired on all 9. The 5 others are dropped by the parsing rule, because the update added an event type it does not know.',
+      steps: ['Compared the product with XSIAM after the update: the product reports 14 verdicts, XSIAM shows 9', 'Checked the rule: valid, and it fired on all 9', 'Counted events before and after each step: 14 arrive, 9 leave the parsing step', 'Read the 5 dropped events: all have the new event type “archive verdict”', 'Read the parsing rule: no_hit=drop removes what it does not know. The parsing rule belongs to the data platform team', 'Replayed the last 24 hours through a changed rule: all 14 verdicts reach the rule'],
+      diagnosis: 'The product and XSIAM disagree. The rule is fine. The parsing rule drops an event type that the pack update added.',
+      current: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=drop]', 'del']] },
+      recommended: { kind: 'code', label: 'Parsing rule · check_point_threat_emulation', lines: [['[INGEST:vendor="Check Point", product="Threat Emulation",'], [' target_dataset="check_point_threat_emulation_raw", no_hit=keep]', 'add']] },
+      validation: { rows: [['Verdicts reaching the rule (24 hours)', 9, 14, 14]], note: 'Replayed the last 24 hours through the changed parsing rule.' },
+      decision: { q: 'Send the parsing fix to the data platform team?', approve: 'Send the fix', effect: 'The Detection Engineer sends the data platform team the changed parsing rule and the replay. It does not change the parsing rule itself.', risk: 'Low. It adds a small number of events.', reversible: true },
+      after: 'Closed automatically. The data platform team applied the parsing fix. The product and XSIAM were compared again: 14 of 14 verdicts match.',
+      affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['rules', 'Correlation Rules', 'the rule'], ['streams', 'Data Streams', 'the parsing step']] },
     { id: 'MSN-1010', card: 'noisy', title: 'SharePoint mass-download rule fires on the nightly backup account', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Low', layer: 'rule', noise: 'Benign true positive', progressNote: 'Detection Engineer is diagnosing',
       trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 22 cases from this rule as benign in 7 days. All came from one service account.' },
       summary: 'The backup service account downloads thousands of files every night. The rule is correct for people and wrong for this account.',
@@ -437,17 +409,17 @@ function myWorld() {
 
   /* ---------- Agent activity, newest first ---------- */
   const log = [
-    [now - 6 * 60000, 'sweep', `Hourly data-health sweep: ${sources.flatMap(x => x.instances).length} instances checked, ${sources.flatMap(x => x.instances).filter(i => i.status === 'err').length} in error`],
+    [now - 6 * 60000, 'sweep', `Hourly data check for detections: ${sources.flatMap(x => x.instances).length} instances checked, ${sources.flatMap(x => x.instances).filter(i => i.status === 'err').length} in error`],
     [now - 41 * 60000, 'check', 'Compared Check Point verdicts with XSIAM: 14 of 14 match'],
     [now - 45 * H, 'task', 'Opened MSN-1003: AWS audit logs stopped'],
     [now - 5 * H, 'sweep', 'Change event: the SentinelOne pack was updated and 3 rules went silent'],
     [now - 5 * H + 9 * 60000, 'task', 'Opened MSN-1001: 3 SentinelOne rules went silent'],
-    [now - 5 * H + 12 * 60000, 'task', 'Opened MSN-1012 for the Pipeline Engineer: MSN-1001 waits on it'],
-    [now - 20 * H, 'done', 'Ariel B approved MSN-0999: the firewall filter keeps internal deny events'],
+    [now - 5 * H + 12 * 60000, 'step', 'MSN-1001: the cause is in the SentinelOne data model. A fix for the data platform team is ready'],
+    [now - 20 * H, 'handoff', 'MSN-1004: the data platform team applied the narrower firewall filter. Internal deny events are kept'],
     [now - 20 * H + 60000, 'test', 'MSN-1004 continued: 7-day silent test started on the port-scan rule'],
     [now - 9 * H, 'test', 'Silent test finished for the Chrome extension rule: 14 days'],
     [now - 9 * H + 60000, 'task', 'Opened MSN-1002 with the test result'],
-    [now - 30 * H + 15 * 60000, 'task', 'Opened MSN-1014 for the Pipeline Engineer: MSN-1006 waits on it'],
+    [now - 30 * H + 15 * 60000, 'step', 'MSN-1006: impossible travel needs the Okta integration. A request for the identity team is ready'],
     [now - 26 * H, 'sweep', `Weekly sweep: ${rules.length} rules reviewed, 2 candidates`],
     [now - 30 * H, 'done', 'Ariel B. approved MSN-0994: ATT&CK mapping on 2 rules']
   ].map(([t, kind, text]) => ({ t, kind, text }));
@@ -463,7 +435,7 @@ const myOpen = W => W.tasks.filter(t => t.status !== 'done');
 const myRank = (a, b) => ({ High: 0, Medium: 1, Low: 2 })[a.impact] - ({ High: 0, Medium: 1, Low: 2 })[b.impact] || a.opened - b.opened;
 /* Decisions that wait for a person. A mission that waits on another mission is pending too, but not on a person. */
 const myPendingTasks = W => W.tasks.filter(t => (t.status === 'pending' && !t.waitOn) || t.status === 'blocked').sort(myRank);
-const myWaiting = W => W.tasks.filter(t => t.status === 'pending' && t.waitOn);
+const myWaiting = W => W.tasks.filter(t => (t.status === 'pending' && t.waitOn) || (t.status === 'progress' && t.handed));
 /* v is the health of the rule. sug is what the agent suggests, which is what the user sees. */
 function myRuleReview(W, r) {
   if (r.retired) return { v: 'Retired', sug: '', conf: '', task: W.tasks.find(t => (t.affects.rules || []).includes(r.id) && t.card === 'retire') };
@@ -551,24 +523,20 @@ function myApply(W, t, choice, whoName, reason) {
     (t.history = t.history || []).push({ t: now, kind: 'decision', by: who, tone: 'rose', text: 'approved.', more: 'Partly applied: rules 216 and 218 retired. Rule 222 changed after the approval, so that change was refused.' });
     return; }
   const edited = choice === 'edit', end = edited ? 'edited' : 'approved', verb = edited ? 'Approved with edits' : 'Approved';
-  if (t.id === 'MSN-1012') {
-    W.pipes.find(p => p.id === 'p-s1').model.ok = true;
-    close(end, `${verb} by ${who}. The data model reads the renamed field. The Pipeline Engineer watches for 7 days and reopens the mission if the field goes empty again.`);
-  } else if (t.id === 'MSN-1002') {
+  /* The cause belongs to another team: the fix is sent, not applied. The mission waits for the team. */
+  if (t.teamFix) {
+    t.status = 'progress'; t.by = who; t.progressNote = `Waiting for the ${t.teamFix}`; t.decision = null; t.handed = true;
+    (t.history = t.history || []).push({ t: now, kind: 'decision', by: who, tone: 'cx', text: `${edited ? 'approved an edited version' : 'approved'}. Sent to the ${t.teamFix}.` });
+    W.log.unshift({ t: now, kind: 'handoff', text: `${t.id}: fix sent to the ${t.teamFix}` });
+    return;
+  }
+  if (t.id === 'MSN-1002') {
     const r = rule(224); r.supp = { dur: '24 hours', fields: 'user, extension ID' }; r.issues7d = 23; t.weekly = 267;
     W.facts.push({ text: '9 browser extensions approved by IT', review: W.dates.reviewDay, by: who });
     close(end, `${verb} by ${who}. Suppression is on. In the backtest this removes 1,150 of 1,250 issues a month and keeps every issue on an unapproved extension.`);
-  } else if (t.id === 'MSN-1003') {
-    t.status = 'progress'; t.by = who; t.progressNote = 'Waiting for the cloud team'; t.decision = null; t.handed = true;
-    W.log.unshift({ t: now, kind: 'handoff', text: 'MSN-1003 handed to the cloud team: replace the expired access key' });
-    return;
   } else if (t.id === 'MSN-1005') {
     rule(222).status = 'Disabled'; rule(222).retired = true; rule(222).issues7d = 0; rule(216).retired = true; rule(218).retired = true; t.weekly = 61;
     close(end, `${verb} by ${who}. Rule 222 is disabled and rules 216 and 218 are retired. All three can be restored.`);
-  } else if (t.id === 'MSN-1014') {
-    t.status = 'progress'; t.by = who; t.progressNote = 'Waiting for the identity team'; t.decision = null; t.handed = true;
-    W.log.unshift({ t: now, kind: 'handoff', text: 'MSN-1014: request sent to the identity team to connect Okta' });
-    return;
   }
   else if (t.id === 'MSN-1007') {
     const i = W.iocs.find(x => x.id === 1); i.status = 'Disabled'; i.exp = 'Expired'; i.issues7d = 0; t.weekly = 290;
@@ -576,9 +544,6 @@ function myApply(W, t, choice, whoName, reason) {
   } else if (t.id === 'MSN-1008') {
     const r = W.suggested.find(x => x.id === 241); if (r) { W.suggested = W.suggested.filter(x => x !== r); r.task = null; if (edited) r.xql = t.recommended.lines.map(l => l[0]).join('\n'); W.rules.unshift(r); t.affects.rules = [241]; }
     close(end, `${verb} by ${who}. The rule is enabled in Correlation Rules, with the Detection Engineer as its source.`);
-  } else if (t.id === 'MSN-1013') {
-    const p = W.pipes.find(x => x.id === 'p-cp'); p.parsing.text = p.parsing.text.replace('no_hit=drop', 'no_hit=keep');
-    close(end, `${verb} by ${who}. The parsing rule keeps unknown event types. All Check Point verdicts reach the rule.`);
   } else if (t.id === 'MSN-1010') {
     rule(237).issues7d = 3; t.weekly = 22; W.facts.push({ text: 'svc-backup is the nightly backup account', review: W.dates.reviewDay, by: who });
     close(end, `${verb} by ${who}. The environment fact is saved. It removes 22 issues a week and keeps alerts on every other account.`);
@@ -605,6 +570,15 @@ function myUnblock(W, p) {
     W.log.unshift({ t: Date.now(), kind: 'step', text: `${d.id}: continued after ${p.id} was approved` }); }
   else { d.status = 'done'; d.end = 'rejected'; d.declined = p.declined; d.closed = Date.now(); d.outcome = `Closed with nothing changed. The fix in ${p.id} was declined, so the detection stays as it is. The suggestion stays visible on the affected rules.`; }
 }
+/* The other team applied the fix. The Detection Engineer checks that the detection works again, then closes the mission. */
+function myTeamApplied(W, t) {
+  if (!t || !t.handed || t.status !== 'progress') return;
+  if (t.id === 'MSN-1001') W.pipes.find(p => p.id === 'p-s1').model.ok = true;
+  if (t.id === 'MSN-1009') { const p = W.pipes.find(x => x.id === 'p-cp'); p.parsing.text = p.parsing.text.replace('no_hit=drop', 'no_hit=keep'); }
+  const now = Date.now(); t.handed = false; t.teamDone = now; t.resume = true; t.progressNote = `The ${t.teamFix} applied the fix · ${t.teamCheck.charAt(0).toLowerCase() + t.teamCheck.slice(1)}`;
+  (t.history = t.history || []).push({ t: now, kind: 'team', text: `The ${t.teamFix} applied the fix. The Detection Engineer is checking the detection.` });
+  W.log.unshift({ t: now, kind: 'step', text: `${t.id}: the ${t.teamFix} applied the fix. Checking the detection` });
+}
 /* The check after an unblock is done: the mission closes itself. */
 function myResolve(W, d) {
   if (!d || d.status !== 'progress' || !d.resume) return;
@@ -618,7 +592,7 @@ function myReconnect(W, instId, whoName) {
   inst.status = 'ok'; inst.last = Date.now(); inst.count = 18400; inst.note = '';
   const t = W.tasks.find(x => x.status !== 'done' && x.affects.instance === instId);
   if (t) { t.status = 'done'; t.end = 'auto'; t.autoWhy = 'outside'; t.closed = Date.now(); t.by = who; t.decision = null;
-    t.outcome = `Closed automatically. ${who} replaced the access key in Data Sources, events are arriving again, and the Pipeline Engineer is backfilling 46 hours from the queue.`;
+    t.outcome = `Closed automatically. ${who} replaced the access key in Data Sources, events are arriving again, and XSIAM is backfilling 46 hours from the queue. The two rules run on the backfilled events.`;
     W.rules.filter(r => t.affects.rules.includes(r.id)).forEach(r => { r.backfill = true; });
     W.log.unshift({ t: Date.now(), kind: 'done', text: `${t.id} closed automatically: data is arriving again` }); }
   return t;
@@ -636,10 +610,6 @@ function myArrive(W, n) {
 function myReady(W, t) {
   if (!t || t.status !== 'progress' || !t.live) return;
   t.live = false; t.fresh = Date.now(); t.progressNote = '';
-  /* The cause is in the pipeline: a mission is opened for the Pipeline Engineer and this one waits on it. */
-  if (t.spawn) { const p = t.spawn; t.spawn = null; p.opened = Date.now(); p.fresh = Date.now(); W.tasks.unshift(p); t.status = 'pending'; t.waitOn = p.id;
-    W.log.unshift({ t: Date.now(), kind: 'task', text: `Opened ${p.id} for the Pipeline Engineer: ${t.id} waits on it` });
-    W.log.unshift({ t: Date.now(), kind: 'task', text: `${p.id} needs you: a decision is ready` }); return p; }
   if (!t.decision) return;
   t.status = 'pending';
   W.log.unshift({ t: Date.now(), kind: 'task', text: `${t.id} needs you: a decision is ready` });
@@ -653,9 +623,8 @@ function myReady(W, t) {
    the same for every expert, and a detection engineering part.
    ====================================================================== */
 const MY_JOBS = {
-  health: { name: 'Hourly data-health sweep', agent: 'pipe', ver: 4, when: 'Every hour', budget: '5 minutes' },
+  health: { name: 'Data check for detections', agent: 'det', ver: 4, when: 'Every hour', budget: '5 minutes' },
   change: { name: 'Change check', agent: 'det', ver: 2, when: 'On every pack, parser or rule change', budget: '20 minutes' },
-  pipefix: { name: 'Pipeline diagnosis', agent: 'pipe', ver: 3, when: 'When another agent asks', budget: '30 minutes' },
   noise: { name: 'Noise review', agent: 'det', ver: 5, when: 'Daily, and on Investigation Agent handoffs', budget: '40 minutes' },
   rules: { name: 'Rule-health sweep', agent: 'det', ver: 3, when: 'Daily', budget: '30 minutes' },
   hygiene: { name: 'Weekly rule hygiene', agent: 'det', ver: 2, when: 'Weekly', budget: '30 minutes' },
@@ -667,24 +636,20 @@ const MY_JOBS = {
 };
 /* What each mission is for, what it looked at, and what it cost. */
 const MY_SPEC = {
-  'MSN-1001': ['change', 'Find out why three SentinelOne rules stopped firing after the pack update.', '3 rules, their dataset and the 6 fields they read', [14, 41, 70]],
-  'MSN-1012': ['pipefix', 'Find why xdm.event.type arrives empty on SentinelOne events, and fix it.', 'The SentinelOne data model rule and 2 days of raw events', [18, 36, 60]],
-  'MSN-1003': ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 in error', [3, 12, 60]],
+  'MSN-1001': ['change', 'Find out why three SentinelOne rules stopped firing after the pack update, and write the fix.', '3 rules, the 6 fields they read, the data model rule and 2 days of raw events', [32, 77, 92]],
+  'MSN-1003': ['health', 'Check that the data every enabled rule reads is arriving.', '103 instances · 1 in error', [3, 12, 60]],
   'MSN-1002': ['noise', 'Reduce the noise from the Chrome extension rule without losing real detections.', '1,250 issues in 30 days and 140 case verdicts', [22, 58, 55]],
-  'MSN-1004': ['rules', 'Check that every enabled rule can fire.', '152 enabled rules · 1 cannot fire', [11, 64, 37]],
-  'MSN-0999': ['pipefix', 'Find what drops the deny events the port-scan rule needs.', 'FortiGate pipeline: 1 filter, 1 parsing rule, 1 data model', [9, 21, 30]],
-  'MSN-1006': ['coverage', 'Answer whether impossible-travel logins can be detected, and what is missing.', 'Ingested sources, Palo Alto Analytics and the Marketplace', [7, 19, 12]],
-  'MSN-1014': ['pipefix', 'Find whether identity sign-in data exists for an impossible-travel rule.', 'Okta, Entra ID and Active Directory sources', [4, 11, 13]],
+  'MSN-1004': ['rules', 'Check that every enabled rule can fire.', '152 enabled rules · 1 cannot fire · the FortiGate filter step', [20, 85, 67]],
+  'MSN-1006': ['coverage', 'Answer whether impossible-travel logins can be detected, and what is missing.', 'Okta, Entra ID and Active Directory sources, Palo Alto Analytics and the Marketplace', [11, 30, 25]],
   'MSN-1005': ['hygiene', 'Find rules that duplicate others or no longer run.', '152 rules, 90 days of issues', [16, 47, 53]],
   'MSN-1007': ['noise', 'Reduce the noise from indicator 1 without losing real matches.', '290 issues in 7 days, and its reputation today', [6, 14, 15]],
   'MSN-1008': ['coverage', 'Cover what the Threat Hunter found: Office launching a script host.', '41 SentinelOne rules, Analytics and the Marketplace', [26, 73, 43]],
   'MSN-0998': ['noise', 'Reduce the noise from the VPN brute-force rule.', '61 cases and 266 issues', [19, 52, 48]],
   'MSN-0996': ['rules', 'Check the rules edited in the last week.', '4 edited rules', [5, 9, 17]],
   'MSN-0994': ['coverage', 'Find enabled rules with no ATT&CK mapping.', '152 enabled rules', [4, 6, 7]],
-  'MSN-0991': ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 delayed', [3, 12, 60]],
+  'MSN-0991': ['health', 'Check that the data every enabled rule reads is arriving.', '103 instances · 1 delayed', [3, 12, 60]],
   'MSN-0988': ['content', 'Send repeated noise in a Palo Alto analytic to the content team.', '1 analytic and 412 issues', [8, 17, 40]],
-  'MSN-1009': ['source', 'Compare the Check Point verdicts with what XSIAM receives.', '14 product verdicts, 9 of them in XSIAM', [12, 30, 40]],
-  'MSN-1013': ['pipefix', 'Find where the Check Point verdicts are lost.', 'The Check Point parsing rule and 20 minutes of events', [8, 17, 27]],
+  'MSN-1009': ['source', 'Compare the Check Point verdicts with what XSIAM receives, and find where the rest are lost.', '14 product verdicts, the parsing rule and 20 minutes of events', [20, 47, 67]],
   'MSN-1010': ['noise', 'Reduce the noise from the SharePoint mass-download rule.', '22 cases from one service account', [10, 24, 25]],
   'MSN-1011': ['ioc', 'Find indicators that never matched or never expire.', '6 indicators', [3, 7, 20]],
   'MSN-1015': ['noise', 'Find rules whose issues mostly end with no action, and suggest the smallest fix.', '64 rules with issues this week · 1 skipped, handled in MSN-1002', [24, 81, 60]],
@@ -766,23 +731,22 @@ function myEnrich(W, k) {
     [27, 'noise', 'det', 'Noise review', 'Find rules whose issues mostly end with no action, and suggest the smallest fix.', '64 rules with issues this week · 1 skipped, handled in MSN-1002', ['rule 224', 'MSN-1002'], ['Listed the 64 rules that created issues this week', 'Skipped rule 224: MSN-1002 already handles its noise', 'No other rule crossed the threshold'], 'No new noisy rule, beyond the one MSN-1002 already handles.'],
     [74, 'coverage', 'det', 'Coverage review', 'Find log sources with no working detection.', '62 sources and the techniques they can show', null, ['Listed the sources added this week: none', 'Checked the priority techniques: no new gap with data'], 'No new source and no new gap this week.'],
     [52, 'ioc', 'det', 'Indicator review', 'Find indicators that never matched or never expire.', '6 indicators · 2 skipped, handled in MSN-1011', null, ['Checked 6 indicators', 'Nothing new beyond what is already open'], 'Nothing new.'],
-    [1, 'health', 'pipe', 'Hourly data-health sweep', 'Check every data source instance for errors and delays.', '103 instances · 1 skipped, handled in MSN-1003', ['Cloud audit logs · production', 'MSN-1003'], ['Checked 103 instances: 102 sent events in the last hour', 'Skipped “Cloud audit logs · production”: MSN-1003 already handles it', 'Nothing new found'], 'Every instance sent events in the last hour, except one that MSN-1003 already handles.']
+    [1, 'health', 'det', 'Data check for detections', 'Check that the data every enabled rule reads is arriving.', '103 instances · 1 skipped, handled in MSN-1003', ['Cloud audit logs · production', 'MSN-1003'], ['Checked 103 instances: 102 sent events in the last hour', 'Skipped “Cloud audit logs · production”: MSN-1003 already handles it', 'Nothing new found'], 'Every instance sent events in the last hour, except one that MSN-1003 already handles.']
   ].sort((a, b) => b[0] - a[0]);
   NF.forEach(([h, job, agent, name, obj, cov, skip, steps, summary], n) => {
     const at = now - h * H - 7 * 60000, id = 'MSN-' + (1101 + n), hh = new Date(at).toTimeString().slice(0, 5);
     MY_SPEC[id] = [job, obj, cov, [Math.max(2, steps.length * 3), steps.length * 7, 10 + steps.length * 6]];
-    W.tasks.push({ id, card: 'check', title: /sweep|review/i.test(name) ? `${name} · ${myDay(at)}, ${hh}` : name, verdict: 'Healthy', sug: 'Nothing found', agent, conf: 'High', impact: 'Low', layer: agent === 'pipe' ? 'source' : 'rule', status: 'done', end: 'nothing', opened: at, closed: at + 4 * 60000, nothing: true,
+    W.tasks.push({ id, card: 'check', title: /sweep|review|check for/i.test(name) ? `${name} · ${myDay(at)}, ${hh}` : name, verdict: 'Healthy', sug: 'Nothing found', agent, conf: 'High', impact: 'Low', layer: job === 'health' ? 'source' : 'rule', status: 'done', end: 'nothing', opened: at, closed: at + 4 * 60000, nothing: true,
       trigger: { kind: job === 'change' ? 'change' : 'sweep', text: job === 'change' ? name.split(' · ')[1] + '.' : `${MY_JOBS[job].name}, ${hh}.` },
       summary, steps, diagnosis: 'Nothing new.', skips: skip ? [skip] : null, validation: null, decision: null,
       outcome: 'Nothing found. Nothing needs you.', affects: {} });
   });
-  W.log.forEach(l => { if (/^Hourly data-health sweep/.test(l.text)) l.text = 'MSN-1109: ' + l.text; });
-  const all = W.tasks.concat(W.incoming), spawn = W.incoming.map(t => t.spawn).filter(Boolean);
-  all.concat(spawn).forEach(t => myShape(W, t));
+  W.log.forEach(l => { if (/^Hourly data check/.test(l.text)) l.text = 'MSN-1109: ' + l.text; });
+  W.tasks.concat(W.incoming).forEach(t => myShape(W, t));
 }
 /* The shared part of every mission: job, objective, coverage, cost and result. */
 function myShape(W, t) {
-  const sp = MY_SPEC[t.id] || (t.nothing ? ['health', 'Check every data source instance for errors and delays.', '103 instances · 1 skipped, handled in MSN-1003', [3, 12, 60]] : ['review', t.title, '', [5, 10, 20]]);
+  const sp = MY_SPEC[t.id] || (t.nothing ? ['health', 'Check that the data every enabled rule reads is arriving.', '103 instances · 1 skipped, handled in MSN-1003', [3, 12, 60]] : ['review', t.title, '', [5, 10, 20]]);
   const j = MY_JOBS[sp[0]];
   Object.assign(t, { job: sp[0], jobVer: j.ver, objective: sp[1], coverage: sp[2], cost: { min: sp[3][0], queries: sp[3][1], pct: sp[3][2] } });
   t.resultClass = t.sug === 'Keep' || t.sug === 'Nothing found' ? 'nothing' : t.sug === 'Watch' ? 'inconclusive' : 'action';
