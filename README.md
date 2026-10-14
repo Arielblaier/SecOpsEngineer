@@ -217,7 +217,7 @@ missions, pending changes and decisions.
 **In a mission.** Steering belongs to the mission, not to the chat. The
 mission card holds "Steering and activity": every decision, confirmed
 steering line, handoff and the team applying a fix, shared with everyone in
-the mission. The chat in the middle is only your conversation with the owner
+the mission. The chat on the right is only your conversation with the owner
 (no agent selector, no tags). The owner says how it treats each ask (question,
 change, stop, outside the mission); a change is written to the mission's
 steering only after you confirm it. Help from another agent shows as a
@@ -227,21 +227,44 @@ breadcrumb in the activity.
 with approval (no mission). A request that starts a job runs as a mission,
 with its card anchored in the chat. "Review this rule now" starts a job too.
 
+**Missions screen (product approval, Oct 15).** The app opens on Missions,
+the detection engineer's home. The table has Run state and Needs you as two
+columns (a finished run can still need a decision), then AI suggestion,
+Mission, Confidence, Priority, Source, Age and Root cause. Filters for type
+(job) and source sit next to the search; sort by impact (default), newest or
+oldest. "Nothing found" runs end under Done.
+
 **Panel.** Two sizes, switched by one button or `F`.
-- Side panel: one column next to the screen (short card with the latest
-  steering line, then your conversation, Approve and Decline fixed at the bottom). Drag its
-  left edge from 30% to 70% of the screen. From 560 pixels it shows the full
-  mission card. The screen behind stays usable.
-- Full screen: the history on the left (Needs you, then Recent missions and
-  chats; it hides with its own button), the conversation, and the mission.
-  Drag the divider between the conversation and the mission (30% to 72%).
+- Side panel: one column next to the screen, the mission and the chat
+  stacked, Approve and Decline fixed at the bottom. Drag its left edge from
+  30% to 70%; drag past 78% and release for the full view.
+- Full view: replaces the table. The missions list on the left (same tabs as
+  the table; it hides with its own button), the mission in the middle, the
+  chat with the owner on the right. The agent is locked to the owner.
+  - Drag the mission/chat divider left: the chat takes up to 90%, and the
+    mission folds to a strip that only opens it back. The decision moves under
+    the chat.
+  - Drag the missions/AgentiX divider right: release under 78% and the
+    Missions table comes back, with AgentiX as a side panel (from 30%).
+
+**Mission card.** Header (job, ID, title, suggestion, confidence, result,
+priority, summary); the pipeline strip with one mark per problem and the
+diagnosis; the decision with the change next to what exists now (side by side
+when the mission column is 42% or wider; XQL as code, settings as fields, a
+new rule as code next to the coverage it fills); then the analysis folded (how
+it got there, objects, cost, feedback) and the activity. "View the full …"
+opens the object as its form (General, XQL Search, Issue Suppression, Action;
+an environment fact as AgentiX memory), with the changed fields marked. Apply
+writes it to the native table: Correlation Rules and IOC Rules show Modified
+by (approver · via Detection Engineer · mission ID). A running or waiting
+mission shows Now, Progress, Waiting on and Back to you.
 
 **Artifacts.** A result in a chat worth seeing in full (a table, a mission
 started from the chat) shows as a card in the chat. In full screen it opens
 on the right, next to the chat. From the side panel there is no room, so
 opening one switches to full screen with the artifact on the right.
 
-**Demo flows.** A movable card (demo chrome, not product) runs 12 flows. Each
+**Demo flows.** A movable card (demo chrome, not product) runs 13 flows. Each
 stresses one point: it says what to do and what to notice, ticks a step when
 you do it, and "Show me" does it for you. `?flow=3` opens flow 3. The demo
 menu reopens the card.

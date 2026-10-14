@@ -26,7 +26,7 @@ function mRules() {
       <td class="px-3 py-3 text-right font-mono text-ink4">—</td>
       <td class="px-3 py-3 whitespace-nowrap">Off</td>
       <td class="px-3 py-3 whitespace-nowrap">${tag(r.tactic)}</td><td class="px-3 py-3 whitespace-nowrap">${tag(r.tech)}</td>
-      <td class="px-3 py-3 whitespace-nowrap max-w-[190px]">${mSourceCell(r.source)}</td></tr>`; }).join('');
+      <td class="px-3 py-3 whitespace-nowrap max-w-[190px]">${mSourceCell(r.source)}</td><td class="px-3 py-3 text-ink4">—</td></tr>`; }).join('');
   const rows = list.map(({ r, rv }) => { const f = mPivotFocus('rule', r.id), off = r.status === 'Disabled', sel = (M.panelObj && M.panelObj.kind === 'rule' && M.panelObj.id === r.id) || (M.panelTask && rv.task && rv.task.id === M.panelTask && rv.sug !== 'Keep');
     return `<tr ${f ? 'data-focus="1"' : ''} data-rule="${r.id}" onclick="mOpenRule(${r.id})" class="border-t border-line cursor-pointer hover:bg-hov ${f ? 'm-focus' : ''} ${sel ? 'm-sel' : ''} ${off ? 'text-ink4' : 'text-ink2'}">
       <td class="px-3 py-3 font-mono text-[12.5px] whitespace-nowrap">${r.type}</td>
@@ -38,7 +38,8 @@ function mRules() {
       <td class="px-3 py-3 text-right font-mono">${r.issues7d.toLocaleString()}</td>
       <td class="px-3 py-3 whitespace-nowrap">${r.supp ? `<span class="c-cx">On</span> · ${esc(r.supp.dur)}` : 'Off'}</td>
       <td class="px-3 py-3 whitespace-nowrap">${tag(r.tactic)}</td><td class="px-3 py-3 whitespace-nowrap">${tag(r.tech)}</td>
-      <td class="px-3 py-3 whitespace-nowrap max-w-[190px]">${mSourceCell(r.source)}</td></tr>`; }).join('');
+      <td class="px-3 py-3 whitespace-nowrap max-w-[190px]">${mSourceCell(r.source)}</td>
+      <td data-modby="${r.id}" class="px-3 py-3 text-[12.5px]">${mModCell(r.modBy)}</td></tr>`; }).join('');
 
   $('mv-rules').innerHTML = `<div class="px-5 sm:px-8 pt-5 pb-4 flex items-start justify-between gap-3 flex-wrap shrink-0">
       <div><div class="text-[13px] text-ink3">Detection Rules <span class="mx-1.5">›</span> <span class="text-ink2">Correlations</span></div><h1 class="text-[30px] text-ink leading-tight mt-1.5">Correlation Rules</h1></div>
@@ -48,8 +49,8 @@ function mRules() {
         <div class="flex items-center gap-3 text-[14.5px] text-ink2">${ic('filter', 'w-4 h-4')}<span>${list.length} results</span>${ic('refresh-cw', 'w-4 h-4 text-ink3')}
           <button onclick="M.onlyOpen=!M.onlyOpen;mRender()" class="ml-2 px-3 py-1 rounded-full border text-[12.5px] inline-flex items-center gap-1.5 ${M.onlyOpen ? 'border-amber-500/60 bg-amber-500/10 c-amber font-semibold' : 'border-line2 text-ink2 hover:text-ink'}"><span class="c-indigo">${ic('sparkles', 'w-3 h-3')}</span>${withTask} with an open AI suggestion</button></div>
         <div class="flex items-center gap-4 text-[14.5px] text-ink2"><span class="inline-flex items-center gap-1.5">${ic('columns-3', 'w-4 h-4')}Display</span>${ic('download', 'w-4 h-4')}</div></div>
-      <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1440px] text-[14px] border-collapse">
-        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule Type')}${th('Last execution')}${th('Name')}${th(mSugHead())}${th('Confidence')}${th('Status')}${th('# of issues (7d)', 'text-right')}${th('Suppression')}${th('Mitre ATT&CK Tactic')}${th('Mitre ATT&CK Technique')}${th('Source')}</tr></thead>
+      <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1640px] text-[14px] border-collapse">
+        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule Type')}${th('Last execution')}${th('Name')}${th(mSugHead())}${th('Confidence')}${th('Status')}${th('# of issues (7d)', 'text-right')}${th('Suppression')}${th('Mitre ATT&CK Tactic')}${th('Mitre ATT&CK Technique')}${th('Source')}${th('Modified by')}</tr></thead>
         <tbody>${sugRows}${rows}</tbody></table></div>
       <div class="px-5 py-2.5 border-t border-line text-[13px] text-ink3 shrink-0">Showing ${list.length} of ${W.rules.filter(r => !r.deleted).length}${W.suggested.length ? ` · ${W.suggested.length} suggested` : ''}</div>
     </div>`;
@@ -61,7 +62,7 @@ function mRuleBody(r) {
   const box = (title, body) => `<section class="rounded-2xl border border-line p-4"><h3 class="text-[11px] font-black tracking-[.14em] text-ink3 uppercase mb-2.5">${title}</h3>${body}</section>`;
   const kv = (k, v) => `<div class="flex gap-3 text-[13.5px] py-1"><span class="w-40 shrink-0 text-ink3">${k}</span><span class="text-ink min-w-0">${v}</span></div>`;
   return `${box('XQL search', `<pre class="rounded-xl bg-code p-3 text-[12.5px] leading-[1.7] font-mono text-ink2 overflow-x-auto">${esc(r.xql)}</pre>${src ? `<div class="text-[12px] text-ink3 mt-2">Reads data from ${esc(src.name)} through the ${esc(pipe.product)} pipeline.</div>` : ''}`)}
-    ${box('General', kv('Description', esc(r.desc) || '<span class="text-ink4">None</span>') + kv('Status', r.retired ? 'Retired' : r.status) + kv('Type', r.type === 'SCHEDULED' ? 'Scheduled' : 'Real Time') + kv('Source', mSourceCell(r.source)) + kv('Modification Time', r.mod) + kv('Issue suppression', r.supp ? `<span class="c-cx font-semibold">On</span> · ${esc(r.supp.dur)} · ${esc(r.supp.fields)}` : 'Off') + kv('MITRE ATT&CK', r.tactic ? `${esc(r.tactic)} · ${esc(r.tech)}` : '<span class="text-ink4">Not mapped</span>') + kv('# of issues (7d)', r.issues7d.toLocaleString()))}`;
+    ${box('General', kv('Description', esc(r.desc) || '<span class="text-ink4">None</span>') + kv('Status', r.retired ? 'Retired' : r.status) + kv('Type', r.type === 'SCHEDULED' ? 'Scheduled' : 'Real Time') + kv('Source', mSourceCell(r.source)) + kv('Modification Time', r.mod) + kv('Modified by', mModCell(r.modBy)) + kv('Issue suppression', r.supp ? `<span class="c-cx font-semibold">On</span> · ${esc(r.supp.dur)} · ${esc(r.supp.fields)}` : 'Off') + kv('MITRE ATT&CK', r.tactic ? `${esc(r.tactic)} · ${esc(r.tech)}` : '<span class="text-ink4">Not mapped</span>') + kv('# of issues (7d)', r.issues7d.toLocaleString()))}`;
 }
 /* The human-request trigger, from the screen where the user already works. */
 function mAskReview(id) {

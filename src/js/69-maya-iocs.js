@@ -22,7 +22,8 @@ function mIocs() {
       <td class="px-3 py-3 whitespace-nowrap">${esc(i.exp)}</td>
       <td class="px-3 py-3 whitespace-nowrap">${esc(i.status)}</td>
       <td class="px-3 py-3 whitespace-nowrap">${esc(i.rep)}</td>
-      <td class="px-3 py-3 whitespace-nowrap">${esc(i.rel)}</td></tr>`; }).join('');
+      <td class="px-3 py-3 whitespace-nowrap">${esc(i.rel)}</td>
+      <td data-modby="ioc${i.id}" class="px-3 py-3 text-[12.5px]">${mModCell(i.modBy)}</td></tr>`; }).join('');
   $('mv-iocs').innerHTML = `<div class="px-5 sm:px-8 pt-5 pb-4 flex items-start justify-between gap-3 flex-wrap shrink-0">
       <div><div class="text-[13px] text-ink3">Detection Rules <span class="mx-1.5">›</span> <span class="text-ink2">IOC</span></div><h1 class="text-[30px] text-ink leading-tight mt-1.5">IOC Rules</h1></div>
       <button class="px-4 py-2 rounded-lg bg-cx text-slate-950 text-[14px] font-bold">+ Add IOC</button></div>
@@ -31,8 +32,8 @@ function mIocs() {
         <div class="flex items-center gap-3 text-[14.5px] text-ink2">${ic('filter', 'w-4 h-4')}<span>${list.length} out of ${W.iocs.length} results</span>${ic('refresh-cw', 'w-4 h-4 text-ink3')}
           ${M.iocAll ? `<button onclick="M.iocAll=false;mRender()" class="px-2.5 py-1 rounded-md border border-dashed border-line2 text-[12.5px] text-ink3 hover:text-ink">+ Status = Enabled</button>` : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sunk border border-line text-[12.5px]">Status = Enabled<button onclick="M.iocAll=true;mRender()" class="text-ink3 hover:text-ink" title="Remove the filter">${ic('x', 'w-3 h-3')}</button></span>`}</div>
         <div class="flex items-center gap-4 text-[14.5px] text-ink2"><span class="inline-flex items-center gap-1.5">${ic('columns-3', 'w-4 h-4')}Display</span>${ic('download', 'w-4 h-4')}</div></div>
-      <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1380px] text-[14px] border-collapse">
-        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule ID')}${th('Modification Time')}${th('Indicator')}${th(mSugHead())}${th('Confidence')}${th('Type')}${th('Severity')}${th('# of issues', 'text-right')}${th('Source')}${th('Expiration Date')}${th('Status')}${th('Reputation')}${th('Reliability')}</tr></thead>
+      <div data-scroll class="flex-1 min-h-0 overflow-auto"><table class="w-full min-w-[1580px] text-[14px] border-collapse">
+        <thead class="sticky top-0 z-[2] bg-panel text-ink3 text-[13px]"><tr>${th('Rule ID')}${th('Modification Time')}${th('Indicator')}${th(mSugHead())}${th('Confidence')}${th('Type')}${th('Severity')}${th('# of issues', 'text-right')}${th('Source')}${th('Expiration Date')}${th('Status')}${th('Reputation')}${th('Reliability')}${th('Modified by')}</tr></thead>
         <tbody>${rows}</tbody></table></div>
     </div>`;
 }

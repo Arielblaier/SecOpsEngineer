@@ -19,12 +19,13 @@ function mFold(t, key, title, body, hint = '') {
   return `<div><button onclick="M.more['${k}']=!M.more['${k}'];mPanelRender();icons()" class="inline-flex items-center gap-1.5 text-[13px] font-semibold c-indigo hover:underline">${on ? title.replace(/^Show/, 'Hide') : title}${ic(on ? 'chevron-up' : 'chevron-down', 'w-4 h-4')}</button>${hint && !on ? `<span class="ml-2 text-[12.5px] text-ink3">${hint}</span>` : ''}${on ? `<div class="mt-2.5">${body}</div>` : ''}</div>`;
 }
 
-/* The chain from data source to rule. The step where the problem starts is marked. */
+/* The chain from data source to rule. Each step where a problem starts is marked, with the number of problems on it. */
 function mChain(layer, sug) {
-  const tone = (MY_SUGGEST[sug] || ['slate'])[0];
-  return `<div class="flex items-stretch gap-0.5">${MY_LAYERS.map(([k, n, i], idx) => { const on = k === layer;
-    return `${idx ? `<span class="self-center text-ink4">${ic('chevron-right', 'w-3 h-3')}</span>` : ''}<div class="flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center border ${on ? `tn tn-${tone} m-pulse` : 'border-line bg-sunk text-ink3'}" title="${n}${on ? ': the problem starts here' : ': checked'}">
-      <div class="flex justify-center">${ic(on ? 'triangle-alert' : i, 'w-3.5 h-3.5')}</div><div class="text-[10.5px] mt-0.5 font-semibold truncate ${on ? '' : 'text-ink3'}">${n}</div></div>`; }).join('')}</div>`;
+  const tone = (MY_SUGGEST[sug] || ['slate'])[0], marks = {};
+  [].concat(layer).forEach(k => { marks[k] = (marks[k] || 0) + 1; });
+  return `<div class="flex items-stretch gap-0.5" data-chain>${MY_LAYERS.map(([k, n, i], idx) => { const on = !!marks[k];
+    return `${idx ? `<span class="self-center text-ink4">${ic('chevron-right', 'w-3 h-3')}</span>` : ''}<div class="relative flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center border ${on ? `tn tn-${tone} m-pulse` : 'border-line bg-sunk text-ink3'}" title="${n}${on ? ': the problem starts here' : ': checked'}">
+      ${on && marks[k] > 1 ? `<span class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-ink text-panel text-[10px] font-bold font-mono flex items-center justify-center">${marks[k]}</span>` : ''}<div class="flex justify-center">${ic(on ? 'triangle-alert' : i, 'w-3.5 h-3.5')}</div><div class="text-[10.5px] mt-0.5 font-semibold truncate ${on ? '' : 'text-ink3'}">${n}</div></div>`; }).join('')}</div>`;
 }
 function mBlock(b, side) {
   if (!b) return '';
@@ -93,7 +94,12 @@ function mExpects(t, f) {
 function mChange(t, cur, rec, key) {
   if (!(cur && rec)) return '';
   if (M.editing === key) return `<div class="space-y-2">${mBlock(cur, 'cur')}<div class="rounded-xl border border-cx/40 overflow-hidden"><div class="px-3 py-1.5 border-b border-line text-[11.5px] font-bold c-cx">YOUR VERSION</div><textarea id="m-edit" data-keep spellcheck="false" class="w-full h-36 bg-code text-ink font-mono text-[12px] leading-[1.7] p-3 focus:outline-none">${esc(rec.kind === 'code' ? rec.lines.map(l => l[0]).join('\n') : rec.rows.map(r => r.join(': ')).join('\n'))}</textarea></div></div>`;
-  return `<div class="space-y-2">${mBlock(cur, 'cur')}${mBlock(rec, 'rec')}</div>`;
+  return `<div class="grid ${M.wideCard ? 'grid-cols-2' : 'grid-cols-1'} gap-2 items-start">${mBlock(cur, 'cur')}${mBlock(rec, 'rec')}</div>${mFormBtn(t, key)}`;
+}
+/* The full object as its own form, with the suggested values filled in. */
+function mFormBtn(t, key) {
+  const fi = t.findings ? t.findings.findIndex(f => key === t.id + ':' + f.id) : -1;
+  return `<button data-act="form" onclick="mOpenSheet({kind:'form',id:'${t.id}'${fi >= 0 ? ',fi:' + fi : ''}})" class="mt-2 text-[12.5px] font-semibold c-indigo hover:underline inline-flex items-center gap-1.5">${ic('file-text', 'w-3.5 h-3.5')}View the full ${esc(mFormOf(t, fi >= 0 ? fi : undefined).noun)}</button>`;
 }
 /* Decline always asks why. The reason decides when, if ever, the suggestion may come back. */
 function mDeclBox(id, fi) {
@@ -115,22 +121,26 @@ function mFinding(t, f, i) {
       <div class="mt-2 flex gap-2"><button data-papprove="${f.id}" onclick="mDecideP('${t.id}',${i},'approve')" class="px-3.5 py-2 rounded-xl bg-ink text-panel text-[13px] font-bold">${esc(p.decision.approve)}</button><button data-preject="${f.id}" onclick="M.decl={id:'${t.id}',fi:${i}};mPanelRender();icons()" class="px-3.5 py-2 rounded-xl border border-line2 text-[13px] font-semibold text-ink2 hover:bg-hov">Decline</button></div></div>`) : ''}
   </div>`;
 }
+/* The mission card. Order: what it is, where the problem is, what you decide (with the change next to what exists now),
+   then the analysis behind it, folded. */
 function mCard(t) {
   const W = M.W, d = t.decision, done = t.status === 'done', j = MY_JOBS[t.job] || { name: 'Mission', ver: 1 };
   const v = t.validation, vHint = v ? `${esc(v.rows[0][0])}: ${v.rows[0][1].toLocaleString()} → ${v.rows[0][2].toLocaleString()}` : '';
   const change = mChange(t, t.current, t.recommended, t.id);
   const plan = mPlanBox(t), cls = M_CLASS[t.resultClass] || M_CLASS.action;
   const skips = (t.skips || []).map(([o, id]) => `<span class="block mt-0.5">Skipped ${esc(o)}: handled in <button onclick="mOpenTask('${id}')" class="font-mono c-indigo hover:underline">${id}</button></span>`).join('');
-  const top = `<div class="flex items-center justify-between gap-3"><div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">${esc(j.name)} · v${j.ver} · ${t.id}</div>${mVerTag(t)}</div>
+  /* 1. what it is */
+  const top = `<div class="flex items-center justify-between gap-3"><div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">${esc(j.name)} · ${t.id}</div>${mVerTag(t)}</div>
     <h2 class="text-[19px] font-bold text-ink leading-snug mt-1.5">${esc(t.title)}</h2>
-    <div class="text-[12.5px] text-ink3 mt-1.5 leading-relaxed"><span class="text-ink3">Objective:</span> <span class="text-ink2">${esc(t.objective || '')}</span></div>
-    ${mChangesTxt(t) ? `<div class="text-[12.5px] text-ink3 mt-0.5">Changes: <span class="text-ink2">${esc(mChangesTxt(t))}</span></div>` : ''}
-    <p class="text-[14px] text-ink2 leading-relaxed mt-2">${esc(t.summary)}</p>
-    <div class="mt-4 flex items-center gap-x-3 gap-y-2 flex-wrap"><span class="text-[11px] font-black tracking-[.14em] text-ink3 uppercase">AI suggestion</span>${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12.5px] text-ink3">confidence</span><span class="text-ink4">·</span><span class="text-[12.5px] c-${cls[1] === 'slate' ? 'ink3' : cls[1]} font-semibold">${cls[0]}</span><span class="text-ink4">·</span>${mImpact(t.impact)}<span class="text-[12.5px] text-ink3">priority</span></div>
-    <div class="mt-2 text-[12.5px] text-ink3 leading-relaxed"><span class="inline-flex items-center gap-1.5">${ic('scan-search', 'w-3.5 h-3.5')}Looked at: <span class="text-ink2">${esc(t.coverage || '')}</span></span>${skips}</div>
-    ${t.nothing ? '' : t.findings ? '' : `<div class="mt-4">${mLabel('Where the problem starts', `<span class="text-[12px] text-ink3">${esc(MY_CARD[t.card])}</span>`)}<div class="mt-2">${mChain(t.layer, t.sug)}</div><p class="text-[13.5px] text-ink mt-2.5 leading-relaxed">${esc(t.diagnosis)}${t.noise ? ` <span class="text-ink3">Noise type: ${esc(t.noise)}.</span>` : ''}</p></div>`}
-    <div class="mt-4 pt-4 border-t border-line">${mHow(t)}</div>`;
+    <div class="mt-2.5 flex items-center gap-x-2.5 gap-y-1.5 flex-wrap">${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12px] text-ink3">confidence</span><span class="text-ink4">·</span><span class="text-[12.5px] c-${cls[1] === 'slate' ? 'ink3' : cls[1]} font-semibold">${cls[0]}</span><span class="text-ink4">·</span>${mImpact(t.impact)}<span class="text-[12px] text-ink3">priority</span>${mChangesTxt(t) ? `<span class="text-ink4">·</span><span class="text-[12px] text-ink3">Changes <span class="text-ink2">${esc(mChangesTxt(t))}</span></span>` : ''}</div>
+    <p class="text-[14px] text-ink2 leading-relaxed mt-2.5">${esc(t.summary)}</p>`;
+  /* 2. where the problem is: the pipeline, one mark per problem */
+  const fl = t.findings ? t.findings.filter(f => f.status !== 'handled') : null;
+  const strip = t.nothing ? '' : `<section data-strip class="rounded-2xl border border-line p-4">${mLabel('Where the problem is', `<span class="text-[12px] text-ink3">${fl ? `${fl.length} problem${fl.length === 1 ? '' : 's'}` : esc(MY_CARD[t.card])}</span>`)}<div class="mt-2.5">${mChain(fl ? fl.map(f => f.layer) : t.layer, t.sug)}</div>
+    ${fl ? `<div class="mt-2.5 space-y-1">${fl.map((f, i) => `<div class="flex items-start gap-2 text-[12.5px] text-ink2"><span class="mt-[1px] shrink-0 inline-flex px-1.5 rounded bg-sunk border border-line text-[10.5px] font-bold text-ink3">${esc(MY_LAYER[f.layer].name)}</span><span class="min-w-0">${esc(f.title)}</span></div>`).join('')}</div>`
+      : `<p class="text-[13.5px] text-ink mt-2.5 leading-relaxed">${esc(t.diagnosis)}${t.noise ? ` <span class="text-ink3">Noise type: ${esc(t.noise)}.</span>` : ''}</p>${t.teamFix ? `<p class="text-[12.5px] text-ink3 mt-1">This step belongs to the ${esc(t.teamFix)}. The Detection Engineer writes the fix; the team applies it.</p>` : ''}`}</section>`;
   const links = (t.unblocks && mTask(t.unblocks) ? `<div class="flex items-center gap-2 flex-wrap text-[12.5px] text-ink3"><span>${t.status === 'done' ? 'Unblocked' : 'Unblocks'}</span>${mLink(t.unblocks)}</div>` : '') + (t.unblockedBy ? `<div class="flex items-center gap-2 flex-wrap text-[12.5px] text-ink3"><span>Unblocked by</span>${mLink(t.unblockedBy)}</div>` : '') + (t.raisedFrom ? `<div class="flex items-center gap-2 flex-wrap text-[12.5px] text-ink3"><span>Raised again after</span>${mLink(t.raisedFrom)}</div>` : '');
+  /* 3. the decision */
   let box;
   if (t.findings) { const left = t.findings.filter(f => f.prop && !f.dec).length;
     box = `<section class="space-y-3">${mLabel(t.status === 'pending' ? `<span style="color:#fbbf24">Needs you · ${left} decision${left === 1 ? '' : 's'}</span>` : 'Findings', `<span class="text-[12px] text-ink3">${t.findings.length} findings</span>`)}${t.findings.map((f, i) => mFinding(t, f, i)).join('')}${done ? `<p class="text-[13.5px] text-ink leading-relaxed">${esc(t.outcome || '')}</p>` : ''}</section>`; }
@@ -143,23 +153,105 @@ function mCard(t) {
       ${mLabel('<span class="c-indigo">Waiting · on another mission</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)}</span>`)}
       <p class="text-[13.5px] text-ink2 leading-relaxed"><b class="text-ink">Nothing to decide here.</b> The cause is in the data pipeline, so the fix belongs to the mission below. When it is approved, this mission continues on its own and checks that the detection works again.</p>
       <div>${mLink(t.waitOn)}</div></section>`;
-  else if (t.status === 'pending' && d) box = `<section class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
+  else if (t.status === 'pending' && d) box = `<section data-decision class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
       ${mLabel('<span style="color:#fbbf24">Needs you</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)} waiting</span>`)}
       <div><h3 class="text-[16.5px] font-bold text-ink leading-snug">${esc(d.q)}</h3><p class="text-[13.5px] text-ink2 leading-relaxed mt-1">${esc(d.effect)}</p>
         <p class="text-[12.5px] text-ink3 leading-relaxed mt-1"><b class="text-ink2">Risk:</b> ${esc(d.risk)}${d.reversible ? ' It can be reversed.' : ''}${d.selfFix ? ' ' + esc(d.selfFix) : ''}</p>${mExpects(t)}</div>
       ${mChangedBox(t)}
-      ${change ? `<div>${mLabel(`What changes · version ${t.ver || 1}`)}<div class="mt-2">${change}</div></div>` : ''}
+      ${change ? `<div>${mLabel(`The change · version ${t.ver || 1}`, `<span class="text-[11.5px] text-ink3">${M.wideCard ? 'Now and suggested, side by side' : 'Now, then suggested'}</span>`)}<div class="mt-2">${change}</div></div>` : ''}
       ${plan}
       ${v ? `<div class="rounded-xl border border-line px-3.5 py-3">${mFold(t, 'why', 'Show the evidence', mValidation(v), vHint)}</div>` : ''}
       ${links}
     </section>`;
-  else if (t.status === 'progress') box = `<section class="rounded-2xl border ${t.handed ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-blue-500/40 bg-blue-500/5'} p-4 space-y-3"><div class="flex items-center gap-2.5 text-[13.5px] text-ink2"><span class="${t.handed ? 'c-indigo' : 'c-blue'}">${ic(t.handed ? 'clock' : 'loader', 'w-4 h-4' + (t.handed ? '' : ' animate-spin'))}</span><span class="min-w-0"><b class="text-ink">No decision needed now.</b> ${esc(t.progressNote || '')}.${t.handed && t.teamThen ? ' ' + esc(t.teamThen) + '.' : ''}${links ? `<span class="block mt-2">${links}</span>` : ''}</span></div>${plan}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changes')}<div class="mt-2">${change}</div></section>` : ''}`;
-  else box = `<section class="rounded-2xl border p-4 ${['rejected', 'cancelled'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${links ? `<div class="mt-2.5">${links}</div>` : ''}${plan ? `<div class="mt-3">${plan}</div>` : ''}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
+  else if (t.status === 'progress') box = `${mProgressBox(t, links)}${plan}${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('The change')}<div class="mt-2">${change}</div></section>` : ''}`;
+  else box = `<section class="rounded-2xl border p-4 ${['rejected', 'cancelled'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${mModLine(t)}${links ? `<div class="mt-2.5">${links}</div>` : ''}${plan ? `<div class="mt-3">${plan}</div>` : ''}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
+  /* 4. the analysis behind it, folded */
+  const [trName, trIcon] = MY_TRIGGER[t.trigger.kind], from = t.trigger.from && M_FROM[t.trigger.from];
+  const how = `<div class="space-y-2.5 text-[13px] text-ink2">
+      <div><span class="text-ink3">Objective:</span> ${esc(t.objective || '')}</div>
+      <div class="flex gap-2.5"><span class="w-5 h-5 rounded-full bg-sunk border border-line flex items-center justify-center shrink-0 text-ink3">${ic(trIcon, 'w-3 h-3')}</span><span><b class="text-ink">${trName}${from ? ' from the ' + M_AG[from].name : ''}.</b> ${esc(t.trigger.text)}</span></div>
+      ${t.steps.map((x, i) => `<div class="flex gap-2.5"><span class="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-indigo-500">${i + 1}</span>${esc(x)}</div>`).join('')}
+      <div class="text-[12.5px] text-ink3"><span class="inline-flex items-center gap-1.5">${ic('scan-search', 'w-3.5 h-3.5')}Looked at: <span class="text-ink2">${esc(t.coverage || '')}</span></span>${skips}</div></div>`;
   const objs = mAffected(t), c = t.cost;
   const fb = `<div class="space-y-2">${mFb(t, 'res', 'Is the result right?')}${t.nothing || t.findings ? '' : mFb(t, 'diag', 'Is the diagnosis right?')}${t.recommended ? mFb(t, 'rec', 'Is the suggested change right?') : ''}${mMissed(t)}</div>`;
-  return `<div class="space-y-4">${mCardBanners(t)}<section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">${top}</section>${box}${mActivity(t)}
-    <div class="px-1 space-y-2.5">${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${c ? mFold(t, 'cost', 'Show the cost of this run', `<div class="text-[13px] text-ink2">${c.min} minutes · ${c.queries} queries · ${c.pct}% of the job’s budget (${esc((MY_JOBS[t.job] || {}).budget || '')})</div>`) : ''}${done || t.status === 'pending' || t.status === 'blocked' ? mFold(t, 'fb', t.nothing ? 'Give feedback, or say what it missed' : 'Give feedback', fb, t.fb && t.fb.missed ? 'You reported something it missed' : '') : ''}</div>
+  return `<div class="space-y-4">${mCardBanners(t)}<section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">${top}</section>${strip}${box}
+    <div class="px-1 space-y-2.5">${mFold(t, 'how', `Show how it got there (${t.steps.length} steps)`, how, `${M_AG[t.agent].name} · ${esc(j.name)} v${j.ver}`)}${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${c ? mFold(t, 'cost', 'Show the cost of this run', `<div class="text-[13px] text-ink2">${c.min} minutes · ${c.queries} queries · ${c.pct}% of the job’s budget (${esc((MY_JOBS[t.job] || {}).budget || '')})</div>`) : ''}${done || t.status === 'pending' || t.status === 'blocked' ? mFold(t, 'fb', t.nothing ? 'Give feedback, or say what it missed' : 'Give feedback', fb, t.fb && t.fb.missed ? 'You reported something it missed' : '') : ''}</div>
+    ${mActivity(t)}
     </div>`;
+}
+/* Where an in-progress mission stands: what it does now, how far it is, what it waits on, and when it comes back to you. */
+function mProgressBox(t, links = '') {
+  const n = t.steps.length, k = mRunning(t) ? Math.min(t.shown || 1, n) : n, wait = t.handed ? 'the ' + (t.teamFix || 'other team') : t.waitOn ? t.waitOn : /silent test/i.test(t.progressNote || '') ? 'the silent test' : 'Nothing';
+  const back = t.handed ? `When the team applies the fix: ${(t.teamCheck || 'the agent checks the detection').replace(/^\w/, c => c.toLowerCase())}` : /silent test/i.test(t.progressNote || t.title) ? 'When the silent test ends, with the result to approve' : mRunning(t) ? 'When the analysis is done, if there is something to decide' : 'Only if something needs a decision';
+  const dm = /day (\d+) of (\d+)/i.exec(t.progressNote || ''), [pa, pb, pu] = dm ? [+dm[1], +dm[2], 'days of the silent test'] : [k, n, 'steps'];
+  const cell = (l, v, tone = 'text-ink') => `<div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-wider text-ink3">${l}</div><div class="text-[13px] ${tone} leading-snug mt-0.5">${v}</div></div>`;
+  return `<section data-progress class="rounded-2xl border ${t.handed ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-blue-500/40 bg-blue-500/5'} p-4 space-y-3">
+    ${mLabel(`<span class="${t.handed ? 'c-indigo' : 'c-blue'}">${t.handed ? 'Waiting · no decision needed now' : 'Running · no decision needed now'}</span>`)}
+    <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+      ${cell('Now', esc(t.progressNote || (mRunning(t) ? t.steps[k - 1] : 'Working')))}
+      ${cell('Progress', `<span class="font-mono">${pa} of ${pb}</span> ${pu}<div class="mt-1 h-1.5 rounded-full bg-sunk overflow-hidden"><div class="h-full rounded-full bg-blue-500" style="width:${Math.round(pa / pb * 100)}%"></div></div>`)}
+      ${cell('Waiting on', esc(wait), wait === 'Nothing' ? 'text-ink3' : 'text-ink')}
+      ${cell('Back to you', esc(back), 'text-ink2')}
+    </div>${links ? `<div>${links}</div>` : ''}</section>`;
+}
+/* After a change is applied, the native object records who changed it and from which mission. */
+function mModLine(t) {
+  if (!['approved', 'edited'].includes(t.end)) return '';
+  const ids = mStampIds(t); if (!ids.rules.length && !ids.iocs.length) return '';
+  return `<p class="mt-2 text-[12px] text-ink3 inline-flex items-center gap-1.5">${ic('pen-line', 'w-3.5 h-3.5')}Written to ${ids.rules.length ? 'Correlation Rules' : 'IOC rules'} · Modified by ${esc(t.by || mMe())} · via Detection Engineer · ${t.id}</p>`;
+}
+/* The objects an approved change writes to. An environment fact goes to AgentiX memory, not to the rule. */
+function mStampIds(t, f) {
+  const x = f || t, part = f ? f.prop.part : t.part;
+  if (t.teamFix || part === 'environment facts') return { rules: [], iocs: [] };
+  const rules = f ? (f.affects.rules || []) : (t.targets || []).concat(t.affects.suggested ? [t.affects.suggested] : []).filter(id => !(t.partial && id === 222));
+  return { rules: [...new Set(rules)], iocs: f ? [] : (x.affects.iocs || []) };
+}
+function mStamp(t, f) {
+  const W = M.W, at = Date.now(), ids = mStampIds(t, f), by = { who: mMe(), task: t.id, at };
+  ids.rules.forEach(id => { const r = mRule(id) || W.suggested.find(x => x.id === id); if (r) r.modBy = by; });
+  ids.iocs.forEach(id => { const i = W.iocs.find(x => x.id === id); if (i) i.modBy = by; });
+}
+const mModCell = m => m ? `<span class="inline-flex items-center gap-1.5 whitespace-nowrap">${mAv('det', 16)}<span>${esc(m.who)} · via Detection Engineer · <button onclick="event.stopPropagation();mOpenTask('${m.task}')" class="font-mono c-indigo hover:underline">${m.task}</button></span></span>` : '<span class="text-ink4">—</span>';
+
+/* ---------- the full object, as its own form ---------- */
+function mFormOf(t, fi) {
+  const W = M.W, f = fi === undefined ? null : t.findings[fi], p = f ? f.prop : t, cur = p.current, rec = p.recommended;
+  if (!rec) return { noun: 'object', title: '', table: '', sections: [] };
+  const lab = rec.label || '', isNew = /^New rule/.test(lab);
+  const rid = f ? (f.affects.rules || [])[0] : ((t.targets || [])[0] || t.affects.suggested || (t.affects.rules || [])[0]);
+  const r = rid ? (mRule(rid) || W.suggested.find(x => x.id === rid)) : null;
+  const cm = cur && cur.kind === 'settings' ? Object.fromEntries(cur.rows) : {};
+  const rows = rec.kind === 'settings' ? rec.rows.filter(([k]) => !/^Issues|^Detections that|^Rules without/.test(k)) : [];
+  const chg = k => rows.some(([a, v]) => a === k && cm[a] !== v), val = k => (rows.find(([a]) => a === k) || [])[1];
+  const code = rec.kind === 'code' ? rec.lines.filter(l => l[1] !== 'del').map(l => l[0]).join('\n') : null;
+  const plain = (noun, table, title) => ({ noun, table, title, sections: [{ title: noun, code, codeChanged: !!code, fields: rows.map(([k, v]) => [k, v, cm[k] !== v]) }] });
+  if (/^Data model rule|^Parsing rule/.test(lab)) return Object.assign(plain(/^Data/.test(lab) ? 'data model rule' : 'parsing rule', 'Data Management', lab.split(' · ')[1] || lab), { owner: t.teamFix });
+  if (/^IOC rule/.test(lab)) return plain('IOC rule', 'Detection Rules › IOC', lab);
+  if (t.teamFix || t.affects.instance || ['source', 'integration'].includes(t.card)) return Object.assign(plain('integration settings', 'Data Sources', lab), { owner: t.teamFix });
+  if (!r || /^Three rules/.test(lab)) return plain('rule settings', 'Detection Rules › Correlations', lab);
+  const known = ['Issue suppression', 'Severity', 'Environment facts', 'Status'], params = rows.filter(([k]) => !known.includes(k));
+  const sections = [
+    { title: 'General', fields: [['Name', r.name, isNew], ['Description', r.desc || '—', isNew], ['Status', val('Status') || (isNew ? 'Enabled' : r.status), chg('Status') || isNew], ['Type', r.type === 'SCHEDULED' ? 'Scheduled' : 'Real Time', isNew]] },
+    { title: 'XQL Search', code: code || r.xql, codeChanged: !!code, fields: params.map(([k, v]) => [k, v, cm[k] !== v]) },
+    { title: 'Issue Suppression', fields: [['Suppression', val('Issue suppression') || (r.supp ? `On · ${r.supp.dur} · by ${r.supp.fields}` : 'Off'), chg('Issue suppression')]] },
+    { title: 'Action', fields: [['Issue name', r.issueName || r.name, isNew], ['Severity', val('Severity') || (r.sev ? 'From field ' + r.sev : 'Medium'), chg('Severity') || isNew], ['Category', r.cat, isNew], ['MITRE ATT&CK', r.tactic ? `${r.tactic} · ${r.tech}` : 'None', isNew]] }];
+  if (val('Environment facts')) sections.push({ title: 'Environment fact', note: 'Saved in AgentiX organizational memory, not in the rule. Every agent reads it.', fields: [['Fact', val('Environment facts'), chg('Environment facts')]] });
+  return { noun: isNew ? 'new rule' : 'correlation rule', table: 'Detection Rules › Correlations', title: r.name, sections, isNew };
+}
+function mFormSheet(s) {
+  const t = mTask(s.id), F = mFormOf(t, s.fi), f = s.fi === undefined ? null : t.findings[s.fi], ver = f ? f.prop.ver : (t.ver || 1);
+  const open = f ? f.prop && !f.dec && t.status === 'pending' : t.status === 'pending' && !!t.decision && !t.waitOn && !t.stale && !t.next;
+  const applied = f ? f.dec && f.dec.choice !== 'reject' : ['approved', 'edited'].includes(t.end);
+  const field = ([k, v, c0]) => { const c = c0 && !F.isNew; return  `<div class="grid grid-cols-[160px_1fr] gap-3 px-4 py-2.5 text-[13.5px] border-l-2 ${c ? 'border-cx/60 bg-cx/5' : 'border-transparent'}"><span class="text-ink3">${esc(k)}</span><span class="min-w-0 ${c ? 'text-ink font-semibold' : 'text-ink2'}">${esc(v)}${c ? ' <span class="ml-1 align-middle inline-flex px-1.5 py-0.5 rounded tn tn-cx text-[10px] font-bold uppercase tracking-wider">Changed</span>' : ''}</span></div>`; };
+  const sec = x => `<section class="rounded-2xl border border-line overflow-hidden"><div class="px-4 py-2.5 border-b border-line bg-panel2 flex items-center justify-between gap-3"><h3 class="text-[12px] font-bold tracking-wide text-ink3 uppercase">${esc(x.title)}</h3>${x.codeChanged && !F.isNew ? '<span class="inline-flex px-1.5 py-0.5 rounded tn tn-cx text-[10px] font-bold uppercase tracking-wider">Changed</span>' : ''}</div>
+    ${x.note ? `<p class="px-4 pt-2.5 text-[12px] text-ink3">${esc(x.note)}</p>` : ''}${x.code ? `<pre class="m-3 rounded-xl bg-code p-3 text-[12.5px] leading-[1.7] font-mono text-ink2 overflow-x-auto ${x.codeChanged && !F.isNew ? 'border border-cx/40' : ''}">${esc(x.code)}</pre>` : ''}<div class="divide-y divide-line">${x.fields.map(field).join('')}</div></section>`;
+  const where = F.owner ? `This object belongs to the ${F.owner}. Approving sends them this version as a written fix. Nothing changes here until they apply it.` : `Apply writes this version to ${F.table}. The record shows Modified by: ${mMe()} · via Detection Engineer · ${t.id}.`;
+  const go = f ? `mCloseSheet();mDecideP('${t.id}',${s.fi},'approve')` : `mCloseSheet();mDecide('${t.id}','approve')`;
+  return `${mSheetHead(`${esc(F.table)} › ${t.id}`, esc(F.title), `<div class="mt-1.5 flex items-center gap-2 flex-wrap text-[12px] text-ink3"><span class="inline-flex px-2 py-0.5 rounded-md tn tn-cx font-bold">${applied ? 'Applied' : 'Suggested'} version · v${ver}</span><span>${F.isNew ? 'A new rule. Every field is filled by the agent.' : 'Fields the agent changed are marked.'}</span></div>`)}
+    <div id="m-sheet-scroll" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">${F.sections.map(sec).join('')}</div>
+    <div data-form-foot class="px-5 py-3 border-t border-line shrink-0 space-y-2"><p class="text-[12px] text-ink3">${applied ? `Applied · Modified by ${esc(f ? f.dec.by : t.by)} · via Detection Engineer · ${t.id}` : esc(where)}</p>
+      <div class="flex gap-2">${open ? `<button data-act="form-apply" onclick="${go}" class="flex-[1.5] py-2.5 rounded-xl bg-ink text-panel text-[14px] font-semibold">${F.owner ? 'Approve and send' : F.isNew ? 'Create the rule' : 'Apply'}</button>` : ''}<button onclick="mCloseSheet()" class="flex-1 py-2.5 rounded-xl border border-line2 text-[14px] text-ink2 hover:bg-hov">Back to the mission</button></div></div>`;
 }
 /* "You missed something": the feedback that matters most on a run that found nothing. */
 function mMissed(t) {
@@ -176,8 +268,7 @@ function mWorking(t) {
     <h2 class="text-[19px] font-bold text-ink leading-snug mt-1.5">${esc(t.title)}</h2>
     <p class="text-[13.5px] text-ink3 mt-2"><b class="text-ink2">${MY_TRIGGER[t.trigger.kind][0]}.</b> ${esc(t.trigger.text)}</p>
     <ol class="space-y-2 mt-4">${t.steps.slice(0, n).map((x, i) => `<li class="flex gap-2.5 text-[13.5px] ${i === n - 1 ? 'text-ink' : 'text-ink2'}"><span class="w-5 h-5 shrink-0 flex items-center justify-center ${i === n - 1 ? 'c-blue' : 'c-cx'}">${ic(i === n - 1 ? 'loader' : 'check', 'w-4 h-4' + (i === n - 1 ? ' animate-spin' : ''))}</span>${esc(x)}</li>`).join('')}</ol>
-    <div class="mt-4 text-[13px] c-blue">${esc(t.progressNote || 'Working')}…</div>
-  </section></div>`;
+  </section>${mProgressBox(t)}</div>`;
 }
 
 /* A native object with no open mission: what SecOps knows about it. */
@@ -217,6 +308,7 @@ function mDecide(id, choice, reason) {
   if (choice === 'edit') { const ta = $('m-edit'); if (ta && t.recommended.kind === 'code') t.recommended.lines = ta.value.split('\n').map(l => [l, 'add']); t.editedBy = M_USER; }
   t.decVer = t.ver || 1; t.actedAt = Date.now();
   myApply(M.W, t, choice, M_USER, reason); mResume(); mPlanTick(t); mStaleTick();
+  if (choice !== 'reject' && (['approved', 'edited'].includes(t.end) || t.status === 'blocked')) mStamp(t);
   M.editing = null;
   const left = myPendingTasks(M.W).length;
   const said = choice === 'reject' ? `Declined · ${myDeclTxt(t.declined)}. Nothing changed.` : t.status === 'blocked' ? 'Partly applied. It needs you again.' : t.status === 'progress' ? 'Sent. ' + (t.progressNote || '') + '.' : choice === 'edit' ? 'Your version is applied.' : 'Approved and applied.';
@@ -236,7 +328,7 @@ function mDecideP(id, fi, choice, reason) {
   const t = mTask(id); if (!t || !t.findings) return;
   if (choice === 'reject' && !reason) { M.decl = { id, fi }; mPanelRender(); icons(); return; }
   M.decl = null; myApplyProp(M.W, t, fi, choice, M_USER, reason); mStaleTick();
-  const f = t.findings[fi]; toast(`${t.id} · ${f.id}: ${choice === 'reject' ? 'declined · ' + myDeclTxt(f.dec) : 'applied'}`, choice === 'reject' ? 'x' : 'check');
+  const f = t.findings[fi]; if (choice !== 'reject') mStamp(t, f); toast(`${t.id} · ${f.id}: ${choice === 'reject' ? 'declined · ' + myDeclTxt(f.dec) : 'applied'}`, choice === 'reject' ? 'x' : 'check');
   mRender();
 }
 /* A blocked mission: check the refused part again, or stop. */

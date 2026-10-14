@@ -8,12 +8,52 @@ const M_TABS = [['needs', 'Needs you'], ['running', 'Running'], ['waiting', 'Wai
 /* Which filter a mission belongs to. A blocked mission needs a person, so it is under Needs you. */
 const mTabOf = t => ({ blocked: 'needs' })[myState(t)] || myState(t);
 const mDay = 86400000;
-/* One row per job when a job ran three times or more in the list, so frequent runs do not flood it. */
+/* Where the mission's data comes from: the data source it is about, or the source behind the first rule it touches. */
+function mSrcOf(t) {
+  const W = M.W; if (!t || !t.affects) return '';
+  const byId = id => { const s = W.sources.find(x => x.id === id); return s ? s.name : ''; };
+  if (t.affects.source) return byId(t.affects.source);
+  const rid = (t.affects.rules || [])[0] || t.affects.suggested, r = rid && mRule(rid), p = r && W.pipes.find(x => x.id === r.pipe);
+  if (p) return byId(p.src) || p.product || '';
+  if (t.affects.node) { const p2 = W.pipes.find(x => x.id === t.affects.node.pipe); return p2 ? byId(p2.src) || p2.product : ''; }
+  return '';
+}
+/* Two separate things: where the run is, and what waits on a person. A finished run can still need a decision. */
+const M_RUN = { running: ['Running', 'blue'], waiting: ['Waiting', 'indigo'], blocked: ['Blocked', 'rose'], finished: ['Finished', 'cx'], paused: ['Paused', 'slate'] };
+function mRunOf(t) {
+  if (t.paused) return 'paused';
+  if (t.status === 'blocked') return 'blocked';
+  if (t.status === 'progress') return t.handed ? 'waiting' : 'running';
+  if (t.status === 'pending' && t.waitOn) return 'waiting';
+  return 'finished';
+}
+function mRunCell(t) {
+  const k = mRunOf(t), [l, tone] = M_RUN[k], dot = { blue: 'bg-blue-500 animate-pulse', indigo: 'bg-indigo-400', rose: 'bg-rose-500', cx: 'bg-cx', slate: 'bg-slate-400' }[tone];
+  const sub = t.status === 'done' ? myEndTxt(t).toLowerCase() : k === 'waiting' ? (t.waitOn ? 'on ' + t.waitOn : 'on the ' + (t.teamFix || 'other team')) : k === 'running' && t.progressNote ? t.progressNote.toLowerCase() : '';
+  return `<span class="leading-tight min-w-0"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap ${tone === 'slate' ? 'text-ink3' : 'c-' + tone}"><span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${l}</span>${sub ? `<span class="block text-[11px] text-ink3 whitespace-nowrap pl-3 truncate">${esc(sub)}</span>` : ''}</span>`;
+}
+/* How many decisions wait on a person. Nothing when nothing does. */
+function mNeedN(t) {
+  if (t.status === 'blocked') return 1;
+  if (t.status !== 'pending' || t.waitOn) return 0;
+  if (t.findings) return t.findings.filter(f => f.prop && !f.dec).length;
+  return t.decision ? 1 : 0;
+}
+function mNeedCell(t) {
+  const n = mNeedN(t);
+  if (!n) return '<span class="text-ink4">—</span>';
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md tn tn-amber text-[12px] font-bold whitespace-nowrap">${t.status === 'blocked' ? 'Decide again' : n + ' to review'}</span>`;
+}
+const M_IMP = { High: 0, Medium: 1, Low: 2 };
 function mWorkList() {
   const W = M.W, order = { needs: 0, running: 1, waiting: 2, done: 3 }, q = M.q.trim().toLowerCase();
+  const by = M.sort === 'new' ? (a, b) => b.opened - a.opened : M.sort === 'old' ? (a, b) => a.opened - b.opened
+    : (a, b) => (M_IMP[a.impact] ?? 3) - (M_IMP[b.impact] ?? 3) || b.opened - a.opened;
   const list = W.tasks.filter(t => M.tab === 'all' || mTabOf(t) === M.tab)
-    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || '', (MY_JOBS[t.job] || {}).name || ''].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[mTabOf(a)] - order[mTabOf(b)] || (a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : myRank(a, b)));
+    .filter(t => !M.fType || t.job === M.fType)
+    .filter(t => !M.fSrc || mSrcOf(t) === M.fSrc)
+    .filter(t => !q || [t.id, t.title, t.sug, MY_CARD[t.card], MY_LAYER[t.layer].name, M_AG[t.agent].name, t.waitOn || '', (MY_JOBS[t.job] || {}).name || '', mSrcOf(t)].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (mRunning(b) ? 1 : 0) - (mRunning(a) ? 1 : 0) || order[mTabOf(a)] - order[mTabOf(b)] || (M.sort === 'impact' && a.status === 'done' ? (b.closed || 0) - (a.closed || 0) : by(a, b)));
   /* A mission that waits on another sits right under it, so the pair reads as one story. */
   list.filter(t => t.waitOn).forEach(t => { const k = list.findIndex(x => x.id === t.waitOn); if (k < 0) return; list.splice(list.indexOf(t), 1); list.splice(list.findIndex(x => x.id === t.waitOn) + 1, 0, t); });
   return list;
@@ -69,19 +109,28 @@ function mLog() {
     <div class="px-4 py-3 border-b border-line flex gap-3 shrink-0"><span class="w-7 h-7 rounded-lg tn tn-cx flex items-center justify-center shrink-0">${ic('activity', 'w-3.5 h-3.5')}</span><div class="min-w-0"><div class="text-[11.5px] text-ink3">Working on now</div><div class="text-[13px] text-ink leading-snug">${esc(now)}…</div></div></div>
     <div class="flex-1 overflow-y-auto">${rows}</div></div>`;
 }
+/* Filters the table review asked for: the kind of work, the data source, and the order. */
+function mFilters() {
+  const W = M.W, jobs = [...new Set(W.tasks.map(t => t.job))].filter(j => MY_JOBS[j]), srcs = [...new Set(W.tasks.map(mSrcOf).filter(Boolean))].sort();
+  const sel = (id, val, opts, on) => `<select id="${id}" onchange="${on}" class="text-[12.5px] pl-2.5 pr-7 py-1.5 bg-sunk border ${val && id !== 'm-sort' ? 'border-cx/60 text-ink' : 'border-line text-ink2'} rounded-lg focus:outline-none focus:border-cx">${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === val ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  return sel('m-ftype', M.fType, [['', 'All types']].concat(jobs.map(j => [j, MY_JOBS[j].name])), "M.fType=this.value;mRender()")
+    + sel('m-fsrc', M.fSrc, [['', 'All sources']].concat(srcs.map(x => [x, x])), "M.fSrc=this.value;mRender()")
+    + sel('m-sort', M.sort, [['impact', 'Sort: impact'], ['new', 'Sort: newest'], ['old', 'Sort: oldest']], "M.sort=this.value;mRender()");
+}
 function mWork() {
   const W = M.W, list = mWorkList();
   const count = k => k === 'all' ? W.tasks.length : W.tasks.filter(t => mTabOf(t) === k).length;
   const dot = { needs: 'bg-amber-500', running: 'bg-blue-500', waiting: 'bg-indigo-400', done: 'bg-cx' };
   const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
     return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : mTabOf(t) === 'needs' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
-      <span class="leading-tight">${mStatus(t)}${mPendingOn(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
+      ${mRunCell(t)}<span>${mNeedCell(t)}</span><span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
       <span class="min-w-0"><span class="block truncate text-ink" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span> · ${esc(MY_JOBS[t.job].name)} · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span>` : t.status === 'blocked' ? '<span class="c-rose">partly applied</span>' : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : t.findings ? `${t.findings.length} findings` : t.nothing ? 'nothing found' : esc(MY_CARD[t.card])}</span></span>
       <span>${run ? '<span class="text-ink4">—</span>' : mConf(t.conf)}</span>
       <span>${mImpact(t.impact)}</span>
+      <span class="text-[12.5px] text-ink2 truncate">${esc(mSrcOf(t)) || '<span class="text-ink4">—</span>'}</span>
       <span class="text-[12.5px] text-ink3">${myAge(Date.now() - t.opened)}</span>
       ${t.nothing ? '<span class="text-ink4">—</span>' : t.findings ? `<span class="text-[12.5px] text-ink2">${t.findings.length} findings</span>` : `<span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2 min-w-0">${ic(MY_LAYER[t.layer].icon, 'w-3.5 h-3.5 text-ink3 shrink-0')}<span class="truncate">${MY_LAYER[t.layer].name}</span></span>`}
-      <span class="inline-flex items-center gap-2 text-[12.5px] text-ink3 min-w-0">${mAv(t.agent, 20)}<span class="truncate">${M_AG[t.agent].name}</span></span></div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'needs' ? 'Nothing needs you right now.' : 'Nothing here right now.'}</div>`;
+</div>`; }).join('') || `<div class="p-12 text-[13.5px] text-ink3">${M.q ? 'No mission matches the search.' : M.tab === 'needs' ? 'Nothing needs you right now.' : 'Nothing here right now.'}</div>`;
 
   $('mv-work').innerHTML = `<div class="flex-1 min-w-0 min-h-0 flex">
     <div class="flex-1 min-w-0 min-h-0 flex flex-col bg-panel">
@@ -92,13 +141,13 @@ function mWork() {
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center gap-1 text-[12.5px]">${M_TABS.map(([k, l]) => `<button data-tab="${k}" onclick="M.tab='${k}';mRender()" class="px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${M.tab === k ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${dot[k] ? `<span class="w-1.5 h-1.5 rounded-full ${dot[k]} ${k === 'running' && W.tasks.some(mRunning) ? 'animate-pulse' : ''}"></span>` : ''}${l}<span class="font-mono text-[11.5px] ${k === 'running' && W.tasks.some(mRunning) && M.tab !== k ? 'c-blue font-bold' : M.tab === k ? 'text-ink2' : 'text-ink4'}">${count(k)}</span></button>`).join('')}</div>
-          <div class="relative flex-1 min-w-[180px] max-w-[280px]"><span class="absolute left-2.5 top-[8px] text-ink4">${ic('search', 'w-3.5 h-3.5')}</span><input type="text" id="m-search" data-keep value="${esc(M.q)}" placeholder="Search missions, IDs" oninput="M.q=this.value;mRender()" class="w-full text-[12.5px] pl-8 pr-3 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink4 focus:outline-none focus:border-cx"></div>
+          <div class="flex items-center gap-2 flex-wrap">${mFilters()}<div class="relative flex-1 min-w-[180px] max-w-[240px]"><span class="absolute left-2.5 top-[8px] text-ink4">${ic('search', 'w-3.5 h-3.5')}</span><input type="text" id="m-search" data-keep value="${esc(M.q)}" placeholder="Search missions, IDs" oninput="M.q=this.value;mRender()" class="w-full text-[12.5px] pl-8 pr-3 py-1.5 bg-sunk border border-line rounded-lg text-ink placeholder:text-ink4 focus:outline-none focus:border-cx"></div></div>
         </div>
         ${mWidgets()}
       </div>
       <div data-scroll class="flex-1 min-h-[160px] overflow-auto border-t border-line">
         <div class="m-table">
-          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Status</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Priority</span><span>Age</span><span>Root cause</span><span>Owner</span></div>
+          <div class="mcols px-4 py-2 border-b border-line bg-panel2 text-[11.5px] font-semibold text-ink3 select-none sticky top-0 z-[2]"><span>Run state</span><span>Needs you</span><span class="whitespace-nowrap">${mSugHead()}</span><span>Mission</span><span>Confidence</span><span>Priority</span><span>Source</span><span>Age</span><span>Root cause</span></div>
           ${rows}
         </div>
       </div>

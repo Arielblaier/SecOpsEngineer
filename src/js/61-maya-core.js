@@ -39,7 +39,7 @@ function mInit() {
   if (M) mLiveStop();
   M = { W: myWorld(), view: 'home', tab: 'needs', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
     /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
-    size: { work: 'work', native: 'side' }, pct: { work: 40, native: 34 }, artPct: 52, railOff: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: false };
+    size: { work: 'work', native: 'side' }, pct: { work: 40, native: 34 }, artPct: 56, artFold: false, fType: '', fSrc: '', sort: 'impact', railOff: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: false };
   mWsSeed();
   mLiveStart();
 }
@@ -79,8 +79,8 @@ function mBoot() {
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
-      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event,'panel')" title="Drag to change the width of the panel"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
-      <div id="m-ws-rail" class="hidden w-[264px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
+      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event,mSize()==='work'?'full':'panel')" title="Drag to change the width of the panel"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
+      <div id="m-ws-rail" class="hidden relative w-[280px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
         <div id="m-people" class="hidden shrink-0 border-b border-line"></div>
@@ -100,7 +100,7 @@ function mBoot() {
               <div id="m-hint" class="text-[11.5px] text-ink4 px-1 empty:hidden"></div>
             </div>
           </div>
-          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden relative"><div id="m-art-drag" class="m-drag" onpointerdown="mDragStart(event,'art')" title="Drag to change how much space the mission takes"><span></span></div>
+          <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden relative"><div id="m-art-drag" class="m-drag" onpointerdown="mDragStart(event,'art')" title="Drag to share the space between the mission and the chat"><span></span></div>
             <div id="m-art-scroll" class="flex-1 overflow-y-auto px-6 sm:px-8 py-5"></div>
             <div id="m-art-acts" class="px-6 sm:px-8 pb-5 pt-3 shrink-0 empty:hidden"></div>
           </div>
@@ -121,7 +121,8 @@ function mBoot() {
   const me = document.querySelector('#app aside [title^="Guy"]');
   if (me) { me.title = 'Ariel B. (SecOps Lead)'; me.textContent = 'AB'; me.insertAdjacentHTML('beforebegin', `<button id="m-reset" onclick="location.reload()" class="w-10 h-10 rounded-xl hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Reset the demo (R)">${ic('rotate-ccw', 'w-4 h-4')}</button>`); }
   window.addEventListener('resize', () => { if (M) mPanelShow(); });
-  mNav('home');
+  /* Missions is the detection engineer's home, so the demo starts there. */
+  mNav('work');
   mScnFromUrl();
 }
 function mPatchDemoMenu() {
@@ -221,18 +222,36 @@ function mPanelPx() { const main = document.querySelector('#app main'), w = main
 function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), sz = mSize(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on);
   el.classList.toggle('m-panel-work', sz === 'work'); el.classList.toggle('m-panel-side', sz !== 'work'); el.classList.remove('m-panel-split');
   el.style.width = sz !== 'work' && mWide() ? M.pct[mSizeKey()] + '%' : '';
-  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && sz !== 'work' && mWide()));
-  const art = $('m-art'); if (art) art.style.width = M.artPct + '%'; }
-/* Drag a divider. The side panel's left edge sets its width; in full screen the divider sets how much of it the mission takes. */
+  if (sz !== 'work') el.style.left = '';
+  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && mWide() && (sz !== 'work' || M.railOff)));
+  const art = $('m-art'); if (art) { art.classList.toggle('m-art-fold', !!M.artFold); art.style.width = M.artFold ? '' : M.artPct + '%'; } }
+/* Drag a divider. Three dividers, one rule each:
+   - between the mission and the chat (full view): the chat can take up to 90%; below that the mission folds to a strip that only opens it back;
+   - between the missions and AgentiX (full view): drag right and AgentiX shrinks; release under 78% and the Missions table comes back, with AgentiX as a side panel;
+   - the side panel's left edge: 30% to 70%; drag past 78% and release, and it becomes the full view again. */
 function mDragStart(e, what) {
-  const el = what === 'art' ? $('m-art') : $('m-panel'), box = (what === 'art' ? el.parentElement : document.querySelector('#app main')), lab = $('m-drag-pct'); if (!box || !el) return;
-  e.preventDefault(); const r = box.getBoundingClientRect(), key = mSizeKey(); let pct = what === 'art' ? M.artPct : M.pct[key];
-  const [lo, hi] = what === 'art' ? [30, 72] : [30, 70];
-  document.body.classList.add('m-dragging');
-  const move = ev => { pct = Math.max(lo, Math.min(hi, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.width = pct + '%';
-    if (lab) { lab.textContent = what === 'art' ? `Mission ${pct}% · conversation ${100 - pct}%` : `Panel ${pct}% · screen ${100 - pct}%`; lab.classList.remove('hidden'); } };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); if (what === 'art') M.artPct = pct; else M.pct[key] = pct; mRender(); };
-  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  const key = mSizeKey(), lab = $('m-drag-pct'), main = document.querySelector('#app main'); if (!main) return;
+  e.preventDefault(); document.body.classList.add('m-dragging');
+  const show = t => { if (lab) { lab.textContent = t; lab.classList.remove('hidden'); } };
+  let move, up, pct;
+  if (what === 'art') {
+    const el = $('m-art'), r = el.parentElement.getBoundingClientRect(); pct = M.artFold ? 0 : M.artPct; el.classList.remove('m-art-fold');
+    move = ev => { pct = Math.max(0, Math.min(72, Math.round((ev.clientX - r.left) / r.width * 100))); const fold = pct < 14;
+      el.style.width = fold ? '46px' : Math.max(22, pct) + '%'; show(fold ? 'Chat 90% · the mission folds to a strip' : `Mission ${Math.max(22, pct)}% · chat ${100 - Math.max(22, pct)}%`); };
+    up = () => { M.artFold = pct < 14; if (!M.artFold) M.artPct = Math.max(22, pct); };
+  } else if (what === 'full') {
+    const el = $('m-panel'), r = main.getBoundingClientRect(), rail = $('m-ws-rail'); pct = 100; if (rail) rail.classList.add('hidden');
+    move = ev => { pct = Math.max(30, Math.min(100, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.left = (100 - pct) + '%';
+      show(pct < 78 ? `AgentiX ${pct}% · release for the table and a side panel` : `AgentiX ${pct}% · release to stay in the full view`); };
+    up = () => { el.style.left = ''; if (pct < 78) { M.size[key] = 'side'; M.pct[key] = Math.min(70, Math.max(30, pct)); } };
+  } else {
+    const el = $('m-panel'), r = main.getBoundingClientRect(); pct = M.pct[key];
+    move = ev => { pct = Math.max(30, Math.min(100, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.width = pct + '%';
+      show(pct > 78 ? `AgentiX ${pct}% · release for the full view` : `AgentiX ${Math.min(70, pct)}% · screen ${100 - Math.min(70, pct)}%`); };
+    up = () => { if (pct > 78) M.size[key] = 'work'; else M.pct[key] = Math.min(70, pct); };
+  }
+  const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); up(); mRender(); mScrollInit(); };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', end);
 }
 function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
 function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
@@ -329,7 +348,7 @@ function mCloseSheet() { if (!M || !M.sheet) return; M.sheet = null; M.reconnect
 function mSheetRender() {
   const s = M.sheet; if (!s) return;
   const el = $('m-sheet'), sc = $('m-sheet-scroll'), top = sc ? sc.scrollTop : 0;
-  el.innerHTML = ({ node: mNodeSheet, source: mSourceSheet })[s.kind](s);
+  el.innerHTML = ({ node: mNodeSheet, source: mSourceSheet, form: mFormSheet })[s.kind](s);
   const sc2 = $('m-sheet-scroll'); if (sc2) sc2.scrollTop = top;
 }
 const mOpenRule = id => mOpenObj('rule', id);

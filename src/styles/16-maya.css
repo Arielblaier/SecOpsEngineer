@@ -2,7 +2,7 @@
   /* The missions table keeps its full width. Columns that do not fit are reached by scrolling sideways. */
   .m-table { width: max-content; min-width: 100%; }
   .m-table > .mcols { min-width: 1250px; }
-  .mcols { display: grid; grid-template-columns: 138px 112px minmax(330px, 1fr) 96px 78px 44px 116px 170px; column-gap: 14px; }
+  .mcols { display: grid; grid-template-columns: 112px 112px 108px minmax(320px, 1fr) 96px 74px 150px 44px 116px; column-gap: 14px; }
   .mcols > * { min-width: 0; }
   .m-vert { writing-mode: vertical-rl; transform: rotate(180deg); }
   .m-wwrap { container-type: inline-size; }
@@ -100,3 +100,11 @@
   .m-flow-head { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid rgb(var(--line)); cursor: grab; border-radius: 16px 16px 0 0; background: repeating-linear-gradient(135deg, rgb(245 158 11 / .08) 0 10px, transparent 10px 20px); }
   .m-flow-head:active { cursor: grabbing; }
   .m-flow-pill { width: auto; border-style: solid; border-color: rgb(245 158 11 / .6); }
+/* The full view: missions, then the mission, then the chat. The mission folds to a strip when the chat takes almost everything. */
+.m-panel-work #m-art { order: -1; border-left: 0; border-right: 1px solid rgb(var(--line)); }
+.m-panel-work #m-art > .m-drag { left: auto; right: 0; }
+#m-ws-rail > .m-drag { left: auto; right: -1px; }
+#m-art.m-art-fold { width: 46px; }
+#m-art.m-art-fold #m-art-scroll { padding: 10px 0; overflow: hidden; }
+#m-art.m-art-fold #m-art-acts { display: none; }
+
