@@ -24,8 +24,8 @@ function workforceGraphHTML() {
       <g class="flow" style="--d:${1.9 + i * .3}s">${[0, .33, .66].map(o => `<circle r="3.2" fill="${col}"><animateMotion dur="2.6s" begin="${o * 2.6}s" repeatCount="indefinite" rotate="auto"><mpath href="#wfe${i}"/></animateMotion></circle>`).join('')}</g>
       <g class="elabel" style="--d:${1.7 + i * .3}s" transform="translate(${e.lx},${e.ly})">
         <rect x="-78" y="-17" width="156" height="34" rx="17" fill="rgb(var(--panel))" stroke="${col}" stroke-opacity=".55"/>
-        <text x="-62" y="5.5" font-size="15" font-weight="900" fill="${col}" font-family="Lato, sans-serif" data-count="${e.n}" data-delay="${1900 + i * 300}">${e.n}</text>
-        <text x="${e.n >= 10 ? -38 : -46}" y="5" font-size="12" class="fill-ink2" font-family="Lato, sans-serif">${e.t}</text>
+        <text x="-62" y="5.5" font-size="15" font-weight="900" fill="${col}" font-family="Figtree, sans-serif" data-count="${e.n}" data-delay="${1900 + i * 300}">${e.n}</text>
+        <text x="${e.n >= 10 ? -38 : -46}" y="5" font-size="12" class="fill-ink2" font-family="Figtree, sans-serif">${e.t}</text>
       </g>`;
   }).join('');
   const defs = WF_EDGES.map(e => `<linearGradient id="wfg-${e.a}-${e.b}" gradientUnits="userSpaceOnUse" x1="${WF[e.a].x}" y1="${WF[e.a].y}" x2="${WF[e.b].x}" y2="${WF[e.b].y}"><stop offset="0" stop-color="${PILLARS[e.a].col}"/><stop offset="1" stop-color="${PILLARS[e.b].col}"/></linearGradient>`).join('');
@@ -36,12 +36,12 @@ function workforceGraphHTML() {
       <circle r="34" fill="url(#wfa-${k})"/>
       <circle r="34" fill="none" stroke="${P.col}" stroke-opacity=".6" stroke-width="1.5"/>
       <circle class="halo" r="34" fill="none" stroke="${P.col}" stroke-width="1.5"/>
-      <text y="9" text-anchor="middle" font-size="26" font-weight="900" fill="#fff" font-family="Lato, sans-serif">${P.name[0]}</text>
+      <text y="9" text-anchor="middle" font-size="26" font-weight="900" fill="#fff" font-family="Figtree, sans-serif">${P.name[0]}</text>
       <circle cx="25" cy="25" r="6.5" fill="#4DFFA6" stroke="rgb(var(--panel))" stroke-width="2.5"/>
       <g class="ainfo" transform="translate(0,${below ? 56 : -86})">
-        <text text-anchor="middle" font-size="15" font-weight="900" class="fill-ink" font-family="Lato, sans-serif">${P.name} <tspan font-weight="400" class="fill-ink3" font-size="12.5">· ${P.title}</tspan></text>
-        <text y="27" text-anchor="middle" font-size="22" font-weight="900" fill="${P.col}" font-family="Lato, sans-serif" data-count="${w.stat}" data-delay="${1100 + i * 120}">${w.stat}</text>
-        <text y="44" text-anchor="middle" font-size="11.5" class="fill-ink3" font-family="Lato, sans-serif">${w.cap}</text>
+        <text text-anchor="middle" font-size="15" font-weight="900" class="fill-ink" font-family="Figtree, sans-serif">${P.name} <tspan font-weight="400" class="fill-ink3" font-size="12.5">· ${P.title}</tspan></text>
+        <text y="27" text-anchor="middle" font-size="22" font-weight="900" fill="${P.col}" font-family="Figtree, sans-serif" data-count="${w.stat}" data-delay="${1100 + i * 120}">${w.stat}</text>
+        <text y="44" text-anchor="middle" font-size="11.5" class="fill-ink3" font-family="Figtree, sans-serif">${w.cap}</text>
       </g>
     </g>`;
   }).join('');
@@ -59,7 +59,7 @@ function workforceGraphHTML() {
         <path fill="url(#wfcore)" class="core">${anim}</path>
         <ellipse cx="-16" cy="-19" rx="14" ry="8" transform="rotate(-32 -16 -19)" fill="#fff" opacity=".5"/>
         <circle class="pulse" r="62" fill="none" stroke="#3b82f6" stroke-width="1.2"/>
-        <text y="84" text-anchor="middle" font-size="12" class="fill-ink3 coretx" font-family="Lato, sans-serif" letter-spacing="1.5">AGENTIX CORE</text>
+        <text y="84" text-anchor="middle" font-size="12" class="fill-ink3 coretx" font-family="Figtree, sans-serif" letter-spacing="1.5">AGENTIX CORE</text>
         ${agents}
       </g>
     </svg>

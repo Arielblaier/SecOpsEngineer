@@ -23,33 +23,33 @@ function anCh1() {
   const rows = AN_EVENTS.map((e, i) => {
     const ry = by + 50 + i * 22;
     return `<g class="fly" style="--d:${.5 + i * .6}s;--fx:${e.x - (bx + 20)}px;--fy:${y - ry}px"><polygon points="${bx + 20},${ry - 6} ${bx + 26},${ry + 4} ${bx + 14},${ry + 4}" fill="${anSevCol(e.sev)}"/>
-      <text x="${bx + 34}" y="${ry + 3}" font-size="12.5" fill="#e7ecff" font-family="Lato, sans-serif">${e.n}</text>
-      <text x="${bx + 330}" y="${ry + 3}" text-anchor="end" font-size="11" fill="${i ? '#5eead4' : '#fbbf24'}" font-family="Lato, sans-serif">${e.why}</text></g>`; }).join('');
+      <text x="${bx + 34}" y="${ry + 3}" font-size="12.5" fill="#e7ecff" font-family="Figtree, sans-serif">${e.n}</text>
+      <text x="${bx + 330}" y="${ry + 3}" text-anchor="end" font-size="11" fill="${i ? '#5eead4' : '#fbbf24'}" font-family="Figtree, sans-serif">${e.why}</text></g>`; }).join('');
   // attack stages over the timeline
   const stages = [['Initial access', 60, 200], ['Execution', 200, 320], ['Command & control', 320, 640], ['Credential access', 640, 800], ['Spread', 800, 950]];
-  const stg = stages.map(([n, a, b], i) => `<g class="a" style="--d:${.3 + i * .5}s"><rect x="${a + 4}" y="${y + 40}" width="${b - a - 8}" height="22" rx="6" fill="rgb(244 63 94 / ${.06 + i * .03})" stroke="rgb(244 63 94 / .35)"/><text x="${(a + b) / 2}" y="${y + 55}" text-anchor="middle" font-size="10.5" fill="#fecdd3" font-family="Lato, sans-serif">${n}</text></g>`).join('');
-  const info = AN_INFO.map((e, i) => `<g class="a" style="--d:${.6 + i * .9}s"><circle cx="${e.x}" cy="${y}" r="7" fill="#0b1030" stroke="#94a3b8" stroke-width="1.5"/><text x="${e.x}" y="${y + 3.5}" text-anchor="middle" font-size="9" font-weight="900" fill="#cbd5e1" font-family="Lato, sans-serif">i</text>
-      <text x="${e.x}" y="${y - 16}" text-anchor="middle" font-size="9.5" fill="#94a3b8" font-family="Lato, sans-serif">${e.n}</text></g>`).join('');
-  const leg = `<g font-family="Lato, sans-serif" font-size="10.5" fill="rgb(255 255 255 / .55)">${[['crit', 'Critical'], ['high', 'High'], ['med', 'Medium']].map(([k, l], i) => `<polygon points="${720 + i * 76},${by + 4} ${727 + i * 76},${by + 16} ${713 + i * 76},${by + 16}" fill="${anSevCol(k)}"/><text x="${732 + i * 76}" y="${by + 15}">${l}</text>`).join('')}<circle cx="${955}" cy="${by + 10}" r="6" fill="#0b1030" stroke="#94a3b8"/><text x="${952}" y="${by + 13.5}" font-size="8.5" font-weight="900" fill="#cbd5e1">i</text><text x="${965}" y="${by + 15}" text-anchor="start">Info</text></g>`;
+  const stg = stages.map(([n, a, b], i) => `<g class="a" style="--d:${.3 + i * .5}s"><rect x="${a + 4}" y="${y + 40}" width="${b - a - 8}" height="22" rx="6" fill="rgb(244 63 94 / ${.06 + i * .03})" stroke="rgb(244 63 94 / .35)"/><text x="${(a + b) / 2}" y="${y + 55}" text-anchor="middle" font-size="10.5" fill="#fecdd3" font-family="Figtree, sans-serif">${n}</text></g>`).join('');
+  const info = AN_INFO.map((e, i) => `<g class="a" style="--d:${.6 + i * .9}s"><circle cx="${e.x}" cy="${y}" r="7" fill="#0b1030" stroke="#94a3b8" stroke-width="1.5"/><text x="${e.x}" y="${y + 3.5}" text-anchor="middle" font-size="9" font-weight="900" fill="#cbd5e1" font-family="Figtree, sans-serif">i</text>
+      <text x="${e.x}" y="${y - 16}" text-anchor="middle" font-size="9.5" fill="#94a3b8" font-family="Figtree, sans-serif">${e.n}</text></g>`).join('');
+  const leg = `<g font-family="Figtree, sans-serif" font-size="10.5" fill="rgb(255 255 255 / .55)">${[['crit', 'Critical'], ['high', 'High'], ['med', 'Medium']].map(([k, l], i) => `<polygon points="${720 + i * 76},${by + 4} ${727 + i * 76},${by + 16} ${713 + i * 76},${by + 16}" fill="${anSevCol(k)}"/><text x="${732 + i * 76}" y="${by + 15}">${l}</text>`).join('')}<circle cx="${955}" cy="${by + 10}" r="6" fill="#0b1030" stroke="#94a3b8"/><text x="${952}" y="${by + 13.5}" font-size="8.5" font-weight="900" fill="#cbd5e1">i</text><text x="${965}" y="${by + 15}" text-anchor="start">Info</text></g>`;
   return `<svg viewBox="0 0 1000 380" class="w-full h-auto">
     ${anAxis(y)}${info}${stg}${leg}
     <g class="a" style="--d:.35s"><rect x="${bx}" y="${by}" width="340" height="${50 + AN_EVENTS.length * 22 + 10}" rx="16" fill="rgb(28 36 78 / .55)" stroke="rgb(129 140 248 / .45)"/>
-      <text x="${bx + 20}" y="${by + 28}" font-size="15" font-weight="800" fill="#fff" font-family="Lato, sans-serif">Case #555548</text>
-      <text x="${bx + 320}" y="${by + 28}" text-anchor="end" font-size="11.5" fill="rgb(255 255 255 / .5)" font-family="Lato, sans-serif">grouped by shared logic</text></g>
+      <text x="${bx + 20}" y="${by + 28}" font-size="15" font-weight="800" fill="#fff" font-family="Figtree, sans-serif">Case #555548</text>
+      <text x="${bx + 320}" y="${by + 28}" text-anchor="end" font-size="11.5" fill="rgb(255 255 255 / .5)" font-family="Figtree, sans-serif">grouped by shared logic</text></g>
     ${rows}
-    <text x="50" y="${y - 30}" font-size="11" fill="rgb(255 255 255 / .4)" font-family="Lato, sans-serif" letter-spacing="1.5">ATTACK TIMELINE</text>
+    <text x="50" y="${y - 30}" font-size="11" fill="rgb(255 255 255 / .4)" font-family="Figtree, sans-serif" letter-spacing="1.5">ATTACK TIMELINE</text>
   </svg>`;
 }
 function anLanes(withAgent) {
   const yI = 50, yA = 126, yJ = 196, yH = withAgent ? 266 : 196, end = 950, H = withAgent ? 300 : 230;
-  const lab = (y, t) => `<text x="50" y="${y - 22}" font-size="11" fill="rgb(255 255 255 / .45)" letter-spacing="1.5" font-family="Lato, sans-serif">${t}</text><line x1="50" x2="${end}" y1="${y}" y2="${y}" stroke="rgb(129 140 248 / .14)"/>`;
+  const lab = (y, t) => `<text x="50" y="${y - 22}" font-size="11" fill="rgb(255 255 255 / .45)" letter-spacing="1.5" font-family="Figtree, sans-serif">${t}</text><line x1="50" x2="${end}" y1="${y}" y2="${y}" stroke="rgb(129 140 248 / .14)"/>`;
   let o = lab(yI, 'ISSUES') + lab(yA, 'AUTOMATION · PLAYBOOKS') + (withAgent ? lab(yJ, 'JOSH') : '') + lab(yH, 'HUMAN ANALYST')
     + AN_EVENTS.map((e, i) => `<g class="pop" style="--d:${.2 + i * .45}s"><polygon points="${e.x},${yI - 11} ${e.x + 9},${yI + 5} ${e.x - 9},${yI + 5}" fill="${anSevCol(e.sev)}"/></g>`).join('');
-  const seg = (x1, x2, y, col, label, d, dash, fs) => `<rect class="gx" style="--d:${d}s" x="${x1}" y="${y - 11}" width="${x2 - x1}" height="22" rx="6" fill="${col}" ${dash ? 'stroke="rgb(255 255 255 / .3)" stroke-dasharray="4 4" fill-opacity=".12"' : ''}/>${label ? `<text class="a" style="--d:${d + .3}s" x="${x1 + 7}" y="${y + 4}" font-size="${fs || 11}" fill="#fff" font-family="Lato, sans-serif">${label}</text>` : ''}`;
-  const pill = (x, y, txt, bg, fg, d) => `<g class="pop" style="--d:${d}s"><rect x="${x - txt.length * 3.4 - 12}" y="${y - 12}" width="${txt.length * 6.8 + 24}" height="24" rx="12" fill="${bg}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="${fg}" font-family="Lato, sans-serif">${txt}</text></g>`;
+  const seg = (x1, x2, y, col, label, d, dash, fs) => `<rect class="gx" style="--d:${d}s" x="${x1}" y="${y - 11}" width="${x2 - x1}" height="22" rx="6" fill="${col}" ${dash ? 'stroke="rgb(255 255 255 / .3)" stroke-dasharray="4 4" fill-opacity=".12"' : ''}/>${label ? `<text class="a" style="--d:${d + .3}s" x="${x1 + 7}" y="${y + 4}" font-size="${fs || 11}" fill="#fff" font-family="Figtree, sans-serif">${label}</text>` : ''}`;
+  const pill = (x, y, txt, bg, fg, d) => `<g class="pop" style="--d:${d}s"><rect x="${x - txt.length * 3.4 - 12}" y="${y - 12}" width="${txt.length * 6.8 + 24}" height="24" rx="12" fill="${bg}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="${fg}" font-family="Figtree, sans-serif">${txt}</text></g>`;
   // every issue triggers its own playbook; each one takes a different time
   o += AN_EVENTS.map((e, i) => { const [n, w, dur] = AN_PB[i], y = yA + (i % 2 ? 13 : -13), tw = Math.round(n.length * 5.4 + 12), bw = Math.max(w, tw);
-    return `<rect class="gx" style="--d:${.3 + i * .45}s" x="${e.x}" y="${y - 9}" width="${bw}" height="18" rx="5" fill="#334155" stroke="#64748b"/><text class="a" style="--d:${.5 + i * .45}s" x="${e.x + 6}" y="${y + 3.5}" font-size="9.5" fill="#e2e8f0" font-family="Lato, sans-serif">${n}</text><text class="a" style="--d:${.6 + i * .45}s" x="${e.x + bw + 5}" y="${y + 3.5}" font-size="9.5" fill="#94a3b8" font-family="Lato, sans-serif">${dur}</text>`; }).join('');
+    return `<rect class="gx" style="--d:${.3 + i * .45}s" x="${e.x}" y="${y - 9}" width="${bw}" height="18" rx="5" fill="#334155" stroke="#64748b"/><text class="a" style="--d:${.5 + i * .45}s" x="${e.x + 6}" y="${y + 3.5}" font-size="9.5" fill="#e2e8f0" font-family="Figtree, sans-serif">${n}</text><text class="a" style="--d:${.6 + i * .45}s" x="${e.x + bw + 5}" y="${y + 3.5}" font-size="9.5" fill="#94a3b8" font-family="Figtree, sans-serif">${dur}</text>`; }).join('');
   if (!withAgent) {
     const x = (x0, d) => `<g class="pop" style="--d:${d}s"><circle cx="${x0}" cy="${yH}" r="11" fill="#e11d48"/><path d="M${x0 - 4},${yH - 4} l8,8 M${x0 + 4},${yH - 4} l-8,8" stroke="#fff" stroke-width="2"/></g>`;
     o += seg(90, 300, yH, '#64748b', 'In queue', .4, true) + seg(300, 392, yH, '#3b82f6', 'Investigates', 1.4) + x(400, 1.5)
@@ -58,7 +58,7 @@ function anLanes(withAgent) {
       + `<g class="a" style="--d:3.2s"><circle cx="880" cy="${yH}" r="10" fill="none" stroke="rgb(255 255 255 / .35)" stroke-dasharray="3 3"/></g>`;
   } else {
     o += `<rect class="gx" style="--d:.35s" x="90" y="${yJ - 11}" width="${end - 90}" height="22" rx="11" fill="url(#anJosh)"/>
-      <text class="a" style="--d:.7s" x="100" y="${yJ + 4}" font-size="11" font-weight="700" fill="#04261a" font-family="Lato, sans-serif">Investigates</text>
+      <text class="a" style="--d:.7s" x="100" y="${yJ + 4}" font-size="11" font-weight="700" fill="#04261a" font-family="Figtree, sans-serif">Investigates</text>
       ${AN_EVENTS.slice(1).map((e, i) => `<g class="pop" style="--d:${.65 + (i + 1) * .45}s"><circle cx="${e.x}" cy="${yJ}" r="10" fill="#04261a" stroke="#4DFFA6" stroke-width="2"/><path d="M${e.x - 4},${yJ} l3,3 l6,-6" stroke="#4DFFA6" stroke-width="2" fill="none"/></g>`).join('')}
       ${pill(330, yJ - 30, 'Verdict · 3 min', '#e11d48', '#fff', 1.1)}
       <line x1="90" x2="${end}" y1="${yH}" y2="${yH}" stroke="rgb(255 255 255 / .12)" stroke-width="10" stroke-linecap="round" class="a" style="--d:.5s"/>
@@ -86,25 +86,25 @@ function anCh4(extra) {
       edges += `<path class="dr" pathLength="1" style="--d:${d + .35}s" d="M${qxs(i)},${qy - 6} C${qxs(i)},${qy - 80} ${hx(h) + 115},${hy + 150} ${hx(h) + 115},${hy + 84}" fill="none" stroke="${col}" stroke-width="${w ? 2.2 : 1.4}" ${w < 0 ? 'stroke-dasharray="1"' : ''} opacity=".85"/>`; });
     const new_ = extra && i === Q.length - 1;
     qs += `<g class="a" style="--d:${d}s"><rect x="${qxs(i) - 78}" y="${qy}" width="156" height="78" rx="12" fill="${new_ ? 'rgb(77 255 166 / .08)' : 'rgb(28 36 78 / .6)'}" stroke="${new_ ? '#4DFFA6' : 'rgb(129 140 248 / .4)'}"/>
-      <foreignObject x="${qxs(i) - 70}" y="${qy + 6}" width="140" height="70"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11.5px/1.3 Lato, sans-serif;color:#e7ecff">${q}<div style="margin-top:4px;font-weight:800;color:${a === 'Yes' ? '#fda4af' : a === 'No' ? '#86efac' : '#94a3b8'}">${a}</div></div></foreignObject></g>`;
+      <foreignObject x="${qxs(i) - 70}" y="${qy + 6}" width="140" height="70"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11.5px/1.3 Figtree, sans-serif;color:#e7ecff">${q}<div style="margin-top:4px;font-weight:800;color:${a === 'Yes' ? '#fda4af' : a === 'No' ? '#86efac' : '#94a3b8'}">${a}</div></div></foreignObject></g>`;
   });
   const endD = extra ? 1.8 : 1.1 + Q.length * .85 + .4;
   AN_H.forEach(([id, t, col, w], i) => {
     const ww = extra && i === 0 ? .97 : w;
     hs += `<g class="a" style="--d:${.2 + i * .2}s"><rect x="${hx(i)}" y="${hy}" width="230" height="84" rx="14" fill="rgb(28 36 78 / .7)" stroke="${col}" stroke-opacity=".6"/>
-      <text x="${hx(i) + 16}" y="${hy + 24}" font-size="11" font-weight="900" fill="${col}" letter-spacing="1" font-family="Lato, sans-serif">${id}</text>
-      <text x="${hx(i) + 16}" y="${hy + 44}" font-size="13.5" font-weight="700" fill="#fff" font-family="Lato, sans-serif">${t}</text>
+      <text x="${hx(i) + 16}" y="${hy + 24}" font-size="11" font-weight="900" fill="${col}" letter-spacing="1" font-family="Figtree, sans-serif">${id}</text>
+      <text x="${hx(i) + 16}" y="${hy + 44}" font-size="13.5" font-weight="700" fill="#fff" font-family="Figtree, sans-serif">${t}</text>
       <rect x="${hx(i) + 16}" y="${hy + 58}" width="198" height="8" rx="4" fill="rgb(255 255 255 / .08)"/></g>
       <rect class="gx" style="--d:${endD}s" x="${hx(i) + 16}" y="${hy + 58}" width="${198 * ww}" height="8" rx="4" fill="${col}"/>`;
   });
-  hs += `<g class="pop" style="--d:${endD + .9}s"><rect x="${hx(0) - 4}" y="${hy - 4}" width="238" height="92" rx="17" fill="none" stroke="#f43f5e" stroke-width="2.5"/><rect x="${hx(0) + 60}" y="${hy - 16}" width="110" height="22" rx="11" fill="#f43f5e"/><text x="${hx(0) + 115}" y="${hy - 1}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Lato, sans-serif">Top hypothesis</text></g>`;
+  hs += `<g class="pop" style="--d:${endD + .9}s"><rect x="${hx(0) - 4}" y="${hy - 4}" width="238" height="92" rx="17" fill="none" stroke="#f43f5e" stroke-width="2.5"/><rect x="${hx(0) + 60}" y="${hy - 16}" width="110" height="22" rx="11" fill="#f43f5e"/><text x="${hx(0) + 115}" y="${hy - 1}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree, sans-serif">Top hypothesis</text></g>`;
   return `<svg viewBox="0 0 1000 400" class="w-full min-w-[720px] h-auto">${edges}${hs}${qs}
-    <g class="a" style="--d:.9s" font-family="Lato, sans-serif" font-size="11"><line x1="850" x2="872" y1="12" y2="12" stroke="#4ade80" stroke-width="2.2"/><text x="878" y="16" fill="rgb(255 255 255 / .6)">supports</text>
+    <g class="a" style="--d:.9s" font-family="Figtree, sans-serif" font-size="11"><line x1="850" x2="872" y1="12" y2="12" stroke="#4ade80" stroke-width="2.2"/><text x="878" y="16" fill="rgb(255 255 255 / .6)">supports</text>
       <line x1="850" x2="872" y1="28" y2="28" stroke="#fb7185" stroke-width="2.2"/><text x="878" y="32" fill="rgb(255 255 255 / .6)">argues against</text></g></svg>`;
 }
 
 function anCh6(mode = 'josh') {
-  const F = 'font-family="Lato, sans-serif"', M = 'font-family="JetBrains Mono, monospace"', human = mode === 'human';
+  const F = 'font-family="Figtree, sans-serif"', M = 'font-family="JetBrains Mono, monospace"', human = mode === 'human';
   const X = m => 90 + m * 16.8;                         // minutes after 09:00 → x
   const Y = { iss: 64, enr: 140, det: 184, world: 252, josh: 326, axis: 392 };
   const lane = (y, t) => `<text x="40" y="${y - 20}" font-size="11" fill="rgb(255 255 255 / .45)" letter-spacing="1.5" ${F}>${t}</text><line x1="40" x2="960" y1="${y}" y2="${y}" stroke="rgb(129 140 248 / .14)"/>`;
@@ -219,20 +219,20 @@ function anReason(k, from = 99) {
       edges += `<path class="${isNew ? 'dr' : ''}" pathLength="1" style="--d:${d + .45}s" d="M${qx(i)},${qy - 6} C${qx(i)},${qy - 80} ${hx(h) + 115},${hy + 150} ${hx(h) + 115},${hy + 84}" fill="none" stroke="${col}" stroke-width="${w ? 2.2 : 1.4}" opacity="${isNew ? .95 : .55}"/>`; });
     const nw = i === 5;
     qs += `<g class="${cls}" style="--d:${d}s"><rect x="${qx(i) - 78}" y="${qy}" width="156" height="78" rx="12" fill="${nw ? 'rgb(77 255 166 / .08)' : 'rgb(28 36 78 / .6)'}" stroke="${nw ? '#4DFFA6' : isNew ? '#a5b4fc' : 'rgb(129 140 248 / .35)'}"/>
-      <foreignObject x="${qx(i) - 70}" y="${qy + 6}" width="140" height="70"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11.5px/1.3 Lato, sans-serif;color:#e7ecff">${q}<div style="margin-top:4px;font-weight:800;color:${a === 'Yes' ? '#fda4af' : a === 'No' ? '#86efac' : '#94a3b8'}">${a}</div></div></foreignObject></g>`;
+      <foreignObject x="${qx(i) - 70}" y="${qy + 6}" width="140" height="70"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11.5px/1.3 Figtree, sans-serif;color:#e7ecff">${q}<div style="margin-top:4px;font-weight:800;color:${a === 'Yes' ? '#fda4af' : a === 'No' ? '#86efac' : '#94a3b8'}">${a}</div></div></foreignObject></g>`;
   });
   for (let i = nq; i < 6; i++) qs += `<rect x="${qx(i) - 78}" y="${qy}" width="156" height="78" rx="12" fill="none" stroke="rgb(255 255 255 / .1)" stroke-dasharray="4 5"/>`;
   AN_H.forEach(([id, t, col], i) => {
     const top = k >= 6 && i === 0;
     hs += `<g><rect x="${hx(i)}" y="${hy}" width="230" height="84" rx="14" fill="rgb(28 36 78 / .7)" stroke="${col}" stroke-opacity="${top ? 1 : .55}" stroke-width="${top ? 2.5 : 1}"/>
-      <text x="${hx(i) + 16}" y="${hy + 24}" font-size="11" font-weight="900" fill="${col}" letter-spacing="1" font-family="Lato, sans-serif">${id}</text>
-      <text x="${hx(i) + 16}" y="${hy + 44}" font-size="13.5" font-weight="700" fill="#fff" font-family="Lato, sans-serif">${t}</text>
+      <text x="${hx(i) + 16}" y="${hy + 24}" font-size="11" font-weight="900" fill="${col}" letter-spacing="1" font-family="Figtree, sans-serif">${id}</text>
+      <text x="${hx(i) + 16}" y="${hy + 44}" font-size="13.5" font-weight="700" fill="#fff" font-family="Figtree, sans-serif">${t}</text>
       <rect x="${hx(i) + 16}" y="${hy + 58}" width="198" height="8" rx="4" fill="rgb(255 255 255 / .08)"/>
       <rect x="${hx(i) + 16}" y="${hy + 58}" height="8" rx="4" fill="${col}" style="width:${(198 * score[i]).toFixed(1)}px;transition:width .6s cubic-bezier(.2,.8,.2,1)"/></g>`;
   });
-  if (k >= 6) hs += `<g class="pop" style="--d:.1s"><rect x="${hx(0) + 52}" y="${hy - 16}" width="126" height="22" rx="11" fill="#f43f5e"/><text x="${hx(0) + 115}" y="${hy - 1}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Lato, sans-serif">Verdict · Malicious</text></g>`;
+  if (k >= 6) hs += `<g class="pop" style="--d:.1s"><rect x="${hx(0) + 52}" y="${hy - 16}" width="126" height="22" rx="11" fill="#f43f5e"/><text x="${hx(0) + 115}" y="${hy - 1}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Figtree, sans-serif">Verdict · Malicious</text></g>`;
   return `<svg viewBox="0 0 1000 400" class="w-full h-auto">${edges}${hs}${qs}
-    <g font-family="Lato, sans-serif" font-size="11"><line x1="850" x2="872" y1="12" y2="12" stroke="#4ade80" stroke-width="2.2"/><text x="878" y="16" fill="rgb(255 255 255 / .6)">supports</text>
+    <g font-family="Figtree, sans-serif" font-size="11"><line x1="850" x2="872" y1="12" y2="12" stroke="#4ade80" stroke-width="2.2"/><text x="878" y="16" fill="rgb(255 255 255 / .6)">supports</text>
       <line x1="850" x2="872" y1="28" y2="28" stroke="#fb7185" stroke-width="2.2"/><text x="878" y="32" fill="rgb(255 255 255 / .6)">argues against</text></g></svg>`;
 }
 function anStep(d) {

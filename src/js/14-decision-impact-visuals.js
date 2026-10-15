@@ -27,7 +27,7 @@ function impactHTML(c, tk) {
     const t = label.length > 26 ? label.slice(0, 25) + '…' : label;
     return `<g><rect x="${x - 82}" y="${y - 15}" width="164" height="30" rx="9" class="fill-panel" stroke="${kind === 'threat' ? '#f43f5e' : 'rgb(var(--line2))'}" stroke-width="${kind === 'threat' ? 1.6 : 1}"/>
       <circle cx="${x - 68}" cy="${y}" r="4" fill="${kind === 'threat' ? '#f43f5e' : 'rgb(var(--ink4))'}"/>
-      <text x="${x - 58}" y="${y + 4}" font-size="11.5" class="fill-ink" font-family="Lato, sans-serif">${esc(t)}</text></g>`;
+      <text x="${x - 58}" y="${y + 4}" font-size="11.5" class="fill-ink" font-family="Figtree, sans-serif">${esc(t)}</text></g>`;
   };
   const mark = (x, y, kind) => {
     const g = { cut: ['#00c389', '✕'], rotate: ['#6366f1', '↻'], block: ['#00c389', '⊘'], revoke: ['#00c389', '🔒'], patch: ['#00c389', '✓'] }[kind];
@@ -52,7 +52,7 @@ function impactHTML(c, tk) {
   const center = `
     <circle cx="${cx}" cy="${cy}" r="44" fill="url(#cg)"/>
     <foreignObject x="${cx - 16}" y="${cy - 16}" width="32" height="32"><div xmlns="http://www.w3.org/1999/xhtml" style="color:#fff;display:flex;align-items:center;justify-content:center;width:32px;height:32px">${ic(sp.icon, 'w-8 h-8')}</div></foreignObject>
-    <text x="${cx}" y="${cy + 62}" text-anchor="middle" font-size="12" font-weight="600" class="fill-ink" font-family="Lato, sans-serif">${esc(fill(sp.center))}</text>
+    <text x="${cx}" y="${cy + 62}" text-anchor="middle" font-size="12" font-weight="600" class="fill-ink" font-family="Figtree, sans-serif">${esc(fill(sp.center))}</text>
     <g class="pv"><circle class="spin-ring" cx="${cx}" cy="${cy}" r="56" fill="none" stroke="${ringCol}" stroke-width="2.5" stroke-dasharray="7 6"/></g>`;
   return `<section id="impact" class="impact eff-${sp.effect} rounded-2xl border border-line overflow-hidden">
     <div class="px-4 py-3 flex items-center justify-between gap-3 bg-panel2 border-b border-line">

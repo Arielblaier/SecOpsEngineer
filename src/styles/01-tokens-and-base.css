@@ -14,9 +14,9 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: 7 11 20; --panel: 16 22 36; --panel2: 19 26 42; --card: 22 30 48;
-      --line: 36 46 66; --line2: 50 62 86; --ink: 238 242 248; --ink2: 200 207 220;
-      --ink3: 143 152 170; --ink4: 125 135 155; --sunk: 11 16 28; --hov: 28 37 56; --code: 8 12 22;
+      --bg: 0 10 25; --panel: 23 33 48; --panel2: 31 41 56; --card: 31 41 56;
+      --line: 52 65 86; --line2: 94 110 136; --ink: 238 243 252; --ink2: 212 226 247;
+      --ink3: 135 152 178; --ink4: 135 152 178; --sunk: 31 41 56; --hov: 61 77 102; --code: 0 10 25;
       --brand: 77 255 166; --brand-ink: 77 255 166;
       --rose-fg: 253 164 175; --amber-fg: 252 211 77; --indigo-fg: 165 180 252; --cx-fg: 52 222 170;
       --cyan-fg: 103 232 249; --blue-fg: 147 197 253; --purple-fg: 216 180 254; --slate-fg: 203 213 225;
@@ -24,9 +24,9 @@
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: 7 11 20; --panel: 16 22 36; --panel2: 19 26 42; --card: 22 30 48;
-    --line: 36 46 66; --line2: 50 62 86; --ink: 238 242 248; --ink2: 200 207 220;
-    --ink3: 143 152 170; --ink4: 125 135 155; --sunk: 11 16 28; --hov: 28 37 56; --code: 8 12 22;
+    --bg: 0 10 25; --panel: 23 33 48; --panel2: 31 41 56; --card: 31 41 56;
+    --line: 52 65 86; --line2: 94 110 136; --ink: 238 243 252; --ink2: 212 226 247;
+    --ink3: 135 152 178; --ink4: 135 152 178; --sunk: 31 41 56; --hov: 61 77 102; --code: 0 10 25;
     --brand: 77 255 166; --brand-ink: 77 255 166;
     --rose-fg: 253 164 175; --amber-fg: 252 211 77; --indigo-fg: 165 180 252; --cx-fg: 52 222 170;
     --cyan-fg: 103 232 249; --blue-fg: 147 197 253; --purple-fg: 216 180 254; --slate-fg: 203 213 225;

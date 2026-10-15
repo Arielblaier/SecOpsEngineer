@@ -37,19 +37,19 @@ function blastHTML(c, part) {
   const dots = after ? '' : [...p1.map(n => [cx, cy, n.x, n.y]), ...p2.map(n => [n.s.x, n.s.y, n.x, n.y])].map(([a, b, x, y], i) => `<circle r="3" fill="#fb7185"><animateMotion dur="2.2s" begin="${(i % 4) * .5}s" repeatCount="indefinite" path="M${a},${b} L${x},${y}"/></circle>`).join('');
   const node = (n, r, fill, label, sub, crown) => `<g opacity="${after ? .35 : 1}"><circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" fill-opacity=".18" stroke="${fill}" stroke-width="1.6"/>
     ${crown ? `<text x="${n.x}" y="${n.y + 5}" text-anchor="middle" font-size="14">👑</text>` : `<circle cx="${n.x}" cy="${n.y}" r="5" fill="${fill}"/>`}
-    <text x="${n.x}" y="${n.y + r + 15}" text-anchor="middle" font-size="12" font-weight="700" class="fill-ink" font-family="Lato, sans-serif">${esc(label)}</text>
-    <text x="${n.x}" y="${n.y + r + 29}" text-anchor="middle" font-size="10.5" class="fill-ink3" font-family="Lato, sans-serif">${esc(sub)}</text></g>`;
+    <text x="${n.x}" y="${n.y + r + 15}" text-anchor="middle" font-size="12" font-weight="700" class="fill-ink" font-family="Figtree, sans-serif">${esc(label)}</text>
+    <text x="${n.x}" y="${n.y + r + 29}" text-anchor="middle" font-size="10.5" class="fill-ink3" font-family="Figtree, sans-serif">${esc(sub)}</text></g>`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="Blast radius">
     <defs><radialGradient id="brcore"><stop offset="0" stop-color="#f43f5e" stop-opacity=".55"/><stop offset="1" stop-color="#f43f5e" stop-opacity="0"/></radialGradient></defs>
     <ellipse cx="${cx}" cy="${cy}" rx="300" ry="205" fill="none" stroke="rgb(var(--line2))" stroke-dasharray="2 6"/><ellipse cx="${cx}" cy="${cy}" rx="150" ry="125" fill="none" stroke="rgb(var(--line2))" stroke-dasharray="2 6"/>
-    <text x="${cx + 154}" y="${cy - 118}" font-size="10.5" class="fill-ink3" font-family="Lato, sans-serif">1 hop</text><text x="${cx + 250}" y="${cy - 168}" font-size="10.5" class="fill-ink3" font-family="Lato, sans-serif">2 hops</text>
+    <text x="${cx + 154}" y="${cy - 118}" font-size="10.5" class="fill-ink3" font-family="Figtree, sans-serif">1 hop</text><text x="${cx + 250}" y="${cy - 168}" font-size="10.5" class="fill-ink3" font-family="Figtree, sans-serif">2 hops</text>
     <circle cx="${cx}" cy="${cy}" r="${after ? 60 : 210}" fill="url(#brcore)" opacity=".45"/>
     ${edges}${dots}
     ${p1.map(n => node(n, 18, critC[n.crit] || '#f59e0b', n.n, n.k, false)).join('')}
     ${p2.map(n => node(n, 22, '#f43f5e', n.n, n.k, true)).join('')}
     <circle cx="${cx}" cy="${cy}" r="34" fill="${after ? '#00c389' : '#f43f5e'}" fill-opacity=".25" stroke="${after ? '#00c389' : '#f43f5e'}" stroke-width="2"/>
-    <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="11.5" font-weight="800" class="fill-ink" font-family="Lato, sans-serif">${esc(c.host)}</text>
-    <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="${after ? '#5eead4' : '#fda4af'}" font-family="Lato, sans-serif">${after ? 'contained' : 'compromised'}</text>
+    <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="11.5" font-weight="800" class="fill-ink" font-family="Figtree, sans-serif">${esc(c.host)}</text>
+    <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="${after ? '#5eead4' : '#fda4af'}" font-family="Figtree, sans-serif">${after ? 'contained' : 'compromised'}</text>
   </svg>`;
   const story = `<div class="flex items-stretch overflow-x-auto pb-1">${B.story.map(([t, d, st], i) => `${i ? `<span class="w-6 h-[2px] self-center shrink-0 ${st === 'obs' ? 'bg-rose-500/70' : 'bg-line2'}"></span>` : ''}
     <div class="w-[170px] shrink-0 rounded-2xl p-3 border ${st === 'obs' ? 'border-rose-500/40 bg-rose-500/[.07]' : st === 'next' ? 'border-amber-500/50 bg-amber-500/[.07]' : 'border-dashed border-line2 opacity-70'}">
@@ -187,7 +187,7 @@ function caseStoryGraph(c) {
     return `<g style="cursor:pointer" ${tip(a, t, `${asset ? 'Asset' : 'Artifact'} · ${obs ? 'observed' : 'reachable'}`)} onclick="openEnt('${c.id}','${ic0 === 'ip' ? 'ip' : ic0 === 'proc' ? 'file' : ic0 === 'user' ? 'user' : 'host'}','${esc(a)}')" color="#e7ecff"><circle cx="${x}" cy="${y}" r="17" fill="${asset ? '#1f2d3f' : '#29263f'}" stroke="${asset ? ASSET : ART}" stroke-width="1.5" ${obs ? '' : 'stroke-dasharray="3 3"'}/><g transform="translate(${x},${y})">${I[ic0]}</g>
       <text x="${x}" y="${y + 32}" text-anchor="middle" font-size="10" fill="rgb(var(--ink2))">${esc(String(a).slice(0, 20))}</text><text x="${x}" y="${y + 44}" text-anchor="middle" font-size="8.5" fill="rgb(var(--ink3))">${esc(b)}</text></g>`; };
   const marks = ['host', 'proc', 'ip'].map(k => { const [x, y] = N[k]; return `<polygon points="${x + 15},${y - 22} ${x + 21},${y - 12} ${x + 9},${y - 12}" fill="#e11d48" ${tipAttr('<div class="text-[13px] text-ink">An issue fired here</div>')}/>`; }).join('');
-  return `<svg viewBox="0 0 960 300" class="w-full h-auto" font-family="Lato, sans-serif">${E.map(edge).join('')}${Object.keys(N).map(node).join('')}${marks}</svg>
+  return `<svg viewBox="0 0 960 300" class="w-full h-auto" font-family="Figtree, sans-serif">${E.map(edge).join('')}${Object.keys(N).map(node).join('')}${marks}</svg>
     <div class="mt-1 flex items-center gap-4 flex-wrap text-[12px] text-ink3 px-1"><span><span style="display:inline-block;width:11px;height:11px;border-radius:9px;border:1.4px solid ${ASSET};vertical-align:-1px;margin-right:6px"></span>asset</span><span><span style="display:inline-block;width:11px;height:11px;border-radius:9px;border:1.4px solid ${ART};vertical-align:-1px;margin-right:6px"></span>artifact</span><span><span style="display:inline-block;width:18px;border-top:1.2px dashed rgb(148 158 196);vertical-align:middle;margin-right:6px"></span>reachable, not observed</span><span class="ml-auto">Hover anything · click a node for details</span></div>`;
 }
 function attackGraphSVG(c) {
@@ -245,5 +245,5 @@ function attackGraphSVG(c) {
     }
     out += `<text x="20" y="${Y1 - 50}" font-size="10" class="fill-ink3" letter-spacing="1.5">BLAST RADIUS · 1 HOP</text>${lvl === 2 ? `<text x="20" y="${420 - 50}" font-size="10" class="fill-ink3" letter-spacing="1.5">2 HOPS · CROWN JEWELS</text>` : ''}`;
   }
-  return `<svg viewBox="0 0 ${W} ${Hh}" class="w-full h-auto" preserveAspectRatio="xMidYMid meet" font-family="Lato, system-ui, sans-serif"><defs><marker id="agArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="rgb(148 158 196 / .7)"/></marker><marker id="agArrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/></marker></defs>${out}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${Hh}" class="w-full h-auto" preserveAspectRatio="xMidYMid meet" font-family="Figtree, system-ui, sans-serif"><defs><marker id="agArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="rgb(148 158 196 / .7)"/></marker><marker id="agArrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/></marker></defs>${out}</svg>`;
 }

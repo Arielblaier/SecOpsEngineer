@@ -13,7 +13,7 @@ function bornOverlay(W, H, cx, cy, coreR, pos, botPx, labels, only, part) {
     const P = PILLARS[k], tx = side === 'left' ? -botPx * .62 : side === 'right' ? botPx * .62 : 0, ty = side === 'below' ? botPx * .78 : side === 'above' ? -botPx * .62 : 4, anchor = side === 'left' ? 'end' : side === 'right' ? 'start' : 'middle';
     bots += `<g transform="translate(${x},${y})"><g class="bag" style="--d:${d + 1.55}s">
       <svg x="${-botPx / 2}" y="${-botPx / 2}" width="${botPx}" height="${botPx}" viewBox="${ROBOT_VB}" overflow="visible">${robotInner(ROBOT_COL[k][0], ROBOT_COL[k][1], botPx >= 40, ROBOT_COL[k][2], true, botPx >= 30)}</svg>
-      ${labels ? `<text x="${tx}" y="${ty}" text-anchor="${anchor}" font-family="Lato, sans-serif"><tspan font-size="${labels}" font-weight="800" class="fill-ink" fill="#fff">${P.name}</tspan><tspan x="${tx}" dy="${labels + 2}" font-size="${labels - 3}" fill="rgb(255 255 255 / .55)" class="fill-ink3">${P.title}</tspan></text>` : ''}
+      ${labels ? `<text x="${tx}" y="${ty}" text-anchor="${anchor}" font-family="Figtree, sans-serif"><tspan font-size="${labels}" font-weight="800" class="fill-ink" fill="#fff">${P.name}</tspan><tspan x="${tx}" dy="${labels + 2}" font-size="${labels - 3}" fill="rgb(255 255 255 / .55)" class="fill-ink3">${P.title}</tspan></text>` : ''}
     </g></g>`;
   });
   const coreC = `<circle cx="${cx}" cy="${cy}" r="${coreR}" fill="#1fcf86"><animate attributeName="r" values="${coreR};${coreR + 5};${coreR}" dur="5s" repeatCount="indefinite"/></circle>`;

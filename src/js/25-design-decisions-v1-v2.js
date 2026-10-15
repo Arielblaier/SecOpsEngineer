@@ -54,7 +54,7 @@ var dxP = function (id) {
   const ev = DXD.events, R = DXD.rounds;
   if (id === 'A') {
     const mark = e => e.k === 'issue' ? `<polygon points="${e.x},${46 - 9} ${e.x + 8},${46 + 5} ${e.x - 8},${46 + 5}" fill="${dxSev(e.sev)}"/>` : e.k === 'info' ? `<circle cx="${e.x}" cy="46" r="6" fill="#0b1030" stroke="#94a3b8"/><text x="${e.x}" y="49" text-anchor="middle" font-size="8" fill="#cbd5e1" font-weight="900">i</text>` : e.k === 'case' ? `<rect x="${e.x - 6}" y="40" width="12" height="12" rx="3" fill="#818cf8"/>` : `<rect x="${e.x - 2}" y="70" width="${e.n.includes('2m') ? 90 : 30}" height="12" rx="3" fill="#334155" stroke="#64748b"/>`;
-    return dxCard(`<svg viewBox="0 0 900 250" class="w-full h-auto" font-family="Lato, sans-serif">
+    return dxCard(`<svg viewBox="0 0 900 250" class="w-full h-auto" font-family="Figtree, sans-serif">
       <text x="10" y="24" font-size="10.5" fill="rgb(255 255 255 / .45)" letter-spacing="1.5">THE CASE · changes on its own</text><line x1="10" x2="890" y1="46" y2="46" stroke="rgb(255 255 255 / .12)"/>
       <text x="10" y="66" font-size="9.5" fill="rgb(255 255 255 / .35)">playbooks</text>
       ${ev.map(e => `<g ${tipAttr(`<div class="text-[13px] text-ink">${e.n}</div><div class="text-[12px] text-ink3">${e.t}</div>`)} style="cursor:help">${mark(e)}</g>`).join('')}
@@ -83,10 +83,10 @@ var dxR = function (id) {
   const H = DXD.hyp, Q = DXD.qs;
   if (id === 'A') {
     const hx = i => 40 + i * 290, qx = i => 70 + i * 152;
-    return dxCard(`<svg viewBox="0 0 900 330" class="w-full h-auto" font-family="Lato, sans-serif">
+    return dxCard(`<svg viewBox="0 0 900 330" class="w-full h-auto" font-family="Figtree, sans-serif">
       ${Q.map((q, i) => q.eff.map((w, h) => w ? `<path d="M${qx(i)},242 C${qx(i)},170 ${hx(h) + 120},150 ${hx(h) + 120},96" fill="none" stroke="${w > 0 ? '#4ade80' : '#fb7185'}" stroke-width="1.8" opacity=".8"/>` : '').join('')).join('')}
-      ${H.map((h, i) => `<rect x="${hx(i)}" y="14" width="240" height="82" rx="12" fill="rgb(28 36 78 / .8)" stroke="${h.col}"/><foreignObject x="${hx(i) + 10}" y="20" width="220" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 12px/1.35 Lato, sans-serif;color:#e7ecff"><span style="color:${h.col};font-weight:900">${h.id} · ${h.pct}%</span><br/>${h.q}</div></foreignObject>`).join('')}
-      ${Q.map((q, i) => `<rect x="${qx(i) - 68}" y="242" width="136" height="76" rx="10" fill="rgb(28 36 78 / .8)" stroke="rgb(129 140 248 / .4)"/><foreignObject x="${qx(i) - 62}" y="247" width="124" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11px/1.3 Lato, sans-serif;color:#e7ecff">${q.q}<div style="margin-top:3px;color:#fda4af;font-weight:800">${q.a}</div></div></foreignObject>`).join('')}</svg>`);
+      ${H.map((h, i) => `<rect x="${hx(i)}" y="14" width="240" height="82" rx="12" fill="rgb(28 36 78 / .8)" stroke="${h.col}"/><foreignObject x="${hx(i) + 10}" y="20" width="220" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 12px/1.35 Figtree, sans-serif;color:#e7ecff"><span style="color:${h.col};font-weight:900">${h.id} · ${h.pct}%</span><br/>${h.q}</div></foreignObject>`).join('')}
+      ${Q.map((q, i) => `<rect x="${qx(i) - 68}" y="242" width="136" height="76" rx="10" fill="rgb(28 36 78 / .8)" stroke="rgb(129 140 248 / .4)"/><foreignObject x="${qx(i) - 62}" y="247" width="124" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="font:600 11px/1.3 Figtree, sans-serif;color:#e7ecff">${q.q}<div style="margin-top:3px;color:#fda4af;font-weight:800">${q.a}</div></div></foreignObject>`).join('')}</svg>`);
   }
   if (id === 'B') {
     S.dxRow = S.dxRow ?? 2;
@@ -143,7 +143,7 @@ var dxGraph = function (withBlast, onlyBlast) {
     return `<g ${tipAttr(`<div class="text-[11px] text-ink3 tracking-wide">BLAST RADIUS</div><div class="text-[14px] font-bold text-ink mt-0.5">${b.n} · ${b.s}</div><div class="text-[12.5px] text-ink2 mt-1">Reachable because ${b.via}</div>`)} style="cursor:help"><path d="M${A.x + 20},${A.y} C${(A.x + b.x) / 2},${A.y} ${(A.x + b.x) / 2},${b.y} ${b.x - 18},${b.y}" fill="none" stroke="#fb7185" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="2 5"/>
       <rect x="${b.x - 16}" y="${b.y - 16}" width="32" height="32" rx="8" fill="${b.crown ? '#4c0519' : '#1e293b'}" stroke="#fb7185" stroke-dasharray="3 3"/><text x="${b.x}" y="${b.y + 5}" text-anchor="middle" font-size="14">${b.crown ? '👑' : '🖥'}</text>
       <text x="${b.x + 24}" y="${b.y - 1}" font-size="11.5" font-weight="700" fill="#fff">${b.n}</text><text x="${b.x + 24}" y="${b.y + 13}" font-size="10" fill="rgb(255 255 255 / .55)">${b.s}</text></g>`; }).join('');
-  return `<svg viewBox="0 0 960 ${withBlast || onlyBlast ? 450 : 380}" class="w-full h-auto" font-family="Lato, sans-serif"><defs><marker id="dxR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/></marker><marker id="dxA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker></defs>
+  return `<svg viewBox="0 0 960 ${withBlast || onlyBlast ? 450 : 380}" class="w-full h-auto" font-family="Figtree, sans-serif"><defs><marker id="dxR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/></marker><marker id="dxA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker></defs>
     ${DXG.edges.map(e => edge(e, onlyBlast)).join('')}${DXG.nodes.map(n => node(n, onlyBlast && !['svc', 'edge'].includes(n.id))).join('')}${blast}</svg>`;
 }
 var dxG = function (id) {
@@ -221,7 +221,7 @@ dxP = function (id) {
     S.dxRound = S.dxRound ?? R.length - 1; const k = S.dxRound, r = R[k];
     const caseSince = ev.filter(e => (k === 0 ? e.x <= r.x : e.x > R[k - 1].x && e.x <= r.x));
     const mark = e => e.k === 'issue' ? `<polygon points="${e.x},37 ${e.x + 8},51 ${e.x - 8},51" fill="${dxSev(e.sev)}"/>` : e.k === 'info' ? `<circle cx="${e.x}" cy="46" r="6" fill="#0b1030" stroke="#94a3b8"/><text x="${e.x}" y="49" text-anchor="middle" font-size="8" fill="#cbd5e1" font-weight="900">i</text>` : e.k === 'case' ? `<rect x="${e.x - 6}" y="40" width="12" height="12" rx="3" fill="#818cf8"/>` : `<rect x="${e.x - 2}" y="64" width="${e.n.includes('2m') ? 90 : 30}" height="10" rx="3" fill="#334155" stroke="#64748b"/>`;
-    return dxCard(`<svg viewBox="0 0 900 175" class="w-full h-auto" font-family="Lato, sans-serif">
+    return dxCard(`<svg viewBox="0 0 900 175" class="w-full h-auto" font-family="Figtree, sans-serif">
       <text x="10" y="24" font-size="10.5" fill="rgb(255 255 255 / .45)" letter-spacing="1.5">THE CASE</text><line x1="10" x2="890" y1="46" y2="46" stroke="rgb(255 255 255 / .12)"/>
       ${ev.map(e => `<g ${tipAttr(`<div class="text-[13px] text-ink">${e.n}</div><div class="text-[12px] text-ink3">${e.t}</div>`)} style="cursor:help">${mark(e)}</g>`).join('')}
       <text x="10" y="108" font-size="10.5" fill="rgb(255 255 255 / .45)" letter-spacing="1.5">JOSH</text><rect x="140" y="118" width="750" height="12" rx="6" fill="rgb(77 255 166 / .25)"/>
@@ -311,7 +311,7 @@ dxGraph = function (withBlast, onlyBlast) {
   const blast = showB ? DXG2.blast.map(b => { const A = N[b.from], x1 = A.x + W / 2, x2 = b.x + 30 - W / 2 + 2;
     return `<path d="M${x1},${A.y} C${(x1 + x2) / 2},${A.y} ${(x1 + x2) / 2},${b.y} ${x2 - 4},${b.y}" fill="none" stroke="#fda4af" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.5 4" stroke-linecap="round"/>
       ${pill(b.x + 30, b.y, b.k, b.n, b.s, b.crown ? '#f43f5e' : '#fda4af', 1, 0, `<div class="text-[11px] text-ink3 tracking-wide">BLAST RADIUS</div><div class="text-[14px] font-bold text-ink mt-0.5">${b.n}</div><div class="text-[12.5px] text-ink2 mt-1">Reachable because ${b.via}</div>`)}`; }).join('') : '';
-  return `<svg viewBox="0 0 ${showB ? 1060 : 850} ${showB ? 425 : 330}" class="w-full h-auto" font-family="Lato, sans-serif"><defs><marker id="dx2R" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#fb7185" stroke-width="1.6"/></marker><marker id="dx2A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#fbbf24" stroke-width="1.6"/></marker></defs>
+  return `<svg viewBox="0 0 ${showB ? 1060 : 850} ${showB ? 425 : 330}" class="w-full h-auto" font-family="Figtree, sans-serif"><defs><marker id="dx2R" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#fb7185" stroke-width="1.6"/></marker><marker id="dx2A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#fbbf24" stroke-width="1.6"/></marker></defs>
     ${DXG2.edges.map(e => edge(e, onlyBlast)).join('')}
     ${DXG2.nodes.map(n => pill(n.x, n.y, n.k, n.n, n.s, n.obs ? '#fb7185' : '#fbbf24', !n.obs, onlyBlast && !['svc', 'edge'].includes(n.id), `<div class="text-[14px] font-bold text-ink">${n.n}</div><div class="text-[12.5px] text-ink3">${n.s}</div><div class="text-[11.5px] mt-1 ${n.obs ? 'text-rose-300' : 'text-amber-300'}">${n.obs ? 'Observed' : 'Suspected · not observed yet'}</div>`)).join('')}${blast}</svg>`;
 };
@@ -390,7 +390,7 @@ function dxGroupGraph() {
   const E = (x1, y1, x2, y2, tip) => `<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}" fill="none" stroke="rgb(var(--line2))" stroke-width="1"/><path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}" fill="none" stroke="transparent" stroke-width="14" style="cursor:help" ${tipAttr(`<div class="text-[11px] text-ink3 tracking-wide">LINK</div><div class="text-[13px] text-ink mt-0.5">${tip}</div>`)}/>`;
   const issues = (x, y, cnt, hi, md, list) => `<g style="cursor:help" ${T(`Issues (${cnt})`, list.join('<br>'))}>${tri(x + 7, y, 11, '#fb7185')}${tri(x - 4, y, 12, rose)}${lbl(x, y + 30, `Issues (${cnt})`, 'Click to expand')}<text x="${x}" y="${y + 56}" text-anchor="middle" font-size="8.5"><tspan fill="${rose}" font-weight="700">⌃ ${hi}</tspan>${md ? `<tspan fill="rgb(var(--ink4))">  |  </tspan><tspan fill="#f59e0b" font-weight="700">⌃ ${md}</tspan>` : ''}</text></g>`;
   const node = (x, y, inner, a, b, tip) => `<g style="cursor:help" ${T(a, tip)}>${circ(x, y, inner)}${lbl(x, y + 30, a, b)}</g>`;
-  return dxCard(`<svg viewBox="0 0 960 350" class="w-full h-auto" font-family="Lato, sans-serif">
+  return dxCard(`<svg viewBox="0 0 960 350" class="w-full h-auto" font-family="Figtree, sans-serif">
     ${E(X[0] + 14, Y[1], X[1] - 14, Y[1], 'The case was opened from this issue')}
     ${E(X[1] + 14, Y[1], X[2] - 14, Y[0], 'Same email message')}${E(X[1] + 14, Y[1], X[2] - 14, Y[1], 'Same causality chain on SOC-Tech')}${E(X[1] + 14, Y[1], X[2] - 14, Y[2], 'Same file hash')}
     ${[0, 1, 2].map(i => E(X[2] + 14, Y[i], X[3] - 16, Y[i], ['Issues tied to the email', 'Issues in the same process tree', 'Issues on the same file'][i])).join('')}
@@ -476,7 +476,7 @@ var dxAttackStory = function () {
   const node = id => { const [x, y, ic0, a, b, tip, obs] = N[id];
     return `<g style="cursor:help" ${tipH(a, tip, obs ? 'Observed' : 'Suspected · not observed yet')}><circle cx="${x}" cy="${y}" r="15" fill="#2b3445" ${obs ? '' : `stroke="${amber}" stroke-dasharray="3 3"`}/><g transform="translate(${x},${y})" color="#fff">${ic0}</g>${lbl(x, y + 30, a, b)}</g>`; };
   const issues = ISS.map(([id, n, sev]) => { const [x, y] = N[id]; return `<g style="cursor:help" ${tipH(n, `Issue · ${sev}`, '')}>${tri(x + 14, y - 16, 6.5, sev === 'Critical' ? rose : '#fb7185')}</g>`; }).join('');
-  return dxCard(`<svg viewBox="0 0 940 320" class="w-full h-auto" font-family="Lato, sans-serif">${E.map(edge).join('')}${Object.keys(N).map(node).join('')}${issues}</svg>
+  return dxCard(`<svg viewBox="0 0 940 320" class="w-full h-auto" font-family="Figtree, sans-serif">${E.map(edge).join('')}${Object.keys(N).map(node).join('')}${issues}</svg>
     <div class="mt-1 flex items-center gap-4 text-[12px] text-white/50"><span><span style="display:inline-block;width:18px;border-top:1.5px solid #fb7185;vertical-align:middle;margin-right:6px"></span>observed</span><span><span style="display:inline-block;width:18px;border-top:1.5px dashed #f59e0b;vertical-align:middle;margin-right:6px"></span>suspected</span><span><svg width="12" height="10" style="display:inline;vertical-align:-1px;margin-right:5px"><polygon points="6,0 12,10 0,10" fill="#e11d48"/></svg>issue fired here</span><span class="ml-auto">Hover any step for the activity</span></div>`);
 }
 const _dxG2 = dxG;

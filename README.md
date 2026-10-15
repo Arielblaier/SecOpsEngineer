@@ -290,6 +290,21 @@ menu reopens the card.
 mission, the quick task-switch modal, customer-editable job policies, live
 presence and real multi-user sync. Other people are scripted.
 
+## Look and feel: Unity design system
+
+The look follows the Unity design system (Figma v1.3). Layout and behavior are
+unchanged by it. It is three things:
+- Figtree is the body font (400 to 900), in `src/fonts/figtree-*.woff2` and
+  `src/fonts-unity.css`. JetBrains Mono stays the code font.
+- The dark theme tokens in `src/styles/01-tokens-and-base.css` use the Unity
+  palette.
+- `src/unity-ds.css` is a layer included last in `<head>` (see
+  `src/index.html`): Unity type weights, radius scale, focus ring, form
+  controls, table header and hover, severity colors and scrollbars.
+
+`npm run build` from this source is byte-identical to
+`SecOps_Detection_Engineer_Product_Approval_v5-unity.html`.
+
 ## Changing a library or font
 
 Edit the version in `package.json`, run `npm install`, then `npm run vendor`.

@@ -16,7 +16,7 @@ export default {
         code: 'rgb(var(--code) / <alpha-value>)', cx: { DEFAULT: '#00c389', dark: '#00a574' }
       },
       fontFamily: {
-        sans: ['Lato', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Figtree', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace']
       }
     }

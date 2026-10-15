@@ -59,5 +59,5 @@ const EX_OPTS = [
     where: 'The AgentiX panel and Home greeting: the core turns into Josh when he brings you a decision.', pro: 'Beautiful state change; turns attention into a moment.', con: 'Only one agent “speaks” at a time; needs fast, subtle motion.',
     svg: () => `<g>${exBlob(200, 135, 60, '#3b82f6', '#bfdbfe', 'exb5', 6)}<animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;.35;.45;.8;.9;1" dur="7s" repeatCount="indefinite"/></g>
       <g opacity="0">${exBot(200, 135, 140, 'analyst')}<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.38;.48;.78;.88;1" dur="7s" repeatCount="indefinite"/></g>
-      <text x="200" y="250" text-anchor="middle" font-size="12" fill="rgb(255 255 255 / .5)" font-family="Lato, sans-serif">idle core  →  Josh brings you a decision  →  back to the core</text>` }
+      <text x="200" y="250" text-anchor="middle" font-size="12" fill="rgb(255 255 255 / .5)" font-family="Figtree, sans-serif">idle core  →  Josh brings you a decision  →  back to the core</text>` }
 ];

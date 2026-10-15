@@ -62,7 +62,7 @@ function graphSVG(c, m) {
   const [a, b, c1, c2, c3] = m.clusters;
   const X = [95, 250, 420, 560, 740, 885], Y = [70, 170, 275];
   const med = k => (k > 3 ? 1 : 0);
-  return `<svg viewBox="0 0 ${W} ${H}" class="w-full min-w-[640px] h-auto" font-family="Lato, system-ui, sans-serif">
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full min-w-[640px] h-auto" font-family="Figtree, system-ui, sans-serif">
     ${edge(X[0] + 14, 132, X[1] - 14, 132)}${edge(X[1] + 14, 132, X[2] - 14, Y[0])}${edge(X[1] + 14, 132, X[2] - 14, Y[1])}
     ${edge(X[2] + 14, Y[0], X[3] - 16, Y[0])}${edge(X[2] + 14, Y[1], X[3] - 16, Y[1])}
     ${edge(X[3] + 16, Y[1], X[4] - 14, Y[0])}${edge(X[3] + 16, Y[1], X[4] - 14, Y[1])}${edge(X[3] + 16, Y[1], X[4] - 14, Y[2])}

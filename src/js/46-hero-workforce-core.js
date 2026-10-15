@@ -44,14 +44,14 @@ function renderHero(animate, o = {}) {
     if (lite) return `<g transform="translate(${x},${y})"><g class="hag" style="--d:${3.05 + i * .7}s">
       <svg x="-29" y="-29" width="58" height="58" viewBox="${ROBOT_VB}" overflow="visible">${robotInner(ROBOT_COL[k][0], ROBOT_COL[k][1], true, ROBOT_COL[k][2], true, true)}</svg>
       <g transform="translate(${lx},${side === 'right' ? -4 : 44})"><rect x="${side === 'right' ? -8 : -pw / 2}" y="-16" width="${pw}" height="${side === 'right' ? 40 : 40}" rx="12" fill="#0b1030" fill-opacity=".86"/>
-        <text text-anchor="${anchor}" font-family="Lato, sans-serif"><tspan font-size="15" font-weight="800" fill="#fff">${P.name}</tspan></text>
-        <text y="16" text-anchor="${anchor}" font-family="Lato, sans-serif" font-size="11.5" fill="rgb(255 255 255 / .55)">${P.title}</text></g></g></g>`;
+        <text text-anchor="${anchor}" font-family="Figtree, sans-serif"><tspan font-size="15" font-weight="800" fill="#fff">${P.name}</tspan></text>
+        <text y="16" text-anchor="${anchor}" font-family="Figtree, sans-serif" font-size="11.5" fill="rgb(255 255 255 / .55)">${P.title}</text></g></g></g>`;
     return `<g transform="translate(${x},${y})"><g class="hag" style="--d:${3.05 + i * .7}s" onclick="homeSend('Tell me about ${P.name}')">
       <svg x="-29" y="-29" width="58" height="58" viewBox="${ROBOT_VB}" overflow="visible">${robotInner(ROBOT_COL[k][0], ROBOT_COL[k][1], true, ROBOT_COL[k][2], true, true)}</svg>
       <g transform="translate(${lx},${ly})">
         <rect x="${side === 'right' ? -8 : -pw / 2}" y="-16" width="${pw}" height="${side === 'right' ? 52 : 54}" rx="12" fill="#0b1030" fill-opacity=".86"/>
-        <text text-anchor="${anchor}" font-family="Lato, sans-serif"><tspan font-size="15" font-weight="800" class="fill-ink">${P.name}</tspan><tspan dx="6" font-size="11.5" class="fill-ink3">${P.title}</tspan></text>
-        <text y="21" text-anchor="${anchor}" font-family="Lato, sans-serif"><tspan font-size="15" font-weight="900" fill="${P.col}" data-count="${n}" data-delay="${2300 + i * 700}">${animate ? 0 : n}</tspan><tspan dx="5" font-size="12" class="fill-ink2">${cap}</tspan></text>
+        <text text-anchor="${anchor}" font-family="Figtree, sans-serif"><tspan font-size="15" font-weight="800" class="fill-ink">${P.name}</tspan><tspan dx="6" font-size="11.5" class="fill-ink3">${P.title}</tspan></text>
+        <text y="21" text-anchor="${anchor}" font-family="Figtree, sans-serif"><tspan font-size="15" font-weight="900" fill="${P.col}" data-count="${n}" data-delay="${2300 + i * 700}">${animate ? 0 : n}</tspan><tspan dx="5" font-size="12" class="fill-ink2">${cap}</tspan></text>
       </g></g></g>`;
   }).join('');
   // 3 · the relations draw in, one at a time, each with its label on the line
@@ -60,9 +60,9 @@ function renderHero(animate, o = {}) {
   const flows = HERO_REL.map((r, i) => `<g class="flow" style="--d:${6 + i * 1}s">${[0, .33, .66].map(o => `<circle r="2.8" fill="${PILLARS[r.a].c2}" filter="url(#hglow)"><animateMotion dur="3.8s" begin="${o * 3.8}s" repeatCount="indefinite"><mpath href="#hrp${i}"/></animateMotion></circle>`).join('')}</g>`).join('');
   const labels = lite ? HERO_REL.map((r, i) => { const w = 28 + r.t.length * 6.8; return `<g class="lbl" style="--d:${5.6 + i * 1}s;cursor:help" transform="translate(${r.lx},${r.ly})" ${tipAttr(heroRelTip(i))}>
       <rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#0b1030" stroke="${PILLARS[r.a].col}" stroke-opacity=".75"/>
-      <text text-anchor="middle" y="5" font-family="Lato, sans-serif" font-size="12.5" font-weight="700" fill="#e7ecff">${r.t}</text></g>`; }).join('') : (() => { return HERO_REL.map((r, i) => { const w = 34 + r.t.length * 6.6 + (r.n >= 10 ? 10 : 0); return `<g class="lbl" style="--d:${5.6 + i * 1}s;cursor:help" transform="translate(${r.lx},${r.ly})" onmouseenter="heroTip(${i},event)" onmousemove="heroTip(${i},event)" onmouseleave="heroTip(-1)">
+      <text text-anchor="middle" y="5" font-family="Figtree, sans-serif" font-size="12.5" font-weight="700" fill="#e7ecff">${r.t}</text></g>`; }).join('') : (() => { return HERO_REL.map((r, i) => { const w = 34 + r.t.length * 6.6 + (r.n >= 10 ? 10 : 0); return `<g class="lbl" style="--d:${5.6 + i * 1}s;cursor:help" transform="translate(${r.lx},${r.ly})" onmouseenter="heroTip(${i},event)" onmousemove="heroTip(${i},event)" onmouseleave="heroTip(-1)">
       <rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#0b1030" stroke="${PILLARS[r.a].col}" stroke-opacity=".75"/>
-      <text text-anchor="middle" y="5" font-family="Lato, sans-serif"><tspan font-size="14" font-weight="900" fill="${PILLARS[r.a].c2}" data-count="${r.n}" data-delay="${5800 + i * 1000}">${animate ? 0 : r.n}</tspan><tspan dx="5" font-size="12.5" font-weight="700" fill="#e7ecff">${r.t}</tspan></text></g>`; }).join(''); })();
+      <text text-anchor="middle" y="5" font-family="Figtree, sans-serif"><tspan font-size="14" font-weight="900" fill="${PILLARS[r.a].c2}" data-count="${r.n}" data-delay="${5800 + i * 1000}">${animate ? 0 : r.n}</tspan><tspan dx="5" font-size="12.5" font-weight="700" fill="#e7ecff">${r.t}</tspan></text></g>`; }).join(''); })();
   // droplets pinch off the core, travel out and become each agent; then small drops keep carrying work out
   const births = PILLAR_KEYS.map((k, i) => {
     const [x, y] = HERO_POS[k], dx = x - C[0], dy = y - C[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;

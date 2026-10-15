@@ -1,0 +1,45 @@
+/* ===== Unity Design System layer (Figma v1.3) — look & feel only, no layout/UX changes ===== */
+:root{
+  --u-font:'Figtree',ui-sans-serif,system-ui,sans-serif;
+  --u-bg-primary:#000a19; --u-bg-content:#172130; --u-bg-interactive:#344156; --u-bg-hover:#3d4d66;
+  --u-bg-active:#1f2938; --u-bg-elevated:#303c50; --u-text:#d4e2f7; --u-text-bold:#eef3fc;
+  --u-text-secondary:#8798b2; --u-text-disabled:#5e6e88; --u-text-error:#ff5271;
+  --u-border:#344156; --u-border-bold:#5e6e88; --u-accent:#2d91eb;
+  --u-sev-critical:#8f000e; --u-sev-high:#d13c3c; --u-sev-medium:#EF9700; --u-sev-low:#128DF2; --u-sev-info:#929191;
+  --u-radius-xs:4px; --u-radius-sm:6px; --u-radius-md:8px;
+  --u-shadow-sm:0px 4px 12px #181b2580; --u-focus:0 0 0 2px #2d91eb;
+}
+html,body,button,input,select,textarea{font-family:var(--u-font)}
+body{font-feature-settings:"tnum" 0;-webkit-font-smoothing:antialiased}
+/* Typography weights: Figtree 400/500/600 per Unity, 700 kept for display numerals */
+.font-black,.font-extrabold{font-weight:700!important}
+.font-bold{font-weight:600!important}
+.font-semibold{font-weight:600!important}
+.font-medium{font-weight:500!important}
+/* Radius scale -> Unity xs/sm/md */
+.rounded-sm{border-radius:var(--u-radius-xs)!important}
+.rounded,.rounded-md{border-radius:var(--u-radius-xs)!important}
+.rounded-lg{border-radius:var(--u-radius-sm)!important}
+.rounded-xl,.rounded-2xl,.rounded-3xl{border-radius:var(--u-radius-md)!important}
+/* Focus ring */
+:focus-visible{outline:none!important;box-shadow:var(--u-focus)!important}
+/* Form controls (Unity input / select) */
+select.bg-sunk,input.bg-sunk,textarea.bg-sunk,input.bg-panel{background-color:var(--u-bg-interactive)!important;border-color:transparent!important;border-radius:var(--u-radius-sm)!important;color:var(--u-text)!important}
+select.bg-sunk:hover,input.bg-sunk:hover,input.bg-panel:hover{background-color:var(--u-bg-hover)!important}
+select.bg-sunk:focus,input.bg-sunk:focus,input.bg-panel:focus{box-shadow:var(--u-focus)!important;border-color:transparent!important}
+input::placeholder,textarea::placeholder{color:var(--u-text-secondary)!important}
+input[type=range]{accent-color:var(--u-accent)}
+/* Elevated surfaces: menus, popovers, drawers */
+.shadow-2xl,.shadow-xl,.shadow-lg{box-shadow:var(--u-shadow-sm)!important}
+/* Tables (secdo-grid look) */
+table thead th{color:var(--u-text-secondary);font-weight:500}
+table tbody tr:hover{background-color:rgb(61 77 102 / .35)}
+/* Severity / priority tones -> Unity severity palette */
+.tn-rose{--c:209 60 60;--fg:var(--rose-fg)}
+.tn-amber{--c:239 151 0;--fg:var(--amber-fg)}
+.tn-blue{--c:18 141 242;--fg:var(--blue-fg)}
+.tn{border-radius:var(--u-radius-xs)}
+/* Scrollbars */
+::-webkit-scrollbar-thumb{background:var(--u-border-bold)!important;border-radius:var(--u-radius-full,1920px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--rose-fg:255 82 113;--amber-fg:255 183 64;--blue-fg:90 172 245}}
+:root[data-theme="dark"]{--rose-fg:255 82 113;--amber-fg:255 183 64;--blue-fg:90 172 245}

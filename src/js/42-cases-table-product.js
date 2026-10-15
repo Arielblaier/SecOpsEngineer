@@ -98,7 +98,7 @@ function statusIcon(lc) {
 function donutSVG(parts, total) {
   const R = 44, C = 2 * Math.PI * R, gap = 3; let off = 0;
   const arcs = parts.filter(p => p[1] > 0).map(([, v, col]) => { const len = Math.max(0, v / Math.max(1, total) * C - gap); const a = `<circle cx="55" cy="55" r="${R}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${len.toFixed(1)} ${C.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 55 55)"/>`; off += v / Math.max(1, total) * C; return a; }).join('');
-  return `<svg viewBox="0 0 110 110" class="w-[108px] h-[108px] shrink-0">${arcs}<text x="55" y="63" text-anchor="middle" font-size="24" class="fill-ink" font-family="Lato, sans-serif">${total}</text></svg>`;
+  return `<svg viewBox="0 0 110 110" class="w-[108px] h-[108px] shrink-0">${arcs}<text x="55" y="63" text-anchor="middle" font-size="24" class="fill-ink" font-family="Figtree, sans-serif">${total}</text></svg>`;
 }
 function renderCaseTable() {
   if (!$('ct-body')) return;

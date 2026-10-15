@@ -69,7 +69,7 @@ function waterfallSVG(inv) {
     const x = L + i * bw + bw * .18, w = bw * .64, y1 = y(Math.max(from, to)), y2 = y(Math.min(from, to));
     return `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1.5, y2 - y1).toFixed(1)}" rx="3" fill="${dash ? 'none' : fill}" ${dash ? `stroke="${fill}" stroke-dasharray="3 3"` : ''}/>
       <text x="${(x + w / 2).toFixed(1)}" y="${(y1 - 5).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${dash ? 'rgb(var(--ink4))' : fill}" font-family="JetBrains Mono, monospace">${top}</text>
-      <text x="${(x + w / 2).toFixed(1)}" y="178" text-anchor="middle" font-size="10" class="fill-ink3" font-family="Lato, sans-serif">${lbl}</text>`;
+      <text x="${(x + w / 2).toFixed(1)}" y="178" text-anchor="middle" font-size="10" class="fill-ink3" font-family="Figtree, sans-serif">${lbl}</text>`;
   };
   g += [0, 50, 100].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="stroke-line" stroke-dasharray="${v === 50 ? '4 4' : '2 5'}"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end" font-size="9" class="fill-ink4" font-family="JetBrains Mono, monospace">${v}%</text>`).join('');
   g += bar(0, 0, inv.prior, 'rgb(var(--ink4))', 'Start', inv.prior + '%');

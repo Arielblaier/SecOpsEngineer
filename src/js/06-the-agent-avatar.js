@@ -54,7 +54,7 @@ function agentAv(P, size = 28, live = true) {
   const f = Math.round(size * .42), d = Math.max(6, Math.round(size * .19)), ring = Math.max(1.5, size * .06);
   return `<span class="relative inline-flex shrink-0 rounded-full" style="width:${size}px;height:${size}px;padding:${ring}px;background:conic-gradient(from 210deg, ${P.c2}, ${P.col} 35%, ${P.dark} 60%, ${P.col} 80%, ${P.c2});box-shadow:0 0 0 1px rgb(255 255 255 / .06), 0 ${Math.round(size * .2)}px ${Math.round(size * .55)}px -${Math.round(size * .25)}px ${P.col}">
     <span class="flex-1 rounded-full flex items-center justify-center" style="background:radial-gradient(circle at 32% 24%, rgb(255 255 255 / .55) 0%, rgb(255 255 255 / 0) 34%), radial-gradient(circle at 50% 115%, ${P.col} 0%, ${P.dark} 72%);box-shadow:inset 0 -${Math.round(size * .12)}px ${Math.round(size * .3)}px rgb(0 0 0 / .35), inset 0 1px 2px rgb(255 255 255 / .3)">
-      <span style="font:800 ${f}px/1 Lato, system-ui, sans-serif;color:rgb(255 255 255 / .96);letter-spacing:.02em;text-shadow:0 1px 3px rgb(0 0 0 / .35)">${P.name[0]}</span></span>
+      <span style="font:800 ${f}px/1 Figtree, system-ui, sans-serif;color:rgb(255 255 255 / .96);letter-spacing:.02em;text-shadow:0 1px 3px rgb(0 0 0 / .35)">${P.name[0]}</span></span>
     ${live ? `<span class="absolute rounded-full" style="width:${d}px;height:${d}px;right:0;bottom:0;background:#4DFFA6;box-shadow:0 0 0 2px rgb(var(--panel)), 0 0 8px #4DFFA6"></span>` : ''}</span>`;
 }
 const ITEM_T = {

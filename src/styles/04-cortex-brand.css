@@ -1,5 +1,5 @@
   /* ---------- Cortex brand ---------- */
-  body { font-family: Lato, ui-sans-serif, system-ui, sans-serif; }
+  body { font-family: Figtree, ui-sans-serif, system-ui, sans-serif; }
   .c-brand { color: rgb(var(--brand-ink)); }
   .c-ai { color: #8b8ff8; } .bg-ai { background: rgb(139 143 248 / .12); }
   .cortex-tile { background: #000a19; box-shadow: inset 0 0 0 1px rgb(77 255 166 / .25); }
