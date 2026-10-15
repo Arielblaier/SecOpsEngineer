@@ -2,12 +2,12 @@
   /* The missions table keeps its full width. Columns that do not fit are reached by scrolling sideways. */
   .m-table { width: max-content; min-width: 100%; }
   .m-table > .mcols { min-width: 1250px; }
-  .mcols { display: grid; grid-template-columns: 112px 112px 108px minmax(320px, 1fr) 96px 74px 150px 44px 116px; column-gap: 14px; }
+  .mcols { display: grid; grid-template-columns: var(--mc, 112px 112px 108px minmax(320px, 1fr) 96px 74px 150px 44px 116px); column-gap: 14px; }
   .mcols > * { min-width: 0; }
   .m-vert { writing-mode: vertical-rl; transform: rotate(180deg); }
   .m-wwrap { container-type: inline-size; }
   .m-wgrid { display: grid; gap: 10px; grid-template-columns: 1.25fr 1fr; }
-  @container (min-width: 800px) { .m-wgrid { grid-template-columns: 1.5fr 1fr 1.15fr .95fr; } }
+  @container (min-width: 1060px) { .m-wgrid { grid-template-columns: 1.25fr 1fr 1.1fr 1.15fr; } }
 
   /* the panel: docked next to the screen, half of it */
   /* the panel: one panel, three sizes. Side: 30% next to a native screen. Workspace: it covers the screen. */
@@ -108,3 +108,33 @@
 #m-art.m-art-fold #m-art-scroll { padding: 10px 0; overflow: hidden; }
 #m-art.m-art-fold #m-art-acts { display: none; }
 
+
+/* ---------- The Claude-like canvas on Missions ----------
+   One canvas. AgentiX docks from the right and pushes the table; the table drops columns from the right as it
+   narrows, until only the AI suggestion and the name are left. That narrow table is the missions list. */
+#mv-work { container: wk / inline-size; transition: none; }
+#mv-work.m-railoff { display: none !important; }
+.m-docked .m-wk-hide { display: inline-flex !important; }
+.m-docked #m-log { display: none !important; }
+@container wk (max-width: 1320px) { .m-table { width: auto; } .m-table > .mcols { min-width: 0; } .mcols { --mc: 104px 104px 100px minmax(200px, 1fr) 92px 74px 140px 44px; } .mcols > :nth-child(9) { display: none; } }
+@container wk (max-width: 1160px) { .mcols { --mc: 104px 104px 100px minmax(180px, 1fr) 92px 74px 44px; } .mcols > :nth-child(7) { display: none; } }
+@container wk (max-width: 1000px) { .mcols { --mc: 104px 104px 100px minmax(160px, 1fr) 74px; } .mcols > :nth-child(5), .mcols > :nth-child(8) { display: none; } }
+@container wk (max-width: 840px) { .mcols { --mc: 104px 104px 100px minmax(140px, 1fr); } .mcols > :nth-child(6) { display: none; } .m-wwrap { display: none; } }
+@container wk (max-width: 680px) { .mcols { --mc: 100px 96px minmax(0, 1fr); } .mcols > :nth-child(1) { display: none; } .m-wk-filters { display: none !important; } #m-log { display: none !important; } }
+@container wk (max-width: 520px) {
+  .mcols { --mc: 84px minmax(0, 1fr); column-gap: 10px; } .mcols > :nth-child(2) { display: none; }
+  .m-row { height: auto !important; padding: 10px 12px 10px 14px !important; align-items: start !important; border-bottom-color: transparent !important; border-radius: 12px; margin: 1px 6px; }
+  .m-row .m-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.35; font-size: 13px; }
+  .m-c-need { display: inline !important; } .m-c-job { display: none; }
+  .m-wk-tabs .m-all, .m-wk-sub, .m-thead { display: none !important; }
+  .m-wk-tabs button { padding: 4px 7px; }
+  #mv-work [data-scroll] { border-top-color: transparent; }
+}
+/* AgentiX docked: no frame of its own. The same canvas, a hairline, and the mission as one raised surface, like an artifact. */
+.m-panel.m-dock { position: relative; inset: auto; z-index: 1; min-width: 0; flex: none; animation: none; border-left: 1px solid rgb(var(--line) / .7);
+  background: rgb(var(--panel)); transition: width .55s cubic-bezier(.22, .8, .2, 1); }
+.m-dragging .m-panel.m-dock { transition: none; }
+.m-panel.m-dock > .m-drag { left: -5px; }
+.m-two #m-art { margin: 6px 0 8px 8px; border: 1px solid rgb(var(--line)) !important; border-radius: 16px; background: rgb(var(--panel2)); box-shadow: 0 1px 0 rgb(255 255 255 / .02), 0 10px 30px rgb(0 0 0 / .18); }
+.m-two #m-art.m-art-fold { background: transparent; box-shadow: none; border-color: transparent !important; }
+#m-art-head:empty { display: none; }

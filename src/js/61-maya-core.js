@@ -39,7 +39,7 @@ function mInit() {
   if (M) mLiveStop();
   M = { W: myWorld(), view: 'home', tab: 'needs', q: '', sheet: null, pivot: null, panelOpen: false, panelTask: null, panelObj: null, deck: null, logOpen: false, sbs: false, editing: null, chats: { _: [] }, more: {}, typing: null, onlyOpen: false, iocAll: false, lastDecision: null, timers: [], prev: {},
     /* the workspace: panel size per kind of screen, who the next message is for, the open chat, the quick switcher */
-    size: { work: 'work', native: 'side' }, pct: { work: 40, native: 34 }, artPct: 56, artFold: false, fType: '', fSrc: '', sort: 'impact', railOff: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: false };
+    size: { work: 'work', native: 'side' }, pct: { work: 40, native: 34 }, leftPx: 300, artPct: 56, artFold: false, fType: '', fSrc: '', sort: 'impact', railOff: false, chatKey: '_', to: 'sec', sel: false, menu: false, people: false, scn: null, scnBar: false };
   mWsSeed();
   mLiveStart();
 }
@@ -79,13 +79,13 @@ function mBoot() {
   const main = document.querySelector('#app main');
   main.insertAdjacentHTML('beforeend', M_VIEWS.map(v => `<section id="mv-${v}" class="hidden flex-1 min-w-0 flex-col overflow-hidden bg-bg"></section>`).join('') + `
     <aside id="m-panel" class="hidden m-panel shrink-0 border-l border-line overflow-hidden">
-      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event,mSize()==='work'?'full':'panel')" title="Drag to change the width of the panel"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
+      <div id="m-drag" class="hidden m-drag" onpointerdown="mDragStart(event,mDocked()?'dock':mSize()==='work'?'full':'panel')" title="Drag to change the width of the panel"><span></span></div><div id="m-drag-pct" class="hidden m-drag-pct"></div>
       <div id="m-ws-rail" class="hidden relative w-[280px] shrink-0 flex-col border-r border-line overflow-hidden"></div>
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
-        <div id="m-people" class="hidden shrink-0 border-b border-line"></div>
         <div class="flex-1 min-h-0 flex overflow-hidden">
           <div id="m-conv" class="flex-1 min-w-0 flex flex-col overflow-hidden">
+            <div id="m-panel-head" class="px-4 sm:px-5 h-12 flex items-center justify-between gap-3 shrink-0"></div>
+            <div id="m-people" class="hidden shrink-0 border-b border-line"></div>
             <div id="m-panel-scroll" class="flex-1 overflow-y-auto px-4 sm:px-5 py-4"></div>
             <div id="m-foot" class="px-4 pb-4 pt-3 shrink-0 space-y-2.5">
               <div id="m-panel-acts"></div>
@@ -101,6 +101,7 @@ function mBoot() {
             </div>
           </div>
           <div id="m-art" class="hidden w-[52%] shrink-0 flex-col border-l border-line overflow-hidden relative"><div id="m-art-drag" class="m-drag" onpointerdown="mDragStart(event,'art')" title="Drag to share the space between the mission and the chat"><span></span></div>
+            <div id="m-art-head" class="px-5 h-12 flex items-center justify-between gap-3 shrink-0 border-b border-line/70"></div>
             <div id="m-art-scroll" class="flex-1 overflow-y-auto px-6 sm:px-8 py-5"></div>
             <div id="m-art-acts" class="px-6 sm:px-8 pb-5 pt-3 shrink-0 empty:hidden"></div>
           </div>
@@ -135,12 +136,24 @@ function mPatchDemoMenu() {
 function mReset() { location.reload(); }
 
 /* ---------- new triggers arrive while the screen is open ---------- */
-function mLiveStart() { [0, 1, 2].forEach(n => M.timers.push(setTimeout(() => mArrive(n), M_LIVE_GAP * (n + 1)))); }
+/* Gentle, not a firehose: a pack update arrives, a threshold the agent watches fills up and starts a mission
+   when it is reached (the 7th benign issue in 7 days), and the weekly IOC sweep runs. */
+function mLiveStart() {
+  const at = id => M.W.incoming.findIndex(t => t.id === id);
+  M.watch = [{ id: 'w1', label: 'Rule 237 · benign issues, 7 days', n: 4, max: 7, inc: 'MSN-1010' }];
+  M.timers.push(setTimeout(() => mArrive(at('MSN-1009')), M_LIVE_GAP));
+  const iv = setInterval(() => { const w = M.watch.find(x => !x.done); if (!w) return clearInterval(iv);
+    w.n++; M.W.log.unshift({ t: Date.now(), kind: 'check', text: `Rule 237: issue ${w.n} of 7 closed as benign this week` });
+    if (w.n >= w.max) { w.done = true; mArrive(at(w.inc)); } else mRender(); }, M_LIVE_GAP * .45);
+  M.timers.push(iv);
+  M.timers.push(setTimeout(() => mArrive(at('MSN-1011')), M_LIVE_GAP * 2.6));
+}
 function mLiveStop() { (M.timers || []).forEach(x => { clearTimeout(x); clearInterval(x); }); M.timers = []; }
 function mArrive(n) {
-  const t = myArrive(M.W, n); if (!t) return;
+  if (n < 0) return; const t = myArrive(M.W, n); if (!t) return;
   t.live = true; t.shown = 1;
-  toast(`New trigger · ${t.id} started`, 'zap');
+  (M.watch || []).filter(w => w.inc === t.id).forEach(w => { w.done = true; w.n = w.max; });
+  toast(`${MY_TRIGGER[t.trigger.kind][0]} · ${t.id} started`, t.trigger.kind === 'threshold' ? 'gauge' : 'zap');
   mRender();
   /* The agent works through its steps, then asks for a decision. */
   const stepMs = Math.min(20000, M_LIVE_GAP / 3) / t.steps.length;
@@ -212,18 +225,35 @@ function mRail() {
 const mWide = () => window.innerWidth >= 1024;
 const mPanelOn = () => M.view !== 'home' && M.panelOpen;
 const mSizeKey = () => M.view === 'work' ? 'work' : 'native';
-const mSize = () => !mWide() ? 'work' : M.size[mSizeKey()];
-/* Two sizes. Side panel: one column next to the screen, its width set by dragging its left edge (30% to 70%).
-   Full screen: the history, the conversation and the mission, with a divider between the conversation and the mission. F switches. */
-function mSizeToggle() { M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work'; mRender(); mScrollInit(); }
+/* On the Missions screen AgentiX docks next to the table, like Claude: the table is the left column and keeps
+   only the AI suggestion and the name when AgentiX takes the room. One width (the missions column) sets everything:
+   wide AgentiX shows the mission and the chat side by side, narrow AgentiX stacks them. */
+const mDocked = () => !!M && M.view === 'work' && mWide();
+const mMainW = () => { const m = document.querySelector('#app main'); return m ? m.clientWidth : window.innerWidth; };
+const M_RAIL = 300, M_TWO = 860;
+const mDockPx = () => M.railOff ? mMainW() : Math.max(0, mMainW() - M.leftPx);
+const mSize = () => !mWide() ? 'work' : mDocked() ? (mDockPx() >= M_TWO ? 'work' : 'side') : M.size[mSizeKey()];
+/* F: on Missions it moves between the missions list with a wide AgentiX and the table with a narrow AgentiX. */
+function mSizeToggle() {
+  if (mDocked()) { M.railOff = false; M.leftPx = M.leftPx <= M_RAIL + 80 ? Math.round(mMainW() * .62) : M_RAIL; }
+  else M.size[mSizeKey()] = mSize() === 'work' ? 'side' : 'work';
+  mRender(); mScrollInit();
+}
 /* How wide the panel is in pixels. The side panel shows the full mission card from 560px, and the short card below that. */
-function mPanelPx() { const main = document.querySelector('#app main'), w = main ? main.clientWidth : window.innerWidth;
+function mPanelPx() { if (mDocked()) return mDockPx(); const w = mMainW();
   return mSize() === 'work' ? w : Math.max(420, w * M.pct[mSizeKey()] / 100); }
-function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), sz = mSize(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on);
+function mPanelShow() { const el = $('m-panel'), on = mPanelOn(), sz = mSize(), dk = mDocked(); el.classList.toggle('hidden', !on); el.classList.toggle('flex', on);
   el.classList.toggle('m-panel-work', sz === 'work'); el.classList.toggle('m-panel-side', sz !== 'work'); el.classList.remove('m-panel-split');
-  el.style.width = sz !== 'work' && mWide() ? M.pct[mSizeKey()] + '%' : '';
-  if (sz !== 'work') el.style.left = '';
-  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && mWide() && (sz !== 'work' || M.railOff)));
+  el.classList.toggle('m-dock', dk); el.classList.toggle('m-two', dk && sz === 'work');
+  if (dk) { const w = M.railOff ? '100%' : `calc(100% - ${M.leftPx}px)`;
+    /* It opens from the side: AgentiX grows from the right edge and pushes the table until only the names are left. */
+    if (on && !el.dataset.shown) { el.style.width = '0px'; el.getBoundingClientRect(); }
+    el.style.width = w; }
+  else el.style.width = sz !== 'work' && mWide() ? M.pct[mSizeKey()] + '%' : '';
+  el.dataset.shown = on ? '1' : '';
+  if (sz !== 'work' || dk) el.style.left = '';
+  const wk = $('mv-work'); if (wk) { wk.classList.toggle('m-railoff', dk && on && !!M.railOff); wk.classList.toggle('m-docked', dk && on); }
+  const h = $('m-drag'); if (h) h.classList.toggle('hidden', !(on && mWide() && (dk || sz !== 'work' || M.railOff)));
   const art = $('m-art'); if (art) { art.classList.toggle('m-art-fold', !!M.artFold); art.style.width = M.artFold ? '' : M.artPct + '%'; } }
 /* Drag a divider. Three dividers, one rule each:
    - between the mission and the chat (full view): the chat can take up to 90%; below that the mission folds to a strip that only opens it back;
@@ -239,6 +269,15 @@ function mDragStart(e, what) {
     move = ev => { pct = Math.max(0, Math.min(72, Math.round((ev.clientX - r.left) / r.width * 100))); const fold = pct < 14;
       el.style.width = fold ? '46px' : Math.max(22, pct) + '%'; show(fold ? 'Chat 90% · the mission folds to a strip' : `Mission ${Math.max(22, pct)}% · chat ${100 - Math.max(22, pct)}%`); };
     up = () => { M.artFold = pct < 14; if (!M.artFold) M.artPct = Math.max(22, pct); };
+  } else if (what === 'dock') {
+    /* The edge between the missions and AgentiX. The table keeps more columns the more room it gets. Under 200px the missions close. */
+    const el = $('m-panel'), r = main.getBoundingClientRect(), wk = $('mv-work'); let two = mSize() === 'work';
+    wk.classList.remove('m-railoff'); pct = M.railOff ? 0 : M.leftPx;
+    move = ev => { pct = Math.max(0, Math.min(Math.round(r.width * .7), Math.round(ev.clientX - r.left))); const off = pct < 200;
+      el.style.width = off ? '100%' : `calc(100% - ${pct}px)`; wk.classList.toggle('m-railoff', off);
+      show(off ? 'Release to hide the missions' : `Missions ${pct}px · AgentiX ${Math.round((r.width - pct) / r.width * 100)}%`);
+      const t2 = r.width - (off ? 0 : pct) >= M_TWO; if (t2 !== two) { two = t2; M.railOff = off; M.leftPx = Math.max(M_RAIL - 40, pct); mPanelRender(); icons(); } };
+    up = () => { M.railOff = pct < 200; if (!M.railOff) M.leftPx = Math.max(240, pct); };
   } else if (what === 'full') {
     const el = $('m-panel'), r = main.getBoundingClientRect(), rail = $('m-ws-rail'); pct = 100; if (rail) rail.classList.add('hidden');
     move = ev => { pct = Math.max(30, Math.min(100, Math.round((r.right - ev.clientX) / r.width * 100))); el.style.left = (100 - pct) + '%';
@@ -253,8 +292,14 @@ function mDragStart(e, what) {
   const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); document.body.classList.remove('m-dragging'); if (lab) lab.classList.add('hidden'); up(); mRender(); mScrollInit(); };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', end);
 }
-function mOpenPanel() { M.panelOpen = true; mRender(); mScrollInit(); }
-function mClosePanel() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
+function mOpenPanel() { if (mDocked() && !M.panelOpen) { M.leftPx = Math.round(mMainW() * .62); M.railOff = false; } M.panelOpen = true; mRender(); mScrollInit(); }
+function mClosePanel() {
+  /* Closing slides AgentiX back out to the right; the table takes the room back. */
+  const el = $('m-panel');
+  if (mDocked() && el && el.dataset.shown && !M.closing) { M.closing = true; el.style.width = '0px'; return M.timers.push(setTimeout(() => { M.closing = false; mClosePanelNow(); }, 420)); }
+  mClosePanelNow();
+}
+function mClosePanelNow() { M.panelOpen = false; M.panelTask = null; M.panelObj = null; M.deck = null; M.editing = null; M.sel = false; M.people = false; M.menu = false; mRender(); }
 /* Opening a mission always means: show it in the agent panel. From Home that happens on the missions screen. */
 function mOpenTask(id) {
   const t = mTask(id); if (!t) return;
@@ -263,6 +308,8 @@ function mOpenTask(id) {
   if (t.status === 'pending' && !t.waitOn && !(M.deck && M.deck.includes(id))) M.deck = myPendingTasks(M.W).map(x => x.id);
   const changed = M.panelTask !== id;
   M.recent = (M.recent || []).filter(r => r.id !== id); M.recent.unshift({ id, t: Date.now() }); M.art = null;
+  /* From the table, a mission opens wide: AgentiX pushes the table back to the missions list. */
+  if (mDocked() && (!M.panelOpen || !M.panelTask)) { M.leftPx = M_RAIL; M.railOff = false; }
   M.panelTask = id; M.panelObj = null; M.panelOpen = true; M.editing = null; t.unread = false; M.sel = false; M.people = false; M.menu = false; M.to = t.agent;
   if (M.sheet) { M.sheet = null; mSheetShow(false); }
   if (M.view === 'home') mNav('work'); else mRender();

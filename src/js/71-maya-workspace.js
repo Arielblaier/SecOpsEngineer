@@ -257,7 +257,7 @@ function mActivity(t) {
   const shared = list.filter(x => M_SHARED.includes(x.kind) && !['event', 'work'].includes(x.kind) && (!steerOnly || ['steer', 'context', 'decision'].includes(x.kind)));
   const sw = `<span class="flex items-center gap-0.5 text-[11.5px] shrink-0 normal-case tracking-normal font-normal">${[['all', 'All'], ['steer', `Steering · ${nSteer}`]].map(([k, l]) => `<button data-actf="${k}" onclick="M.actF=${k === 'steer' ? `'${t.id}'` : 'null'};mRender()" class="px-2 py-0.5 rounded-md ${(k === 'steer') === steerOnly ? 'bg-hov text-ink font-semibold' : 'text-ink3 hover:text-ink'}">${l}</button>`).join('')}</span>`;
   return `<section data-activity="${t.id}">${mLabel('Steering and activity', sw)}
-    <p class="text-[12px] text-ink3 mt-1.5">${steerOnly ? 'What people told this mission: steering they confirmed, context they added, and decisions.' : 'Part of the mission: everyone who can see it sees this. How it started is under “How it got there”.'}</p>
+    <p class="text-[12px] text-ink3 mt-1.5">${steerOnly ? 'What people told this mission: steering they confirmed, context they added, and decisions.' : 'Part of the mission: everyone who can see it sees this. How it started is under “Show the steps”.'}</p>
     <div class="mt-3 space-y-2.5">${shared.map(x => mThreadItem(t, x)).join('') || `<p class="text-[12.5px] text-ink4">${steerOnly ? 'No steering yet. Ask the owner for a change in your conversation, and confirm it to add it here.' : 'Nothing yet.'}</p>`}</div></section>`;
 }
 /* Your conversation with the owner. Only you see it. What you confirm is written to the mission, not kept here. */
@@ -493,22 +493,32 @@ function mPanelRender() {
   const W = M.W, t = M.panelTask && mTask(M.panelTask), o = !t && M.panelObj, pend = myPendingTasks(W), work = mSize() === 'work', wide = mWide();
   const head = $('m-panel-head'), body = $('m-panel-scroll'), pending = t && t.status === 'pending' && t.decision && !t.findings, side = mSize() !== 'work', two = wide && work && (!!t || !!M.art);
   const btn = (fn, icon, title, extra = '') => `<button ${extra} onclick="${fn}" class="w-8 h-8 rounded-lg hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center shrink-0" title="${title}">${ic(icon, 'w-[18px] h-[18px]')}</button>`;
-  /* the queue on the left, in the workspace only */
-  const rail = $('m-ws-rail'), railOn = work && wide && !M.railOff; rail.classList.toggle('hidden', !railOn); rail.classList.toggle('flex', railOn);
+  /* the queue on the left: on Missions the table itself is the list; on a native screen a list of missions opens with the full view */
+  const docked = mDocked(), rail = $('m-ws-rail'), railOn = work && wide && !M.railOff && !docked; rail.classList.toggle('hidden', !railOn); rail.classList.toggle('flex', railOn);
   if (railOn) { const rs = rail.querySelector('.overflow-y-auto'), top = rs ? rs.scrollTop : 0; rail.innerHTML = mRailHtml(); const r2 = rail.querySelector('.overflow-y-auto'); if (r2) r2.scrollTop = top; }
-  /* head, one row: what this is, who is in it, the way to the next one, close */
+  /* heads: with the mission and the chat side by side, each column has its own head, like an artifact next to a chat */
   const ids = t ? pend.map(x => x.id) : [], i = t ? ids.indexOf(t.id) : -1;
   const o2 = t && t.waitOn && mTask(t.waitOn);
   const status = !t ? '' : t.status === 'done' || t.status === 'blocked' ? mStatus(t) : o2 ? `<span class="text-[12.5px] c-indigo whitespace-nowrap">Waiting on the ${M_AG[o2.agent].name}</span>` : t.status === 'pending' ? `<span class="text-[12.5px] c-amber whitespace-nowrap">Needs you</span>` : `<span class="text-[12.5px] c-blue whitespace-nowrap">${t.handed ? 'Waiting on the ' + esc(t.teamFix || 'other team') : t.paused ? 'Paused' : 'Running'}</span>`;
-  const left = `${work && wide && M.railOff ? btn('M.railOff=false;mPanelRender();icons()', 'panel-left-open', 'Show the history', 'data-act="rail-on"') : ''}${t || o ? btn('mPanelHome()', 'arrow-left', 'Back to the conversation (Esc)') : ''}
-    ${t ? `<span class="text-[13.5px] font-semibold text-ink font-mono whitespace-nowrap">${t.id}</span><span class="min-w-0 truncate">${status}</span>`
+  const railBtn = wide && M.railOff && (docked || work) ? btn('M.railOff=false;mRender();mScrollInit()', 'panel-left-open', 'Show the missions', 'data-act="rail-on"') : '';
+  const idPart = t ? `<span class="text-[13.5px] font-semibold text-ink font-mono whitespace-nowrap">${t.id}</span><span class="min-w-0 truncate">${status}</span>`
       : o ? `<span class="text-[13.5px] font-semibold text-ink whitespace-nowrap">${o.kind === 'rule' ? 'Correlation rule ' + o.id : o.kind === 'tech' ? 'Technique ' + o.id : 'IOC rule ' + o.id}</span>`
-      : `<span class="font-semibold text-ink text-[13.5px]">AgentiX</span><span class="text-[12.5px] text-ink3 truncate">${W.tasks.some(mRunning) ? 'Working' : 'Standing by'}</span>`}`;
+      : `<span class="font-semibold text-ink text-[13.5px]">AgentiX</span><span class="text-[12.5px] text-ink3 truncate">${W.tasks.some(mRunning) ? 'Working' : 'Standing by'}</span>`;
   const ps = t ? mPeople(t) : [];
   const people = !t ? '' : work && wide ? `<button data-act="people" onclick="M.people=!M.people;M.sel=false;mPanelRender();icons()" class="flex items-center rounded-full hover:bg-hov px-1 py-0.5 shrink-0" title="${ps.length} in this mission. Click for the list"><span class="flex -space-x-1.5">${ps.slice(0, 6).map(p => `<span class="rounded-full ring-2 ring-[rgb(var(--panel))] inline-flex">${mWho(p.k, 22)}</span>`).join('')}</span>${ps.length > 6 ? `<span class="ml-1 text-[11.5px] text-ink3">+${ps.length - 6}</span>` : ''}</button>`
     : `<button data-act="people" onclick="M.people=!M.people;M.sel=false;mPanelRender();icons()" class="h-8 px-1.5 rounded-lg hover:bg-hov text-ink3 hover:text-ink inline-flex items-center gap-1 text-[12.5px] shrink-0" title="${ps.length} in this mission. Click for the list">${ic('users', 'w-4 h-4')}${ps.length}</button>`;
   const nav = t && ids.length > 1 ? `<div class="flex items-center shrink-0"><button data-act="prev" onclick="mMove(-1)" class="w-7 h-8 rounded-lg hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Previous mission (← or K)">${ic('chevron-left', 'w-4 h-4')}</button><span data-act="switch" class="px-1 text-[12.5px] text-ink3 whitespace-nowrap" title="${ids.length} missions need you">${i >= 0 ? `${i + 1} / ${ids.length}` : ids.length}</span><button data-act="next" onclick="mMove(1)" class="w-7 h-8 rounded-lg hover:bg-hov text-ink3 hover:text-ink flex items-center justify-center" title="Next mission (→ or J)">${ic('chevron-right', 'w-4 h-4')}</button></div>` : '';
-  head.innerHTML = `<div class="flex items-center gap-2.5 min-w-0">${left}</div><div class="flex items-center gap-1 shrink-0">${people}${nav}${wide ? btn('mSizeToggle()', work ? 'minimize-2' : 'maximize-2', work ? 'Side panel (F)' : 'Full screen (F)', 'data-act="size"') : ''}${btn('mClosePanel()', 'x', 'Close (Esc)', 'data-act="close"')}</div>`;
+  const sizeBtn = wide ? btn('mSizeToggle()', docked ? (M.leftPx <= M_RAIL + 80 && !M.railOff ? 'panel-right-close' : 'panel-right-open') : work ? 'minimize-2' : 'maximize-2', docked ? (M.leftPx <= M_RAIL + 80 && !M.railOff ? 'Narrow AgentiX, show the table (F)' : 'Widen AgentiX (F)') : work ? 'Side panel (F)' : 'Full screen (F)', 'data-act="size"') : '';
+  const histBtn = btn(`toast('The AgentiX chat history opens here. Its behavior is still to be defined.','history')`, 'history', 'AgentiX chat history (behavior to come)', 'data-act="agx-history"');
+  const closeBtn = btn('mClosePanel()', 'x', 'Close AgentiX (Esc)', 'data-act="close"');
+  const split = two && !!t && !M.artFold, artHead = $('m-art-head');
+  if (split) {
+    artHead.innerHTML = `<div class="flex items-center gap-2.5 min-w-0">${railBtn}${idPart}</div><div class="flex items-center gap-1 shrink-0">${people}${nav}${btn('mPanelHome()', 'x', 'Close the mission, keep the chat', 'data-act="close-mission"')}</div>`;
+    head.innerHTML = `<div class="flex items-center gap-2 min-w-0">${mAv(t.agent, 20)}<span class="text-[13px] font-semibold text-ink whitespace-nowrap">${esc(M_AG[t.agent].name)}</span><span class="text-[12px] text-ink3 truncate">owner of ${t.id}</span></div><div class="flex items-center gap-1 shrink-0">${histBtn}${sizeBtn}${closeBtn}</div>`;
+  } else {
+    artHead.innerHTML = '';
+    head.innerHTML = `<div class="flex items-center gap-2.5 min-w-0">${railBtn}${t || o ? btn('mPanelHome()', 'arrow-left', 'Back to the conversation (Esc)') : ''}${idPart}</div><div class="flex items-center gap-1 shrink-0">${people}${nav}${histBtn}${sizeBtn}${closeBtn}</div>`;
+  }
   const ppl = $('m-people'); ppl.classList.toggle('hidden', !(t && M.people)); ppl.innerHTML = t && M.people ? mPeopleBar(t) : '';
   /* body */
   const art = $('m-art'); art.classList.toggle('hidden', !two); art.classList.toggle('flex', two);
@@ -575,7 +585,7 @@ const M_FLOWS = [
     setup: () => mNav('work'),
     steps: [
       { do: 'Look at the Missions screen.', see: 'It opens on Needs you. Running and Waiting need nothing from you. Done holds every finished run, also the ones that found nothing.', act: () => { M.tab = 'needs'; mRender(); }, done: () => M.view === 'work' },
-      { do: 'Open MSN-1003: AWS audit logs stopped.', see: 'The full view replaces the table: the missions list on the left, the mission in the middle, your chat with its owner on the right.', act: () => mOpenTask('MSN-1003'), done: () => M.panelTask === 'MSN-1003' },
+      { do: 'Open MSN-1003: AWS audit logs stopped.', see: 'AgentiX slides in from the right and pushes the table back until only the suggestion and the name are left. The mission in the middle, your chat with its owner on the right.', act: () => mOpenTask('MSN-1003'), done: () => M.panelTask === 'MSN-1003' },
       { do: 'Press “Hand over to cloud team”.', see: 'It moves to Waiting on another team, and the next mission that needs you comes up on its own.', act: () => mDecide('MSN-1003', 'approve'), done: () => mT('MSN-1003').status !== 'pending' },
       { do: 'Close the panel and open the Done filter.', see: 'The runs that found nothing are here, with the AI suggestion Nothing found.', act: () => { mClosePanel(); M.tab = 'done'; mRender(); }, done: () => M.tab === 'done' && !mPanelOn() }
     ] },
@@ -665,14 +675,22 @@ const M_FLOWS = [
       { do: 'Press Apply.', see: 'The rule is written to Correlation Rules.', act: () => { mCloseSheet(); mDecide('MSN-1002', 'approve'); }, done: () => mT('MSN-1002').status === 'done' },
       { do: 'Open Correlation Rules.', see: 'Rule 224 shows Modified by: you · via Detection Engineer · MSN-1002.', act: () => { mClosePanel(); mNav('rules'); mLater(300, () => { const el = document.querySelector('[data-modby="224"]'); if (el) el.scrollIntoView({ block: 'center', inline: 'center' }); }); }, done: () => M.view === 'rules' && !!mRule(224).modBy }
     ] },
-  { name: 'Panel sizes', point: 'Two sizes. The side panel stacks the mission and the chat. The full view puts the missions list, the mission and the chat side by side. Drag a divider to move between them.',
-    setup: () => { mNav('work'); mOpenTask('MSN-1002'); },
+  { name: 'A threshold starts a mission', point: 'The screen is alive, but quietly. The agent watches thresholds, like 7 issues closed as benign in 7 days, and a mission starts when one is reached. Its card shows the questions, queries and datasets behind it.',
+    setup: () => mNav('work'),
     steps: [
-      { do: 'Look at the full view.', see: 'Missions list | mission | chat. The table is replaced, not covered.', act: () => {}, done: () => mSize() === 'work' && M.panelTask === 'MSN-1002' },
-      { do: 'Drag the divider between the mission and the chat to the left.', see: 'The chat takes up to 90%. The mission folds to a strip that only opens it back. The decision moves under the chat.', act: () => { M.artFold = true; mRender(); }, done: () => !!M.artFold },
-      { do: 'Click the strip.', see: 'The mission opens again at its last width.', act: () => { M.artFold = false; mRender(); }, done: () => !M.artFold },
-      { do: 'Drag the divider between the missions list and AgentiX to the right.', see: 'Release under 78% and the Missions table comes back. AgentiX becomes a side panel, from 30%, with the mission and the chat stacked.', act: () => { M.size[mSizeKey()] = 'side'; M.pct[mSizeKey()] = 30; mRender(); }, done: () => mSize() !== 'work' },
-      { do: 'Drag the side panel’s left edge past 78%, or press F.', see: 'Back to the full view.', act: () => mSizeToggle(), done: () => mSize() === 'work' }
+      { do: 'Look at “Watching” under Missions now.', see: 'Rule 237 is at 6 of 7 benign issues this week.', act: () => { const w = (M.watch || [])[0]; if (w) { w.n = 6; mRender(); } }, done: () => ((M.watch || [])[0] || {}).n >= 6 },
+      { do: 'Wait for the 7th, or press Show me.', see: 'Threshold reached: MSN-1010 starts, runs, and needs you.', act: () => { const n = M.W.incoming.findIndex(t => t.id === 'MSN-1010'); (M.watch || []).forEach(w => { w.done = true; w.n = w.max; }); mScnReady(n); }, done: () => !!mTask('MSN-1010') },
+      { do: 'Open MSN-1010.', see: 'Title, what it did, the pipeline with the Rule step marked, the AI suggestion with its confidence, and the change: an exclusion kept in AgentiX memory.', act: () => mOpenTask('MSN-1010'), done: () => M.panelTask === 'MSN-1010' },
+      { do: 'Open “Show the evidence”.', see: 'The questions it asked, the queries it ran with what came back, and the datasets it read.', act: () => { M.more['MSN-1010:ev'] = true; mPanelRender(); icons(); }, done: () => !!M.more['MSN-1010:ev'] }
+    ] },
+  { name: 'Panel sizes', point: 'Like Claude: the missions on the left, the mission in the middle, the chat on the right. One canvas. Every edge drags, and the missions list closes.',
+    setup: () => mNav('work'),
+    steps: [
+      { do: 'Open MSN-1002 from the table.', see: 'AgentiX slides in from the right and pushes the table until only the AI suggestion and the name are left.', act: () => mOpenTask('MSN-1002'), done: () => M.panelTask === 'MSN-1002' && mSize() === 'work' },
+      { do: 'Drag the edge between the missions and AgentiX to the right.', see: 'The table gets its columns back one by one. When AgentiX gets narrow, the mission and the chat stack.', act: () => { M.railOff = false; M.leftPx = Math.round(mMainW() * .58); mRender(); }, done: () => mSize() === 'side' },
+      { do: 'Drag it all the way left, or press the hide button on Missions.', see: 'The missions close. The mission and the chat take the full width.', act: () => { M.railOff = true; mRender(); }, done: () => !!M.railOff },
+      { do: 'Drag the divider between the mission and the chat to the left.', see: 'The chat takes up to 90%. The mission folds to a strip; the decision moves under the chat.', act: () => { M.railOff = false; M.leftPx = 300; M.artFold = true; mRender(); }, done: () => !!M.artFold },
+      { do: 'Click the strip, then close AgentiX.', see: 'The mission opens again. Closing slides AgentiX out, and the table takes the room back.', act: () => { M.artFold = false; mRender(); mLater(700, () => mClosePanel()); }, done: () => !M.artFold && !mPanelOn() }
     ] }
 ];
 const MF = { i: null, step: 0, ok: [], pos: null, min: false, iv: null, off: false };

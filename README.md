@@ -234,37 +234,53 @@ Mission, Confidence, Priority, Source, Age and Root cause. Filters for type
 (job) and source sit next to the search; sort by impact (default), newest or
 oldest. "Nothing found" runs end under Done.
 
-**Panel.** Two sizes, switched by one button or `F`.
-- Side panel: one column next to the screen, the mission and the chat
-  stacked, Approve and Decline fixed at the bottom. Drag its left edge from
-  30% to 70%; drag past 78% and release for the full view.
-- Full view: replaces the table. The missions list on the left (same tabs as
-  the table; it hides with its own button), the mission in the middle, the
-  chat with the owner on the right. The agent is locked to the owner.
-  - Drag the mission/chat divider left: the chat takes up to 90%, and the
-    mission folds to a strip that only opens it back. The decision moves under
-    the chat.
-  - Drag the missions/AgentiX divider right: release under 78% and the
-    Missions table comes back, with AgentiX as a side panel (from 30%).
+**Widgets.** Four, chosen from what detection-engineering products show (SOC
+optimization value, broken and noisy rules, ATT&CK coverage, rule health):
+Missions now (with the threshold the agent is watching), Noise (issues closed
+with no action ÷ all issues, 8-week trend), Value this month (issues a week
+removed, analyst time at 6 minutes per issue, detections restored), and
+Detection health and coverage (working / noisy / cannot fire, ATT&CK
+techniques covered by working rules, stopped data).
 
-**Mission card.** Header (job, ID, title, suggestion, confidence, result,
-priority, summary); the pipeline strip with one mark per problem and the
-diagnosis; the decision with the change next to what exists now (side by side
-when the mission column is 42% or wider; XQL as code, settings as fields, a
-new rule as code next to the coverage it fills); then the analysis folded (how
-it got there, objects, cost, feedback) and the activity. "View the full …"
-opens the object as its form (General, XQL Search, Issue Suppression, Action;
-an environment fact as AgentiX memory), with the changed fields marked. Apply
-writes it to the native table: Correlation Rules and IOC Rules show Modified
-by (approver · via Detection Engineer · mission ID). A running or waiting
-mission shows Now, Progress, Waiting on and Back to you.
+**Live, but quietly.** A pack update arrives, the threshold the agent watches
+(rule 237: 7 issues closed as benign in 7 days) fills up and starts MSN-1010
+when reached, and the weekly IOC sweep runs. `?live=10` makes it faster.
+
+**The Claude-like canvas.** On Missions, AgentiX docks from the right on the
+same canvas. Opening a mission slides it in and pushes the table back; the
+table drops columns from the right as it narrows (CSS container queries) until
+only the AI suggestion and the name are left, which is the missions list.
+- Missions | mission | chat. Each edge drags: the missions edge (drag right and
+  the table gets its columns back; under 860px AgentiX stacks the mission and
+  the chat; drag far left and the missions close), and the mission/chat edge
+  (the chat takes up to 90%; the mission folds to a strip).
+- The mission is one raised surface with its own head (ID, status, people,
+  next/previous, close the mission). The chat has its own head (owner,
+  AgentiX chat history slot, size, close). The history slot is a placeholder.
+- Closing slides AgentiX out and the table takes the room back. `F` moves
+  between the missions list and the table with a narrow AgentiX.
+- On native screens (Correlation Rules and the others) the side panel and the
+  full view work as before.
+
+**Mission card: a fixed template.** 1) Job and priority, the title, what it
+found, and what it was asked to do, looked at and took. 2) Where the problem
+is: the pipeline strip, one mark per problem, and the diagnosis. 3) The AI
+suggestion with its confidence, at the head of the decision. 4) The change:
+its fix type (XQL logic, rule parameter, issue suppression, exclusion as an
+environment fact, severity, status, new rule, or a fix lower in the pipeline:
+filter, parsing, data model, data source, integration) and where it lands,
+then now and suggested side by side when there is room. "View the full …"
+opens the object as its form; Apply writes it to the native table, which shows
+Modified by. 5) Folded: the steps, the evidence (questions asked, queries run
+and what came back, datasets read), objects, cost, feedback; then the
+activity. A running mission shows Now, Progress, Waiting on, Back to you.
 
 **Artifacts.** A result in a chat worth seeing in full (a table, a mission
 started from the chat) shows as a card in the chat. In full screen it opens
 on the right, next to the chat. From the side panel there is no room, so
 opening one switches to full screen with the artifact on the right.
 
-**Demo flows.** A movable card (demo chrome, not product) runs 13 flows. Each
+**Demo flows.** A movable card (demo chrome, not product) runs 14 flows. Each
 stresses one point: it says what to do and what to notice, ticks a step when
 you do it, and "Show me" does it for you. `?flow=3` opens flow 3. The demo
 menu reopens the card.

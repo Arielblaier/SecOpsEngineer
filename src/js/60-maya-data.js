@@ -35,7 +35,7 @@ const MY_CARD = {
   source: 'Missing data source', integration: 'Missing integration', pipeline: 'Broken data or mapping', broken: 'Broken rule', noisy: 'Noisy rule',
   content: 'Existing content available', gap: 'Coverage gap', ioc: 'Indicator', retire: 'Rules to retire', settings: 'Rule settings', handover: 'Handed over', check: 'Third-party source check'
 };
-const MY_TRIGGER = { sweep: ['Scheduled sweep', 'clock'], change: ['Change event', 'git-commit-horizontal'], handoff: ['Handoff', 'corner-down-right'], human: ['Human request', 'user'] };
+const MY_TRIGGER = { threshold: ['Threshold reached', 'gauge'], sweep: ['Scheduled sweep', 'clock'], change: ['Change event', 'git-commit-horizontal'], handoff: ['Handoff', 'corner-down-right'], human: ['Human request', 'user'] };
 
 function myWorld() {
   const H = 3600000, D = 24 * H, now = Date.now();
@@ -381,7 +381,7 @@ function myWorld() {
       after: 'Closed automatically. The data platform team applied the parsing fix. The product and XSIAM were compared again: 14 of 14 verdicts match.',
       affects: { rules: [235], node: { pipe: 'p-cp', stage: 'parsing' }, source: 'checkpoint' }, pivots: [['rules', 'Correlation Rules', 'the rule'], ['streams', 'Data Streams', 'the parsing step']] },
     { id: 'MSN-1010', card: 'noisy', title: 'SharePoint mass-download rule fires on the nightly backup account', verdict: 'Noisy', sug: 'Tune', agent: 'det', conf: 'High', impact: 'Low', layer: 'rule', noise: 'Benign true positive', progressNote: 'Detection Engineer is diagnosing',
-      trigger: { kind: 'handoff', from: 'analyst', text: 'The Investigation Agent resolved 22 cases from this rule as benign in 7 days. All came from one service account.' },
+      trigger: { kind: 'threshold', text: 'The 7th issue from this rule was closed as benign in 7 days. The noise threshold for a rule is 7 in 7 days.' },
       summary: 'The backup service account downloads thousands of files every night. The rule is correct for people and wrong for this account.',
       steps: ['Grouped 7 days of issues: 22 of 25 come from the account svc-backup', 'Checked the account: a service account, registered as the nightly backup job', 'Checked the labels: analysts agreed with all 22 benign verdicts', 'Selected an environment fact. The query does not change'],
       diagnosis: 'Benign true positive. Expected behavior of one known account.',
@@ -659,6 +659,75 @@ const MY_SPEC = {
 };
 /* The rule a proposal changes, and which part of it. A change applies only if the rule is still the version the approval saw. */
 const MY_TARGET = { 'MSN-1002': [[224], 'issue settings'], 'MSN-1005': [[222, 216, 218], 'status'], 'MSN-1010': [[237], 'environment facts'], 'MSN-1016': [[224], 'issue settings'], 'MSN-1017': [[236], 'environment facts'], 'MSN-0998': [[231], 'query'] };
+/* The evidence behind each mission: the questions the agent asked, the queries it ran and what they returned, and the datasets it read. */
+const MY_EVID = {
+  'MSN-1001': { q: ['Did the three rules stop at the same moment?', 'Is the data still arriving?', 'Which field do the rules filter on, and is it filled?', 'What changed in the raw events after the pack update?'],
+    x: [['issues | filter rule_id in (215, 217, 220) | comp count() as n by rule_id, bin(_time, 1h)', 'All three drop to 0 at 09:12 on the update day'],
+      ['dataset = sentinelone_xdr_raw | filter _time > -1d | comp count()', '12,140 events in 24 hours: the data arrives'],
+      ['datamodel dataset = sentinelone_xdr_raw | comp count_distinct(xdm.event.type)', '0 values since the update: the field is empty'],
+      ['dataset = sentinelone_xdr_raw | fields eventType, event_type | limit 20', 'eventType is gone, event_type is new']],
+    d: ['issues', 'sentinelone_xdr_raw', 'Data model rule · SentinelOne model', 'Marketplace pack changelog'] },
+  'MSN-1003': { q: ['Is any instance in error?', 'Which rules read the data it brings?', 'Can the missing events be recovered?'],
+    x: [['Data Sources › Amazon S3 › Cloud audit logs · production', 'Status Error since 46 hours · access denied, the key expired'],
+      ['dataset = amazon_aws_raw | filter _time > -2d | comp count() by bin(_time, 1h)', '0 events for 46 hours'],
+      ['correlation_rules | filter query contains "amazon_aws_raw" and status = "Enabled"', '2 rules: 233 and 234'],
+      ['SQS queue · message retention', '14 days: a backfill is possible']],
+    d: ['amazon_aws_raw', 'Data Sources: instance status', 'correlation_rules'] },
+  'MSN-1002': { q: ['Who installs the extensions that fire the rule?', 'Are those extensions approved?', 'Do analysts agree these issues are benign?', 'Does anything real still alert after the change?'],
+    x: [['issues | filter rule_id = 224 and _time > -30d | comp count() by actor_user, extension_id | sort desc', '1,250 issues · 9 extension IDs make 1,150'],
+      ['IT software list › approved browser extensions', 'All 9 are on the list'],
+      ['cases | filter rule_id = 224 | comp count() by resolution_status, resolved_by', '140 resolved · 138 benign confirmed by an analyst'],
+      ['Silent test: the changed rule next to the live rule, 14 days', '100 issues kept, every one on an unapproved extension']],
+    d: ['issues', 'cases', 'google_chrome_raw', 'IT approved software list'] },
+  'MSN-1004': { q: ['Why is the port-scan rule silent?', 'Does the source still send deny events?', 'Where are the events lost?'],
+    x: [['issues | filter rule_id = 230 | comp max(_time)', `Last issue 23 days ago`],
+      ['dataset = fortinet_fortigate_raw | filter action = "deny" | comp count()', '0 deny events in XSIAM'],
+      ['Data Streams › FortiGate traffic · counts before and after each step', '38,000 deny events a day go into the filter, none come out']],
+    d: ['fortinet_fortigate_raw', 'Data Streams: filter step', 'issues'] },
+  'MSN-1006': { q: ['Which identity data arrives today?', 'Is there existing content for impossible travel?', 'What does the integration cost?'],
+    x: [['datamodel | filter xdm.event.type = "sign-in" | comp count() by _vendor', 'Microsoft and Active Directory · no Okta'],
+      ['Marketplace search: impossible travel', '“Okta - Impossible travel”, in the Okta pack'],
+      ['Okta pack contents', 'Parser, data model, 9 detections · about 2 GB a day']],
+    d: ['xdm sign-in events', 'Marketplace', 'Data Sources'] },
+  'MSN-1005': { q: ['Are any two rules identical?', 'Does a disabled rule still matter?', 'Has the test rule ever fired?'],
+    x: [['correlation_rules | comp count() by query_hash | filter count > 1', 'Rules 221 and 222 have the same query'],
+      ['issues | filter rule_id in (221, 222) and _time > -90d | comp count() by rule_id, event_id', 'Every issue from 222 is also raised by 221'],
+      ['issues | filter rule_id in (216, 218) | comp count()', '0 issues, ever']],
+    d: ['correlation_rules', 'issues'] },
+  'MSN-1007': { q: ['Which process makes the matches?', 'Is the file signed and common?', 'Do intel sources still list the hash?'],
+    x: [['issues | filter ioc_id = 1 and _time > -7d | comp count() by process_name, host_count', '290 issues · one updater · 1,900 hosts'],
+      ['File signature check', 'Signed by its vendor, valid certificate'],
+      ['Threat intel: 3 sources', 'Not listed as malicious by any of them']],
+    d: ['issues', 'xdr_data (process events)', 'Threat Intel Management'] },
+  'MSN-1008': { q: ['Is the data for this behavior here?', 'Does any rule, analytic or pack already cover it?', 'How often would a new rule fire?'],
+    x: [['datamodel dataset = sentinelone_xdr_raw | filter xdm.source.process.name in ("winword.exe","excel.exe") | comp count()', '41,300 Office process events a week, mapped'],
+      ['Cortex analytics + Marketplace search: T1218.005', 'Nothing on SentinelOne data'],
+      ['Backtest of the new rule on 30 days', '2 matches, both from a red-team exercise']],
+    d: ['sentinelone_xdr_raw', 'Cortex analytics', 'Marketplace', 'MITRE ATT&CK coverage'] },
+  'MSN-1015': { q: ['Which rules made most of the noise this week?', 'Is each one already handled by another mission?', 'What do the issues have in common?'],
+    x: [['issues | filter _time > -7d and resolution in ("False positive", "Benign") | comp count() by rule_id | sort desc | limit 5', 'Rules 224, 232 and 225 lead'],
+      ['missions | filter object = rule 224 and status != "Done"', 'MSN-1002 already handles rule 224'],
+      ['issues | filter rule_id = 232 | comp count() by dst_country', '9 of 11 go to Portugal and Poland'],
+      ['issues | filter rule_id = 225 | comp count() by actor_user in phishing_sim_accounts', '12 of 14 from simulation accounts']],
+    d: ['issues', 'missions', 'fortinet_fortigate_raw', 'common_countries (lookup)'] },
+  'MSN-1009': { q: ['Do the product and XSIAM agree?', 'Where do the missing verdicts drop?'],
+    x: [['Check Point API: verdicts in 24 hours', '14'], ['dataset = check_point_threat_emulation_raw | comp count()', '9'], ['Counts before and after each step', '14 arrive, 9 leave parsing · 5 have the new type “archive verdict”']],
+    d: ['check_point_threat_emulation_raw', 'Check Point API', 'Parsing rule'] },
+  'MSN-1010': { q: ['Who makes the benign issues?', 'Is that account expected to do this?'],
+    x: [['issues | filter rule_id = 237 and _time > -7d | comp count() by actor_user', '22 of 25 from svc-backup'], ['Identity inventory: svc-backup', 'Service account · nightly backup job']],
+    d: ['issues', 'cases', 'msft_o365_general_raw', 'Identity inventory'] },
+  'MSN-1011': { q: ['Which indicators never expire?', 'Have they ever matched?'],
+    x: [['ioc_rules | filter expiration = "Never" and status = "Enabled"', '2 from December 2022'], ['issues | filter ioc_id in (2, 3) | comp count()', '0, ever']],
+    d: ['ioc_rules', 'issues', 'Threat Intel Management'] },
+  'MSN-0998': { q: ['What does the rule count as an attack?', 'How many issues are retries by one user?'],
+    x: [['issues | filter rule_id = 231 | comp count() by actor_user, outcome', 'Most come from users retrying their own password'], ['Backtest of the tuned query, 30 days', '72 → 9 issues · every confirmed attack kept']],
+    d: ['issues', 'fortinet_fortigate_raw'] }
+};
+/* What kind of fix a mission proposes. Most fixes are on the rule; some are lower in the pipeline and go to the team that owns that step. */
+const MY_FIX = { 'MSN-1001': 'Data model mapping', 'MSN-1003': 'Data source instance', 'MSN-1002': 'Issue suppression + exclusion', 'MSN-1004': 'Filter step', 'MSN-1006': 'New integration',
+  'MSN-1005': 'Rule status: disable, retire', 'MSN-1007': 'Indicator status', 'MSN-1008': 'New rule', 'MSN-0998': 'XQL logic', 'MSN-1009': 'Parsing rule', 'MSN-1010': 'Exclusion (environment fact)',
+  'MSN-1011': 'Indicator status', 'MSN-1016': 'Severity', 'MSN-1017': 'Exclusion (environment fact)', 'MSN-0987': 'Exclusion (environment fact)', 'MSN-0994': 'ATT&CK mapping',
+  'MSN-1015:F1': 'Rule parameter (lookup list)', 'MSN-1015:F2': 'Exclusion (environment fact)' };
 const M_DECL = { wrong: ['Wrong', 'The diagnosis or the change is wrong. The agent learns from it.'], later: ['Not now', 'Ask again after the cool-down: 14 days.'], risk: ['Accepted risk', 'Keep it as it is until a date: 90 days.'], never: ['Never', 'Do not raise this again for this rule.'] };
 const myDay = ts => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 const myDeclTxt = d => d ? `${M_DECL[d.reason] ? M_DECL[d.reason][0] : 'Declined'}${d.until ? ', until ' + myDay(d.until) : ''}` : '';

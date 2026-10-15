@@ -116,7 +116,7 @@ function mFinding(t, f, i) {
     <div class="text-[14.5px] font-bold text-ink leading-snug">${esc(f.title)}</div>
     <div class="flex items-center gap-2 flex-wrap">${f.status === 'handled' ? '' : mSug('Tune', { solid: true })}${mConf(f.conf)}${f.noise ? `<span class="text-[12px] text-ink3">Noise type: ${esc(f.noise)}</span>` : ''}</div>
     <p class="text-[13px] text-ink2 leading-relaxed">${esc(f.diagnosis)}</p>
-    ${p ? `<div class="pt-1">${mLabel(`Proposal · version ${p.ver}`)}<div class="mt-2">${mChange(t, p.current, p.recommended, key)}</div>${p.validation ? `<div class="mt-2 rounded-xl border border-line px-3 py-2.5">${mFold(t, 'why' + f.id, 'Show the evidence', mValidation(p.validation), `${esc(p.validation.rows[0][0])}: ${p.validation.rows[0][1]} → ${p.validation.rows[0][2]}`)}</div>` : ''}${mExpects(t, f)}</div>` : ''}
+    ${p ? `<div class="pt-1">${mLabel(`Proposal · version ${p.ver}`, mFixTag(t, f))}<div class="mt-2">${mChange(t, p.current, p.recommended, key)}</div>${p.validation ? `<div class="mt-2 rounded-xl border border-line px-3 py-2.5">${mFold(t, 'why' + f.id, 'Show the evidence', mValidation(p.validation), `${esc(p.validation.rows[0][0])}: ${p.validation.rows[0][1]} → ${p.validation.rows[0][2]}`)}</div>` : ''}${mExpects(t, f)}</div>` : ''}
     ${open ? (M.decl && M.decl.id === t.id && M.decl.fi === i ? mDeclBox(t.id, i) : `<div><div class="text-[13.5px] font-semibold text-ink">${esc(p.decision.q)}</div><p class="text-[12.5px] text-ink3 mt-0.5">${esc(p.decision.effect)} Risk: ${esc(p.decision.risk)}</p>
       <div class="mt-2 flex gap-2"><button data-papprove="${f.id}" onclick="mDecideP('${t.id}',${i},'approve')" class="px-3.5 py-2 rounded-xl bg-ink text-panel text-[13px] font-bold">${esc(p.decision.approve)}</button><button data-preject="${f.id}" onclick="M.decl={id:'${t.id}',fi:${i}};mPanelRender();icons()" class="px-3.5 py-2 rounded-xl border border-line2 text-[13px] font-semibold text-ink2 hover:bg-hov">Decline</button></div></div>`) : ''}
   </div>`;
@@ -129,11 +129,13 @@ function mCard(t) {
   const change = mChange(t, t.current, t.recommended, t.id);
   const plan = mPlanBox(t), cls = M_CLASS[t.resultClass] || M_CLASS.action;
   const skips = (t.skips || []).map(([o, id]) => `<span class="block mt-0.5">Skipped ${esc(o)}: handled in <button onclick="mOpenTask('${id}')" class="font-mono c-indigo hover:underline">${id}</button></span>`).join('');
-  /* 1. what it is */
-  const top = `<div class="flex items-center justify-between gap-3"><div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">${esc(j.name)} · ${t.id}</div>${mVerTag(t)}</div>
+  /* 1. what the mission is, and what it did */
+  const top = `<div class="flex items-center justify-between gap-3"><div class="text-[11px] font-black tracking-[.14em] uppercase" style="color:#5eead4">${esc(j.name)}</div><span class="inline-flex items-center gap-2">${mImpact(t.impact)}<span class="text-[12px] text-ink3">priority</span>${mVerTag(t)}</span></div>
     <h2 class="text-[19px] font-bold text-ink leading-snug mt-1.5">${esc(t.title)}</h2>
-    <div class="mt-2.5 flex items-center gap-x-2.5 gap-y-1.5 flex-wrap">${mSug(t.sug, { solid: true })}${mConf(t.conf)}<span class="text-[12px] text-ink3">confidence</span><span class="text-ink4">·</span><span class="text-[12.5px] c-${cls[1] === 'slate' ? 'ink3' : cls[1]} font-semibold">${cls[0]}</span><span class="text-ink4">·</span>${mImpact(t.impact)}<span class="text-[12px] text-ink3">priority</span>${mChangesTxt(t) ? `<span class="text-ink4">·</span><span class="text-[12px] text-ink3">Changes <span class="text-ink2">${esc(mChangesTxt(t))}</span></span>` : ''}</div>
-    <p class="text-[14px] text-ink2 leading-relaxed mt-2.5">${esc(t.summary)}</p>`;
+    <p class="text-[14px] text-ink2 leading-relaxed mt-2">${esc(t.summary)}</p>
+    <div class="mt-2.5 text-[12.5px] text-ink3 leading-relaxed flex flex-wrap gap-x-3 gap-y-1"><span><span class="text-ink4">Asked to</span> ${esc((t.objective || '').replace(/^\w/, c => c.toLowerCase()).replace(/\.$/, ''))}</span>${t.coverage ? `<span><span class="text-ink4">Looked at</span> ${esc(t.coverage)}</span>` : ''}${t.cost ? `<span><span class="text-ink4">Took</span> ${t.cost.min} min · ${t.cost.queries} queries</span>` : ''}</div>${skips ? `<div class="text-[12px] text-ink3 mt-1">${skips}</div>` : ''}`;
+  /* the AI suggestion and how sure the agent is: always together, at the head of what it proposes */
+  const sugHead = `<span class="inline-flex items-center gap-2 flex-wrap"><span>AI suggestion</span><span class="normal-case tracking-normal">${mSug(t.sug, { solid: true })}</span><span class="normal-case tracking-normal font-normal">${mConf(t.conf)}</span><span class="normal-case tracking-normal font-semibold text-[12px] c-${cls[1] === 'slate' ? 'ink3' : cls[1]}">${cls[0]}</span></span>`;
   /* 2. where the problem is: the pipeline, one mark per problem */
   const fl = t.findings ? t.findings.filter(f => f.status !== 'handled') : null;
   const strip = t.nothing ? '' : `<section data-strip class="rounded-2xl border border-line p-4">${mLabel('Where the problem is', `<span class="text-[12px] text-ink3">${fl ? `${fl.length} problem${fl.length === 1 ? '' : 's'}` : esc(MY_CARD[t.card])}</span>`)}<div class="mt-2.5">${mChain(fl ? fl.map(f => f.layer) : t.layer, t.sug)}</div>
@@ -154,30 +156,48 @@ function mCard(t) {
       <p class="text-[13.5px] text-ink2 leading-relaxed"><b class="text-ink">Nothing to decide here.</b> The cause is in the data pipeline, so the fix belongs to the mission below. When it is approved, this mission continues on its own and checks that the detection works again.</p>
       <div>${mLink(t.waitOn)}</div></section>`;
   else if (t.status === 'pending' && d) box = `<section data-decision class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
-      ${mLabel('<span style="color:#fbbf24">Needs you</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)} waiting</span>`)}
+      ${mLabel(sugHead, `<span class="text-[12px] c-amber font-semibold whitespace-nowrap">Needs you · <span class="font-mono font-normal text-ink3">${myAge(Date.now() - t.opened)}</span></span>`)}
       <div><h3 class="text-[16.5px] font-bold text-ink leading-snug">${esc(d.q)}</h3><p class="text-[13.5px] text-ink2 leading-relaxed mt-1">${esc(d.effect)}</p>
         <p class="text-[12.5px] text-ink3 leading-relaxed mt-1"><b class="text-ink2">Risk:</b> ${esc(d.risk)}${d.reversible ? ' It can be reversed.' : ''}${d.selfFix ? ' ' + esc(d.selfFix) : ''}</p>${mExpects(t)}</div>
       ${mChangedBox(t)}
-      ${change ? `<div>${mLabel(`The change · version ${t.ver || 1}`, `<span class="text-[11.5px] text-ink3">${M.wideCard ? 'Now and suggested, side by side' : 'Now, then suggested'}</span>`)}<div class="mt-2">${change}</div></div>` : ''}
+      ${change ? `<div>${mLabel(`The change · version ${t.ver || 1}`, mFixTag(t))}<div class="mt-2">${change}</div></div>` : ''}
       ${plan}
-      ${v ? `<div class="rounded-xl border border-line px-3.5 py-3">${mFold(t, 'why', 'Show the evidence', mValidation(v), vHint)}</div>` : ''}
+      ${v ? `<div class="rounded-xl border border-line px-3.5 py-3">${mFold(t, 'why', 'Show the backtest', mValidation(v), vHint)}</div>` : ''}
       ${links}
     </section>`;
   else if (t.status === 'progress') box = `${mProgressBox(t, links)}${plan}${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('The change')}<div class="mt-2">${change}</div></section>` : ''}`;
   else box = `<section class="rounded-2xl border p-4 ${['rejected', 'cancelled'].includes(t.end) ? 'border-line bg-sunk' : 'tn tn-cx'}">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] mt-1.5 leading-relaxed text-ink">${esc(t.outcome || '')}</p>${mModLine(t)}${links ? `<div class="mt-2.5">${links}</div>` : ''}${plan ? `<div class="mt-3">${plan}</div>` : ''}</section>${change ? `<section class="rounded-2xl border border-line bg-card p-4">${mLabel('What changed')}<div class="mt-2">${change}</div></section>` : ''}`;
-  /* 4. the analysis behind it, folded */
-  const [trName, trIcon] = MY_TRIGGER[t.trigger.kind], from = t.trigger.from && M_FROM[t.trigger.from];
+  if (!t.findings && !(t.status === 'pending' && d && !t.waitOn)) box = `<div class="px-0.5 text-[11px] font-black tracking-[.14em] text-ink3 uppercase">${sugHead}</div>${box}`;
+  /* 4. the analysis behind it, folded: the steps, and the evidence (questions, queries, datasets) */
+  const [trName, trIcon] = MY_TRIGGER[t.trigger.kind], from = t.trigger.from && M_FROM[t.trigger.from], ev = mEvid(t);
   const how = `<div class="space-y-2.5 text-[13px] text-ink2">
-      <div><span class="text-ink3">Objective:</span> ${esc(t.objective || '')}</div>
       <div class="flex gap-2.5"><span class="w-5 h-5 rounded-full bg-sunk border border-line flex items-center justify-center shrink-0 text-ink3">${ic(trIcon, 'w-3 h-3')}</span><span><b class="text-ink">${trName}${from ? ' from the ' + M_AG[from].name : ''}.</b> ${esc(t.trigger.text)}</span></div>
-      ${t.steps.map((x, i) => `<div class="flex gap-2.5"><span class="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-indigo-500">${i + 1}</span>${esc(x)}</div>`).join('')}
-      <div class="text-[12.5px] text-ink3"><span class="inline-flex items-center gap-1.5">${ic('scan-search', 'w-3.5 h-3.5')}Looked at: <span class="text-ink2">${esc(t.coverage || '')}</span></span>${skips}</div></div>`;
+      ${t.steps.map((x, i) => `<div class="flex gap-2.5"><span class="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-indigo-500">${i + 1}</span>${esc(x)}</div>`).join('')}</div>`;
   const objs = mAffected(t), c = t.cost;
   const fb = `<div class="space-y-2">${mFb(t, 'res', 'Is the result right?')}${t.nothing || t.findings ? '' : mFb(t, 'diag', 'Is the diagnosis right?')}${t.recommended ? mFb(t, 'rec', 'Is the suggested change right?') : ''}${mMissed(t)}</div>`;
   return `<div class="space-y-4">${mCardBanners(t)}<section class="rounded-2xl border border-line2 bg-card p-4 sm:p-5">${top}</section>${strip}${box}
-    <div class="px-1 space-y-2.5">${mFold(t, 'how', `Show how it got there (${t.steps.length} steps)`, how, `${M_AG[t.agent].name} · ${esc(j.name)} v${j.ver}`)}${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${c ? mFold(t, 'cost', 'Show the cost of this run', `<div class="text-[13px] text-ink2">${c.min} minutes · ${c.queries} queries · ${c.pct}% of the job’s budget (${esc((MY_JOBS[t.job] || {}).budget || '')})</div>`) : ''}${done || t.status === 'pending' || t.status === 'blocked' ? mFold(t, 'fb', t.nothing ? 'Give feedback, or say what it missed' : 'Give feedback', fb, t.fb && t.fb.missed ? 'You reported something it missed' : '') : ''}</div>
+    <div class="px-1 space-y-2.5">${mFold(t, 'how', `Show the steps (${t.steps.length})`, how, `${M_AG[t.agent].name} · ${esc(j.name)} v${j.ver}`)}${mFold(t, 'ev', 'Show the evidence', mEvidHtml(ev), `${ev.q.length} questions · ${ev.x.length} queries · ${ev.d.length} datasets`)}${objs ? mFold(t, 'obj', 'Show affected objects', `<div class="flex flex-wrap gap-1.5">${objs}</div>`) : ''}${c ? mFold(t, 'cost', 'Show the cost of this run', `<div class="text-[13px] text-ink2">${c.min} minutes · ${c.queries} queries · ${c.pct}% of the job’s budget (${esc((MY_JOBS[t.job] || {}).budget || '')})</div>`) : ''}${done || t.status === 'pending' || t.status === 'blocked' ? mFold(t, 'fb', t.nothing ? 'Give feedback, or say what it missed' : 'Give feedback', fb, t.fb && t.fb.missed ? 'You reported something it missed' : '') : ''}</div>
     ${mActivity(t)}
     </div>`;
+}
+/* The kind of fix, and where it lands: on the rule here, or with the team that owns the step. */
+function mFixTag(t, f) {
+  const k = f ? MY_FIX[t.id + ':' + f.id] : MY_FIX[t.id]; if (!k) return '';
+  return `<span class="inline-flex items-center gap-1.5 flex-wrap justify-end text-[11.5px]"><span class="px-2 py-0.5 rounded-md bg-sunk border border-line text-ink2 font-semibold normal-case tracking-normal">${esc(k)}</span><span class="text-ink3 normal-case tracking-normal font-normal">${t.teamFix && !f ? 'sent to the ' + esc(t.teamFix) : /integration|instance/i.test(k) ? 'needs a person in Data Sources' : /environment fact/i.test(k) ? 'saved in AgentiX memory' : 'applied to ' + (/Indicator/.test(k) ? 'IOC Rules' : 'Correlation Rules')}</span></span>`;
+}
+/* The evidence: questions asked, queries run with what they returned, datasets read. */
+function mEvid(t) {
+  if (MY_EVID[t.id]) return MY_EVID[t.id];
+  const rules = (t.affects && t.affects.rules || []).map(mRule).filter(Boolean), ds = [...new Set(rules.map(r => ((r.xql || '').match(/dataset = (\w+)/) || [])[1]).filter(Boolean))];
+  if (t.nothing) return { q: [t.objective || 'Is everything working?'], x: [[t.job === 'health' ? 'Data Sources › every instance · status and last event' : 'correlation_rules | filter status = "Enabled" · issues in 7 days, fields filled', t.outcome || 'Nothing found']], d: t.job === 'health' ? ['Data Sources: instance status'] : ['correlation_rules', 'issues'] };
+  return { q: [t.objective || t.title], x: rules.length ? [[`issues | filter rule_id in (${rules.map(r => r.id).join(', ')}) and _time > -7d | comp count() by bin(_time, 1d)`, t.diagnosis || '']] : [], d: ['issues'].concat(ds) };
+}
+function mEvidHtml(e) {
+  const sub = l => `<div class="text-[11px] font-bold uppercase tracking-wider text-ink3 mb-1.5">${l}</div>`;
+  return `<div class="space-y-4">
+    <div>${sub('Questions it asked')}<ol class="space-y-1">${e.q.map((x, i) => `<li class="flex gap-2 text-[13px] text-ink2"><span class="text-ink4 font-mono w-4 shrink-0">${i + 1}</span>${esc(x)}</li>`).join('')}</ol></div>
+    ${e.x.length ? `<div>${sub('Queries it ran, and what came back')}<div class="space-y-2">${e.x.map(([q, r]) => `<div class="rounded-xl border border-line overflow-hidden"><pre class="px-3 py-2 bg-code text-[12px] leading-[1.6] font-mono text-ink2 whitespace-pre-wrap break-words">${esc(q)}</pre><div class="px-3 py-1.5 text-[12.5px] text-ink flex gap-2 border-t border-line"><span class="c-cx shrink-0">→</span><span>${esc(r)}</span></div></div>`).join('')}</div></div>` : ''}
+    <div>${sub('Datasets and sources it read')}<div class="flex flex-wrap gap-1.5">${e.d.map(x => `<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sunk border border-line text-[12px] text-ink2 font-mono">${ic('database', 'w-3 h-3 text-ink4')}${esc(x)}</span>`).join('')}</div></div></div>`;
 }
 /* Where an in-progress mission stands: what it does now, how far it is, what it waits on, and when it comes back to you. */
 function mProgressBox(t, links = '') {
