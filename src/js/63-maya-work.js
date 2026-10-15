@@ -29,7 +29,8 @@ function mNeedN(t) {
 /* The second line under the status: what it waits for, or how it ended. */
 function mStatusSub(t) {
   const k = mTabOf(t), n = mNeedN(t);
-  if (k === 'needs') return t.status === 'blocked' ? 'partly applied · decide again' : n + ' to review';
+  /* Pending says it all; only a partly applied mission needs a word more. */
+  if (k === 'needs') return t.status === 'blocked' ? 'partly applied' : '';
   if (k === 'running') return t.waitOn ? 'waiting on ' + t.waitOn : t.handed ? 'waiting on the ' + (t.teamFix || 'other team') : t.paused ? 'paused' : (t.progressNote || 'running').replace(/^\w/, c => c.toLowerCase());
   return myEndTxt(t).toLowerCase();
 }
@@ -140,7 +141,7 @@ function mWork() {
   const rows = list.map(t => { const sel = M.panelTask === t.id, run = mRunning(t), fresh = t.fresh && Date.now() - t.fresh < 4000;
     return `<div data-task="${t.id}" onclick="mOpenTask('${t.id}')" class="mcols m-row items-center px-4 h-[54px] text-[13.5px] cursor-pointer border-b border-line transition-colors ${fresh ? 'm-fresh' : ''} ${t.status === 'done' && !sel ? 'opacity-70 hover:opacity-100' : ''} ${sel ? 'm-sel' : mTabOf(t) === 'needs' ? 'hover:bg-amber-400/10' : 'hover:bg-hov'}">
       ${mStatusCell(t)}<span>${run ? mAnalyzing() : mSug(t.sug, { solid: true })}</span>
-      <span class="min-w-0"><span class="m-title block truncate text-ink ${sel ? 'font-semibold' : ''}" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span><span class="m-c-need hidden ${mTabOf(t) === 'needs' ? 'c-amber font-semibold' : ''}"> · ${esc(mStatusSub(t))}</span><span class="m-c-job"> · ${esc(MY_JOBS[t.job].name)} · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span>` : t.status === 'blocked' ? '<span class="c-rose">partly applied</span>' : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : t.findings ? `${t.findings.length} findings` : t.nothing ? 'nothing found' : esc(MY_CARD[t.card])}</span></span></span>
+      <span class="min-w-0"><span class="m-title block truncate text-ink ${sel ? 'font-semibold' : ''}" title="${esc(t.title)}">${esc(t.title)}</span><span class="block text-[11.5px] text-ink3 truncate"><span class="font-mono">${t.id}</span>${mStatusSub(t) || mTabOf(t) !== 'needs' ? `<span class="m-c-need hidden ${mTabOf(t) === 'needs' ? 'c-amber font-semibold' : ''}"> · ${esc(mStatusSub(t) || M_TAB_ST[mTabOf(t)][0].toLowerCase())}</span>` : ''}<span class="m-c-job"> · ${esc(MY_JOBS[t.job].name)} · ${t.waitOn ? `<span class="c-indigo">waits on ${t.waitOn}</span>` : t.status === 'blocked' ? '<span class="c-rose">partly applied</span>' : t.status === 'progress' && t.progressNote ? `<span class="c-blue">${esc(t.progressNote)}</span>` : t.findings ? `${t.findings.length} findings` : t.nothing ? 'nothing found' : esc(MY_CARD[t.card])}</span></span></span>
       <span>${run ? '<span class="text-ink4">—</span>' : mConf(t.conf)}</span>
       <span>${mImpact(t.impact)}</span>
       <span class="text-[12.5px] text-ink2 truncate">${esc(mSrcOf(t)) || '<span class="text-ink4">—</span>'}</span>

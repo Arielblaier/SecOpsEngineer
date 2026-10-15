@@ -400,11 +400,11 @@ function mRailHtml() {
   const count = k => W.tasks.filter(t => mTabOf(t) === k).length;
   const tabs = [['needs', 'Pending'], ['running', 'In progress'], ['done', 'Done']];
   const row = t => { const on = cur === t.id, n = mNeedN(t), [rl, tone] = M_TAB_ST[mTabOf(t)];
-    const meta = `<span class="${n ? 'c-amber font-semibold' : ''}">${esc(mStatusSub(t) || rl.toLowerCase())}</span>`;
+    const sub = mStatusSub(t) || (mTabOf(t) === 'needs' ? '' : rl.toLowerCase()), meta = sub ? ` · <span class="${n ? 'c-amber font-semibold' : ''}">${esc(sub)}</span>` : '';
     return `<button data-q="${t.id}" onclick="mOpenTask('${t.id}')" class="w-full text-left px-3 py-2.5 rounded-xl ${on ? 'bg-hov' : 'hover:bg-hov/60'}">
       <span class="flex items-center gap-1.5">${mSug(t.sug, { solid: true })}${t.unread ? `<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Changed since you last looked"></span>` : ''}<span class="ml-auto text-[11px] text-ink4 font-mono">${myAge(Date.now() - t.opened)}</span></span>
       <span class="block mt-1 text-[13px] leading-snug line-clamp-2 ${on ? 'text-ink font-semibold' : 'text-ink2'}">${esc(t.title)}</span>
-      <span class="block text-[11.5px] text-ink4 mt-0.5 truncate"><span class="font-mono">${t.id}</span> · ${meta}</span></button>`; };
+      <span class="block text-[11.5px] text-ink4 mt-0.5 truncate"><span class="font-mono">${t.id}</span>${meta}</span></button>`; };
   const chatRow = r => { const on = !cur && !M.panelObj && M.chatKey === r.id;
     return `<button data-recent="chat" onclick="mOpenChat('${r.id}')" class="w-full text-left px-3 py-2 rounded-xl flex items-start gap-2.5 ${on ? 'bg-hov' : 'hover:bg-hov/60'}"><span class="mt-0.5 text-ink4">${ic('message-square', 'w-3.5 h-3.5')}</span><span class="min-w-0 flex-1"><span class="block text-[13px] text-ink2 truncate">${esc(r.title)}</span><span class="block text-[11.5px] text-ink4 truncate">${r.task ? 'about ' + r.task + ' · ' : ''}${mAgo(r.t)}</span></span></button>`; };
   return `<div class="px-3 pt-3 pb-2 shrink-0 flex items-center gap-1">
@@ -620,7 +620,7 @@ const M_FLOWS = [
   { name: 'Two missions change the same rule', point: 'Several missions can work on one rule. A change applies only to the version it expects, so the second one is checked again.',
     setup: () => mNav('work'),
     steps: [
-      { do: 'Dana K. asks for a severity change on the Chrome extension rule. Press Show me.', see: 'MSN-1016 arrives and needs you.', act: () => mScnReady(3), done: () => !!mTask('MSN-1016') },
+      { do: 'Dana K. asks for a severity change on the Chrome extension rule. Press Show me.', see: 'MSN-1016 arrives as Pending.', act: () => mScnReady(3), done: () => !!mTask('MSN-1016') },
       { do: 'Open MSN-1016.', see: '“Another change is pending on this rule: MSN-1002.” Both apply to version 7.', act: () => mOpenTask('MSN-1016'), done: () => M.panelTask === 'MSN-1016' },
       { do: 'Approve it.', see: 'Rule 224 is now version 8.', act: () => mDecide('MSN-1016', 'approve'), done: () => mT('MSN-1016').status === 'done' },
       { do: 'Open MSN-1002.', see: 'Out of date, then version 2, rebuilt on the new rule. Approve waits for it.', act: () => mOpenTask('MSN-1002'), done: () => (mT('MSN-1002').ver || 1) > 1 }
@@ -638,11 +638,11 @@ const M_FLOWS = [
     setup: () => { mNav('work'); mTask('MSN-1005').race = true; },
     steps: [
       { do: 'Open MSN-1005: retire 3 leftover rules.', see: 'One approval for three rules.', act: () => mOpenTask('MSN-1005'), done: () => M.panelTask === 'MSN-1005' },
-      { do: 'Approve all three.', see: 'Dana K. edited rule 222 a moment before, so that write is refused. Blocked: 2 of 3 applied.', act: () => mDecide('MSN-1005', 'approve'), done: () => !!mT('MSN-1005').partial },
+      { do: 'Approve all three.', see: 'Dana K. edited rule 222 a moment before, so that write is refused. Pending again: 2 of 3 applied.', act: () => mDecide('MSN-1005', 'approve'), done: () => !!mT('MSN-1005').partial },
       { do: 'Press “Check rule 222 again”.', see: 'Version 2 asks only about rule 222, on its new version.', act: () => mBlockedGo('MSN-1005', 'recheck'), done: () => !!(mT('MSN-1005').partial || {}).rechecked },
       { do: 'Approve version 2.', see: 'Done: all three changes are applied.', act: () => mDecide('MSN-1005', 'approve'), done: () => mT('MSN-1005').status === 'done' }
     ] },
-  { name: 'Waiting on another team', point: 'When the cause is in a part another team owns, the Detection Engineer finds it, writes the fix and sends it. The mission waits, then checks the detection and closes on its own.',
+  { name: 'A fix for another team', point: 'When the cause is in a part another team owns, the Detection Engineer finds it, writes the fix and sends it. The mission waits, then checks the detection and closes on its own.',
     setup: () => mNav('work'),
     steps: [
       { do: 'Open MSN-1001: three SentinelOne rules went silent.', see: 'The cause is the SentinelOne data model, which the data platform team owns. The fix is written and replayed. One approval sends it.', act: () => mOpenTask('MSN-1001'), done: () => M.panelTask === 'MSN-1001' },
@@ -679,7 +679,7 @@ const M_FLOWS = [
     setup: () => mNav('work'),
     steps: [
       { do: 'Look at “Watching” under Missions now.', see: 'Rule 237 is at 6 of 7 benign issues this week.', act: () => { const w = (M.watch || [])[0]; if (w) { w.n = 6; mRender(); } }, done: () => ((M.watch || [])[0] || {}).n >= 6 },
-      { do: 'Wait for the 7th, or press Show me.', see: 'Threshold reached: MSN-1010 starts, runs, and needs you.', act: () => { const n = M.W.incoming.findIndex(t => t.id === 'MSN-1010'); (M.watch || []).forEach(w => { w.done = true; w.n = w.max; }); mScnReady(n); }, done: () => !!mTask('MSN-1010') },
+      { do: 'Wait for the 7th, or press Show me.', see: 'Threshold reached: MSN-1010 starts, runs, and becomes Pending.', act: () => { const n = M.W.incoming.findIndex(t => t.id === 'MSN-1010'); (M.watch || []).forEach(w => { w.done = true; w.n = w.max; }); mScnReady(n); }, done: () => !!mTask('MSN-1010') },
       { do: 'Open MSN-1010.', see: 'Title, what it did, the pipeline with the Rule step marked, the AI suggestion with its confidence, and the change: an exclusion kept in AgentiX memory.', act: () => mOpenTask('MSN-1010'), done: () => M.panelTask === 'MSN-1010' },
       { do: 'Open “Show the evidence”.', see: 'The questions it asked, the queries it ran with what came back, and the datasets it read.', act: () => { M.more['MSN-1010:ev'] = true; mPanelRender(); icons(); }, done: () => !!M.more['MSN-1010:ev'] }
     ] },
