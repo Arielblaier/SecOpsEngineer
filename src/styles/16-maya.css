@@ -1,8 +1,8 @@
   /* SECOPS ENGINEERING screens */
   /* The missions table keeps its full width. Columns that do not fit are reached by scrolling sideways. */
   .m-table { width: max-content; min-width: 100%; }
-  .m-table > .mcols { min-width: 1250px; }
-  .mcols { display: grid; grid-template-columns: var(--mc, 112px 112px 108px minmax(320px, 1fr) 96px 74px 150px 44px 116px); column-gap: 14px; }
+  .m-table > .mcols { min-width: 1150px; }
+  .mcols { display: grid; grid-template-columns: var(--mc, 132px 108px minmax(320px, 1fr) 96px 74px 150px 44px 116px); column-gap: 14px; }
   .mcols > * { min-width: 0; }
   .m-vert { writing-mode: vertical-rl; transform: rotate(180deg); }
   .m-wwrap { container-type: inline-size; }
@@ -116,13 +116,13 @@
 #mv-work.m-railoff { display: none !important; }
 .m-docked .m-wk-hide { display: inline-flex !important; }
 .m-docked #m-log { display: none !important; }
-@container wk (max-width: 1320px) { .m-table { width: auto; } .m-table > .mcols { min-width: 0; } .mcols { --mc: 104px 104px 100px minmax(200px, 1fr) 92px 74px 140px 44px; } .mcols > :nth-child(9) { display: none; } }
-@container wk (max-width: 1160px) { .mcols { --mc: 104px 104px 100px minmax(180px, 1fr) 92px 74px 44px; } .mcols > :nth-child(7) { display: none; } }
-@container wk (max-width: 1000px) { .mcols { --mc: 104px 104px 100px minmax(160px, 1fr) 74px; } .mcols > :nth-child(5), .mcols > :nth-child(8) { display: none; } }
-@container wk (max-width: 840px) { .mcols { --mc: 104px 104px 100px minmax(140px, 1fr); } .mcols > :nth-child(6) { display: none; } .m-wwrap { display: none; } }
-@container wk (max-width: 680px) { .mcols { --mc: 100px 96px minmax(0, 1fr); } .mcols > :nth-child(1) { display: none; } .m-wk-filters { display: none !important; } #m-log { display: none !important; } }
+@container wk (max-width: 1320px) { .m-table { width: auto; } .m-table > .mcols { min-width: 0; } .mcols { --mc: 128px 100px minmax(200px, 1fr) 92px 74px 140px 44px; } .mcols > :nth-child(8) { display: none; } }
+@container wk (max-width: 1160px) { .mcols { --mc: 128px 100px minmax(180px, 1fr) 92px 74px 44px; } .mcols > :nth-child(6) { display: none; } }
+@container wk (max-width: 1000px) { .mcols { --mc: 128px 100px minmax(160px, 1fr) 74px; } .mcols > :nth-child(4), .mcols > :nth-child(7) { display: none; } }
+@container wk (max-width: 840px) { .mcols { --mc: 128px 100px minmax(140px, 1fr); } .mcols > :nth-child(5) { display: none; } .m-wwrap { display: none; } }
+@container wk (max-width: 680px) { .mcols { --mc: 120px 96px minmax(0, 1fr); } .m-wk-filters { display: none !important; } #m-log { display: none !important; } }
 @container wk (max-width: 520px) {
-  .mcols { --mc: 84px minmax(0, 1fr); column-gap: 10px; } .mcols > :nth-child(2) { display: none; }
+  .mcols { --mc: 84px minmax(0, 1fr); column-gap: 10px; } .mcols > :nth-child(1) { display: none; }
   .m-row { height: auto !important; padding: 10px 12px 10px 14px !important; align-items: start !important; border-bottom-color: transparent !important; border-radius: 12px; margin: 1px 6px; }
   .m-row .m-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.35; font-size: 13px; }
   .m-c-need { display: inline !important; } .m-c-job { display: none; }

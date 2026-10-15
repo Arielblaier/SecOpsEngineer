@@ -398,9 +398,9 @@ function mRecent() {
 function mRailHtml() {
   const cur = M.panelTask, list = mWorkList(), chats = mRecent().filter(r => r.kind === 'chat').slice(0, 4), W = M.W;
   const count = k => W.tasks.filter(t => mTabOf(t) === k).length;
-  const tabs = [['needs', 'Needs you'], ['running', 'Running'], ['waiting', 'Waiting'], ['done', 'Done']];
-  const row = t => { const on = cur === t.id, n = mNeedN(t), run = mRunOf(t), [rl, tone] = M_RUN[run];
-    const meta = n ? `<span class="c-amber font-semibold">${t.status === 'blocked' ? 'decide again' : n + ' to review'}</span>` : `<span class="${tone === 'slate' ? '' : 'c-' + tone}">${rl.toLowerCase()}</span>`;
+  const tabs = [['needs', 'Pending'], ['running', 'In progress'], ['done', 'Done']];
+  const row = t => { const on = cur === t.id, n = mNeedN(t), [rl, tone] = M_TAB_ST[mTabOf(t)];
+    const meta = `<span class="${n ? 'c-amber font-semibold' : ''}">${esc(mStatusSub(t) || rl.toLowerCase())}</span>`;
     return `<button data-q="${t.id}" onclick="mOpenTask('${t.id}')" class="w-full text-left px-3 py-2.5 rounded-xl ${on ? 'bg-hov' : 'hover:bg-hov/60'}">
       <span class="flex items-center gap-1.5">${mSug(t.sug, { solid: true })}${t.unread ? `<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Changed since you last looked"></span>` : ''}<span class="ml-auto text-[11px] text-ink4 font-mono">${myAge(Date.now() - t.opened)}</span></span>
       <span class="block mt-1 text-[13px] leading-snug line-clamp-2 ${on ? 'text-ink font-semibold' : 'text-ink2'}">${esc(t.title)}</span>
@@ -499,7 +499,7 @@ function mPanelRender() {
   /* heads: with the mission and the chat side by side, each column has its own head, like an artifact next to a chat */
   const ids = t ? pend.map(x => x.id) : [], i = t ? ids.indexOf(t.id) : -1;
   const o2 = t && t.waitOn && mTask(t.waitOn);
-  const status = !t ? '' : t.status === 'done' || t.status === 'blocked' ? mStatus(t) : o2 ? `<span class="text-[12.5px] c-indigo whitespace-nowrap">Waiting on the ${M_AG[o2.agent].name}</span>` : t.status === 'pending' ? `<span class="text-[12.5px] c-amber whitespace-nowrap">Needs you</span>` : `<span class="text-[12.5px] c-blue whitespace-nowrap">${t.handed ? 'Waiting on the ' + esc(t.teamFix || 'other team') : t.paused ? 'Paused' : 'Running'}</span>`;
+  const status = !t ? '' : t.status === 'done' || t.status === 'blocked' ? mStatus(t) : o2 ? `<span class="text-[12.5px] c-blue whitespace-nowrap">In progress · waiting on ${o2.id}</span>` : t.status === 'pending' ? `<span class="text-[12.5px] c-amber whitespace-nowrap">Pending</span>` : `<span class="text-[12.5px] c-blue whitespace-nowrap">${t.handed ? 'In progress · waiting on the ' + esc(t.teamFix || 'other team') : t.paused ? 'Paused' : 'In progress'}</span>`;
   const railBtn = wide && M.railOff && (docked || work) ? btn('M.railOff=false;mRender();mScrollInit()', 'panel-left-open', 'Show the missions', 'data-act="rail-on"') : '';
   const idPart = t ? `<span class="text-[13.5px] font-semibold text-ink font-mono whitespace-nowrap">${t.id}</span><span class="min-w-0 truncate">${status}</span>`
       : o ? `<span class="text-[13.5px] font-semibold text-ink whitespace-nowrap">${o.kind === 'rule' ? 'Correlation rule ' + o.id : o.kind === 'tech' ? 'Technique ' + o.id : 'IOC rule ' + o.id}</span>`
@@ -581,12 +581,12 @@ const mScnObj = (view, id) => { mNav(view); M.panelObj = { kind: 'rule', id }; M
 const mNF = job => { const xs = M.W.tasks.filter(t => t.nothing && t.job === job).sort((a, b) => b.opened - a.opened); return xs[0] ? xs[0].id : null; };
 const mT = id => mTask(id) || {};
 const M_FLOWS = [
-  { name: 'What needs me this morning', point: 'The list opens on Needs you, one decision at a time, and the next one comes up on its own.',
+  { name: 'What needs me this morning', point: 'The list opens on Pending, one decision at a time, and the next one comes up on its own.',
     setup: () => mNav('work'),
     steps: [
-      { do: 'Look at the Missions screen.', see: 'It opens on Needs you. Running and Waiting need nothing from you. Done holds every finished run, also the ones that found nothing.', act: () => { M.tab = 'needs'; mRender(); }, done: () => M.view === 'work' },
+      { do: 'Look at the Missions screen.', see: 'It opens on Pending. In progress needs nothing from you, including missions waiting on another team. Done holds every finished run, also the ones that found nothing.', act: () => { M.tab = 'needs'; mRender(); }, done: () => M.view === 'work' },
       { do: 'Open MSN-1003: AWS audit logs stopped.', see: 'AgentiX slides in from the right and pushes the table back until only the suggestion and the name are left. The mission in the middle, your chat with its owner on the right.', act: () => mOpenTask('MSN-1003'), done: () => M.panelTask === 'MSN-1003' },
-      { do: 'Press “Hand over to cloud team”.', see: 'It moves to Waiting on another team, and the next mission that needs you comes up on its own.', act: () => mDecide('MSN-1003', 'approve'), done: () => mT('MSN-1003').status !== 'pending' },
+      { do: 'Press “Hand over to cloud team”.', see: 'It moves to In progress, waiting on the cloud team, and the next pending mission comes up on its own.', act: () => mDecide('MSN-1003', 'approve'), done: () => mT('MSN-1003').status !== 'pending' },
       { do: 'Close the panel and open the Done filter.', see: 'The runs that found nothing are here, with the AI suggestion Nothing found.', act: () => { mClosePanel(); M.tab = 'done'; mRender(); }, done: () => M.tab === 'done' && !mPanelOn() }
     ] },
   { name: 'A run that found nothing', point: 'Every run of a job is a mission. It is Done, it says what it looked at, and a person can say what it missed.',
@@ -634,7 +634,7 @@ const M_FLOWS = [
       { do: 'Open MSN-1002.', see: 'It was checked again on version 8 and posted version 2.', act: () => mOpenTask('MSN-1002'), done: () => M.panelTask === 'MSN-1002' && (mT('MSN-1002').ver || 1) > 1 },
       { do: 'Now delete the rule. Press Show me.', see: 'MSN-1002 has nothing left to change, so it closes as Cancelled.', act: () => { mObjDo(224, 'delete'); mLater(3200, () => mOpenTask('MSN-1002')); }, done: () => mT('MSN-1002').end === 'cancelled' }
     ] },
-  { name: 'Blocked: partly applied', point: 'If part of an approved change is refused, the mission is Blocked and needs you again. Nothing else moves until you choose.',
+  { name: 'Partly applied: pending again', point: 'If part of an approved change is refused, the mission is Pending again. Nothing else moves until you choose.',
     setup: () => { mNav('work'); mTask('MSN-1005').race = true; },
     steps: [
       { do: 'Open MSN-1005: retire 3 leftover rules.', see: 'One approval for three rules.', act: () => mOpenTask('MSN-1005'), done: () => M.panelTask === 'MSN-1005' },
@@ -646,8 +646,8 @@ const M_FLOWS = [
     setup: () => mNav('work'),
     steps: [
       { do: 'Open MSN-1001: three SentinelOne rules went silent.', see: 'The cause is the SentinelOne data model, which the data platform team owns. The fix is written and replayed. One approval sends it.', act: () => mOpenTask('MSN-1001'), done: () => M.panelTask === 'MSN-1001' },
-      { do: 'Press “Send the fix”.', see: 'The next decision comes up on its own. MSN-1001 moves to Waiting, on the data platform team.', act: () => mDecide('MSN-1001', 'approve'), done: () => mT('MSN-1001').status !== 'pending' },
-      { do: 'Go back to MSN-1001 and wait for the team, or press Show me.', see: 'Waiting, then the team applies the fix. The plan on the card ticks step 2, and the Detection Engineer replays the 2 days.', act: () => { mOpenTask('MSN-1001'); mLater(1500, () => { const t = mTask('MSN-1001'); if (t.handed) { myTeamApplied(M.W, t); mResume(); mRender(); } }); }, done: () => !!mT('MSN-1001').teamDone && M.panelTask === 'MSN-1001' },
+      { do: 'Press “Send the fix”.', see: 'The next decision comes up on its own. MSN-1001 moves to In progress, waiting on the data platform team.', act: () => mDecide('MSN-1001', 'approve'), done: () => mT('MSN-1001').status !== 'pending' },
+      { do: 'Go back to MSN-1001 and wait for the team, or press Show me.', see: 'In progress, waiting on the team, then the team applies the fix. The plan on the card ticks step 2, and the Detection Engineer replays the 2 days.', act: () => { mOpenTask('MSN-1001'); mLater(1500, () => { const t = mTask('MSN-1001'); if (t.handed) { myTeamApplied(M.W, t); mResume(); mRender(); } }); }, done: () => !!mT('MSN-1001').teamDone && M.panelTask === 'MSN-1001' },
       { do: 'Wait for the check, or press Show me.', see: 'Done · Changes applied · verified. Steering and activity on the card show who sent it, when the team applied it, and the check.', act: () => { if (M.panelTask !== 'MSN-1001') mOpenTask('MSN-1001'); const t = mTask('MSN-1001'); if (t.resume) { myResolve(M.W, t); mRender(); } }, done: () => mT('MSN-1001').status === 'done' }
     ] },
   { name: 'Talking to the owner', point: 'In a mission you talk only to its owner. It says how it treats each ask. Your conversation is yours; only confirmed changes reach the shared activity.',

@@ -193,11 +193,13 @@ at, result and confidence, findings, proposals with versions, decisions,
 outcome, cost, feedback, activity) and a detection engineering part (card
 type, root-cause layer, noise type, health, validation).
 
-**States.** Needs you (a decision, or blocked), Running, Waiting (on the team
-that owns the fix), Done. Done ends as changes applied, nothing found, partly
-applied, declined (with a reason), handed over, cancelled, or closed because
-the problem disappeared. The Missions screen opens on Needs you. Done shows
-the end as a second line under the state.
+**States.** Three mission statuses: Pending (a person has to decide; a
+partly applied mission is Pending again), In progress (the agent works, or
+waits on another team or another mission), and Done. Done ends as changes
+applied, nothing found, partly applied, declined (with a reason), handed
+over, cancelled, or closed because the problem disappeared. The table's
+Mission status column shows the status and, under it, how many decisions
+wait, what it waits on, or how it ended. The Missions screen opens on Pending.
 
 **Decisions.** Decline asks why: wrong, not now (14 days), accepted risk (90
 days), never. The reason shows on the rule and decides when the suggestion may
@@ -228,8 +230,7 @@ with approval (no mission). A request that starts a job runs as a mission,
 with its card anchored in the chat. "Review this rule now" starts a job too.
 
 **Missions screen (product approval, Oct 15).** The app opens on Missions,
-the detection engineer's home. The table has Run state and Needs you as two
-columns (a finished run can still need a decision), then AI suggestion,
+the detection engineer's home. The table has Mission status (Pending, In progress, Done), then AI suggestion,
 Mission, Confidence, Priority, Source, Age and Root cause. Filters for type
 (job) and source sit next to the search; sort by impact (default), newest or
 oldest. "Nothing found" runs end under Done.

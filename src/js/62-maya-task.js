@@ -109,7 +109,7 @@ function mDeclBox(id, fi) {
 }
 /* One finding of a mission with several: what was found, what is proposed, and its own decision. */
 function mFinding(t, f, i) {
-  const st = f.status === 'handled' ? `<span class="text-[12px] c-indigo">Handled in <button onclick="mOpenTask('${f.handledIn}')" class="font-mono hover:underline">${f.handledIn}</button></span>` : f.dec ? `<span class="text-[12px] ${f.dec.choice === 'reject' ? 'text-ink3' : 'c-cx'} font-semibold">${f.dec.choice === 'reject' ? 'Declined · ' + esc(myDeclTxt(f.dec)) : 'Applied'} by ${esc(f.dec.by)}</span>` : f.prop ? '<span class="text-[12px] c-amber font-semibold">Needs you</span>' : '';
+  const st = f.status === 'handled' ? `<span class="text-[12px] c-indigo">Handled in <button onclick="mOpenTask('${f.handledIn}')" class="font-mono hover:underline">${f.handledIn}</button></span>` : f.dec ? `<span class="text-[12px] ${f.dec.choice === 'reject' ? 'text-ink3' : 'c-cx'} font-semibold">${f.dec.choice === 'reject' ? 'Declined · ' + esc(myDeclTxt(f.dec)) : 'Applied'} by ${esc(f.dec.by)}</span>` : f.prop ? '<span class="text-[12px] c-amber font-semibold">Pending</span>' : '';
   const p = f.prop, open = p && !f.dec && t.status === 'pending', key = t.id + ':' + f.id;
   return `<div data-finding="${f.id}" class="rounded-2xl border ${open ? 'border-line2' : 'border-line'} p-3.5 space-y-2.5 ${f.status === 'handled' ? 'opacity-80' : ''}">
     <div class="flex items-center justify-between gap-2 flex-wrap"><span class="text-[11px] font-black tracking-[.14em] uppercase text-ink3">Finding ${i + 1} · ${esc(MY_CARD[f.card])}</span>${st}</div>
@@ -145,18 +145,18 @@ function mCard(t) {
   /* 3. the decision */
   let box;
   if (t.findings) { const left = t.findings.filter(f => f.prop && !f.dec).length;
-    box = `<section class="space-y-3">${mLabel(t.status === 'pending' ? `<span style="color:#fbbf24">Needs you · ${left} decision${left === 1 ? '' : 's'}</span>` : 'Findings', `<span class="text-[12px] text-ink3">${t.findings.length} findings</span>`)}${t.findings.map((f, i) => mFinding(t, f, i)).join('')}${done ? `<p class="text-[13.5px] text-ink leading-relaxed">${esc(t.outcome || '')}</p>` : ''}</section>`; }
+    box = `<section class="space-y-3">${mLabel(t.status === 'pending' ? `<span style="color:#fbbf24">Pending · ${left} decision${left === 1 ? '' : 's'}</span>` : 'Findings', `<span class="text-[12px] text-ink3">${t.findings.length} findings</span>`)}${t.findings.map((f, i) => mFinding(t, f, i)).join('')}${done ? `<p class="text-[13.5px] text-ink leading-relaxed">${esc(t.outcome || '')}</p>` : ''}</section>`; }
   else if (t.status === 'blocked') box = `<section class="rounded-2xl border-2 border-rose-500/50 bg-rose-500/5 p-4 space-y-3">
-      ${mLabel('<span class="c-rose">Blocked · partly applied</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - (t.actedAt || t.opened))}</span>`)}
+      ${mLabel('<span class="c-rose">Pending · partly applied</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - (t.actedAt || t.opened))}</span>`)}
       <div class="space-y-1">${t.partial.done.map(x => `<div class="flex items-center gap-2 text-[13px] text-ink2"><span class="c-cx">${ic('circle-check', 'w-4 h-4')}</span>${esc(x)}</div>`).join('')}<div class="flex items-start gap-2 text-[13px] text-ink"><span class="c-rose mt-0.5">${ic('circle-x', 'w-4 h-4')}</span><span>${esc(t.partial.failed)}</span></div></div>
       <p class="text-[12.5px] text-ink3">Nothing else changes until you choose. The agent can check rule 222 again and ask you about the new version, or stop with what was applied.</p></section>`;
   else if (t.nothing) box = `<section class="rounded-2xl border border-line p-4 space-y-2">${mLabel('Outcome', mStatus(t))}<p class="text-[13.5px] text-ink leading-relaxed">${esc(t.outcome || '')}</p><p class="text-[12.5px] text-ink3">Nothing needs you. The run is kept so it can be checked and measured. If it missed something, say so below.</p></section>`;
   else if (t.status === 'pending' && t.waitOn) box = `<section class="rounded-2xl border border-indigo-500/40 bg-indigo-500/5 p-4 space-y-3">
-      ${mLabel('<span class="c-indigo">Waiting · on another mission</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)}</span>`)}
+      ${mLabel('<span class="c-blue">In progress · waiting on another mission</span>', `<span class="text-[12px] text-ink3 font-mono">${myAge(Date.now() - t.opened)}</span>`)}
       <p class="text-[13.5px] text-ink2 leading-relaxed"><b class="text-ink">Nothing to decide here.</b> The cause is in the data pipeline, so the fix belongs to the mission below. When it is approved, this mission continues on its own and checks that the detection works again.</p>
       <div>${mLink(t.waitOn)}</div></section>`;
   else if (t.status === 'pending' && d) box = `<section data-decision class="rounded-2xl border border-line2 bg-card p-4 space-y-3">
-      ${mLabel(sugHead, `<span class="text-[12px] c-amber font-semibold whitespace-nowrap">Needs you · <span class="font-mono font-normal text-ink3">${myAge(Date.now() - t.opened)}</span></span>`)}
+      ${mLabel(sugHead, `<span class="text-[12px] c-amber font-semibold whitespace-nowrap">Pending · <span class="font-mono font-normal text-ink3">${myAge(Date.now() - t.opened)}</span></span>`)}
       <div><h3 class="text-[16.5px] font-bold text-ink leading-snug">${esc(d.q)}</h3><p class="text-[13.5px] text-ink2 leading-relaxed mt-1">${esc(d.effect)}</p>
         <p class="text-[12.5px] text-ink3 leading-relaxed mt-1"><b class="text-ink2">Risk:</b> ${esc(d.risk)}${d.reversible ? ' It can be reversed.' : ''}${d.selfFix ? ' ' + esc(d.selfFix) : ''}</p>${mExpects(t)}</div>
       ${mChangedBox(t)}
@@ -206,7 +206,7 @@ function mProgressBox(t, links = '') {
   const dm = /day (\d+) of (\d+)/i.exec(t.progressNote || ''), [pa, pb, pu] = dm ? [+dm[1], +dm[2], 'days of the silent test'] : [k, n, 'steps'];
   const cell = (l, v, tone = 'text-ink') => `<div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-wider text-ink3">${l}</div><div class="text-[13px] ${tone} leading-snug mt-0.5">${v}</div></div>`;
   return `<section data-progress class="rounded-2xl border ${t.handed ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-blue-500/40 bg-blue-500/5'} p-4 space-y-3">
-    ${mLabel(`<span class="${t.handed ? 'c-indigo' : 'c-blue'}">${t.handed ? 'Waiting · no decision needed now' : 'Running · no decision needed now'}</span>`)}
+    ${mLabel(`<span class="${t.handed ? 'c-indigo' : 'c-blue'}">${t.handed ? 'In progress · waiting on the team' : 'In progress · no decision needed now'}</span>`)}
     <div class="grid grid-cols-2 gap-x-4 gap-y-3">
       ${cell('Now', esc(t.progressNote || (mRunning(t) ? t.steps[k - 1] : 'Working')))}
       ${cell('Progress', `<span class="font-mono">${pa} of ${pb}</span> ${pu}<div class="mt-1 h-1.5 rounded-full bg-sunk overflow-hidden"><div class="h-full rounded-full bg-blue-500" style="width:${Math.round(pa / pb * 100)}%"></div></div>`)}
@@ -374,7 +374,7 @@ function mTaskAnswer(t, q) {
   if (/agent|who|pipeline|worked/.test(l)) return { text: `This mission belongs to the ${M_AG[t.agent].name}. The root cause is at the ${MY_LAYER[t.layer].name.toLowerCase()} step.` };
   if (/wait|later|nothing|ignore|not now/.test(l)) { const n = rules.length;
     const cost = { Fix: `the problem stays: ${n ? `${n} rule${n === 1 ? '' : 's'} keep${n === 1 ? 's' : ''} working on missing or wrong data` : 'the data stays missing'}`, Tune: 'the noise stays at the same level', Drop: 'the unused detection logic stays enabled', Adopt: 'the gap stays open', Connect: 'the detections that need this source stay unavailable', Watch: 'nothing is lost, the checks continue' }[t.sug] || 'nothing changes';
-    return { text: `Nothing changes until you decide, so ${cost}. The mission stays in Needs you, ranked by priority (**${t.impact}**).` }; }
+    return { text: `Nothing changes until you decide, so ${cost}. The mission stays Pending, ranked by priority (**${t.impact}**).` }; }
   if (/rule|affect|object|which|what.*chang/.test(l)) return { text: rules.length ? `It affects **${rules.length} rule${rules.length === 1 ? '' : 's'}**:\n${rules.map(r => `• ${r.name} (ID ${r.id})`).join('\n')}${d ? `\n\n${d.effect}` : ''}` : (d ? d.effect : t.summary) };
   if (/why|how|explain|evidence|proof|sure|confiden/.test(l)) return { text: `${t.diagnosis}\n\nHow it was found:\n${t.steps.map(x => `• ${x}`).join('\n')}\n\nConfidence: **${t.conf}**.` };
   if (/option|alternativ|else|other/.test(l)) return { text: `You can approve the change as it is${t.current && t.recommended && !t.affects.instance ? ', edit it and approve your version' : ''}, or decline it. Declining changes nothing and keeps the suggestion visible on the affected objects.` };

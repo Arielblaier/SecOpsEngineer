@@ -57,7 +57,7 @@ const mConf = c => { if (!c) return '<span class="text-ink4">—</span>'; const 
   return `<span class="inline-flex items-center gap-1.5 text-[12.5px] text-ink2" title="Confidence: ${c}"><span class="inline-flex items-end gap-[2px] h-3">${[1, 2, 3].map(i => `<span class="w-[3px] rounded-sm ${i <= n ? 'bg-cx' : 'bg-line2'}" style="height:${4 + i * 3}px"></span>`).join('')}</span>${c}</span>`; };
 const mImpact = i => `<span class="inline-flex px-2 py-0.5 rounded-md tn tn-${{ High: 'rose', Medium: 'amber', Low: 'blue' }[i]} text-[12px] font-semibold">${i}</span>`;
 const mStatusTxt = t => { const st = myState(t); if (st === 'done') return myEndTxt(t);
-  if (st === 'waiting') return t.waitOn ? 'Waiting on ' + t.waitOn : 'Waiting on another team'; if (st === 'running') return 'Running'; if (st === 'blocked') return 'Blocked · partly applied'; return 'Needs you'; };
+  if (st === 'waiting') return t.waitOn ? 'In progress · waiting on ' + t.waitOn : 'In progress · waiting on another team'; if (st === 'running') return 'In progress'; if (st === 'blocked') return 'Pending · partly applied'; return 'Pending'; };
 const mStatus = t => { const st = myState(t), tone = st === 'done' ? (['rejected', 'cancelled', 'nothing'].includes(t.end) ? 'slate' : 'cx') : M_STATE[st][1];
   const dot = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${{ amber: 'bg-amber-500', blue: 'bg-blue-500 animate-pulse', indigo: 'bg-indigo-400', rose: 'bg-rose-500', cx: 'bg-cx', slate: 'bg-slate-400' }[tone]}"></span>`;
   const short = M_STATE[st][0];

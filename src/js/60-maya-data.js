@@ -826,7 +826,8 @@ function myShape(W, t) {
 }
 /* ---------- states ---------- */
 const myState = t => t.status === 'blocked' ? 'blocked' : t.status === 'done' ? 'done' : t.status === 'pending' ? (t.waitOn ? 'waiting' : 'needs') : t.handed ? 'waiting' : 'running';
-const M_STATE = { needs: ['Needs you', 'amber'], running: ['Running', 'blue'], waiting: ['Waiting', 'indigo'], blocked: ['Blocked', 'rose'], done: ['Done', 'cx'] };
+/* Three mission statuses: Pending (a person has to decide), In progress (the agent works, or waits on another team or mission), Done. */
+const M_STATE = { needs: ['Pending', 'amber'], running: ['In progress', 'blue'], waiting: ['In progress', 'blue'], blocked: ['Pending', 'rose'], done: ['Done', 'cx'] };
 function myEndTxt(t) {
   if (t.status !== 'done') return '';
   return ({ approved: 'Changes applied', edited: 'Changes applied, with your edits', rejected: 'Declined' + (t.declined ? ' · ' + myDeclTxt(t.declined) : ''), handed: 'Handed over', watch: 'Inconclusive · checks again', nothing: 'Nothing found', partly: 'Partly applied', cancelled: 'Cancelled',
